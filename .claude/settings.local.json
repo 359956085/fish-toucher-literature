@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Set-Location ''D:\\\\project\\\\idea\\\\fish-toucher-literature''; .\\\\gradlew.bat compileJava 2>&1\")",
+      "WebFetch(domain:plugins.jetbrains.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:youtrack.jetbrains.com)"
+    ]
+  }
+}
