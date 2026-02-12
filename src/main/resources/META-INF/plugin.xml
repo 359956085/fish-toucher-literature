@@ -1,0 +1,67 @@
+<idea-plugin>
+    <id>com.fishtoucher.literature</id>
+    <name>Fish Toucher literature</name>
+    <version>1.0.0</version>
+    <vendor>FishToucher</vendor>
+
+    <description><![CDATA[
+    A fish-toucher literature plugin for IntelliJ IDEA.
+    Read local novel files (.txt) disguised as code comments in the editor.
+    <br/>
+    Features:
+    <ul>
+        <li>Read .txt novel files line by line</li>
+        <li>Content displayed in the status bar (boss-friendly)</li>
+        <li>Keyboard shortcuts for next/previous line navigation</li>
+        <li>Adjustable lines per page</li>
+        <li>Reading progress saved automatically</li>
+        <li>Toggle visibility with a hotkey</li>
+    </ul>
+    ]]></description>
+
+    <idea-version since-build="253" until-build="253.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory id="NovelReaderWidget"
+                                implementation="com.fishtoucher.literature.ui.NovelReaderWidgetFactory"
+                                order="first"/>
+        <toolWindow id="Fish Toucher Literature"
+                    anchor="bottom"
+                    secondary="true"
+                    factoryClass="com.fishtoucher.literature.ui.NovelReaderToolWindowFactory"
+                    icon="/META-INF/book_icon.svg"/>
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.fishtoucher.literature.settings.NovelReaderConfigurable"
+                id="com.fishtoucher.literature.settings.NovelReaderConfigurable"
+                displayName="Fish Toucher Literature"/>
+        <applicationService
+                serviceImplementation="com.fishtoucher.literature.settings.NovelReaderSettings"/>
+        <postStartupActivity
+                implementation="com.fishtoucher.literature.ShortcutInitializer"/>
+    </extensions>
+
+    <actions>
+        <group id="NovelReader.ActionGroup" text="Novel Reader" description="Novel reader actions">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="NovelReader.Open"
+                    class="com.fishtoucher.literature.actions.OpenNovelAction"
+                    text="Open Novel File"
+                    description="Open a local novel text file"/>
+            <action id="NovelReader.NextPage"
+                    class="com.fishtoucher.literature.actions.NextPageAction"
+                    text="Next Page"
+                    description="Go to next page"/>
+            <action id="NovelReader.PrevPage"
+                    class="com.fishtoucher.literature.actions.PrevPageAction"
+                    text="Previous Page"
+                    description="Go to previous page"/>
+            <action id="NovelReader.Toggle"
+                    class="com.fishtoucher.literature.actions.ToggleVisibilityAction"
+                    text="Fish Toucher Literature"
+                    description="Show/Hide novel reader panel"/>
+        </group>
+    </actions>
+</idea-plugin>
