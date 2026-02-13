@@ -134,7 +134,7 @@ public class NovelReaderManager {
                 int idx = 0;
                 while (idx < trimmed.length()) {
                     int end = Math.min(idx + linesPerPage, trimmed.length());
-                    newLines.add(trimmed.substring(idx, end));
+                    newLines.add(paddingStr(trimmed.substring(idx, end), linesPerPage));
                     idx = end;
                 }
             }
@@ -162,6 +162,15 @@ public class NovelReaderManager {
         visible = true;
         fireChange();
         return true;
+    }
+
+    public String paddingStr(String s, int max) {
+        if (s.length() >= max) {
+            return s;
+        }
+        StringBuilder sBuilder = new StringBuilder(s);
+        sBuilder.append("　".repeat(max - sBuilder.length()));
+        return sBuilder.toString();
     }
 
     /**
