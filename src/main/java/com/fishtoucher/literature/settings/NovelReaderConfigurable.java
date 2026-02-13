@@ -3,11 +3,17 @@ package com.fishtoucher.literature.settings;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import com.intellij.openapi.actionSystem.Shortcut;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileChooser.FileChooser;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
+import com.fishtoucher.literature.ui.NovelReaderManager;
 import org.jetbrains.annotations.Nls;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
@@ -16,7 +22,6 @@ import java.awt.*;
 public class NovelReaderConfigurable implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderConfigurable.class);
-    private JPanel mainPanel;
     private JSpinner linesPerPageSpinner;
     private JSpinner charsPerLineSpinner;
     private JSpinner fontSizeSpinner;
@@ -35,7 +40,7 @@ public class NovelReaderConfigurable implements Configurable {
 
     @Override
     public @Nullable JComponent createComponent() {
-        mainPanel = new JPanel(new GridBagLayout());
+        JPanel mainPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = JBUI.insets(5);
         gbc.anchor = GridBagConstraints.WEST;
@@ -75,8 +80,13 @@ public class NovelReaderConfigurable implements Configurable {
         showInStatusBarCheckBox = new JCheckBox("Show reading content in status bar", settings.isShowInStatusBar());
         mainPanel.add(showInStatusBarCheckBox, gbc);
 
-        // --- Keyboard shortcuts section ---
+        // --- Import file button ---
         gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
+        JPanel importPanel = getJPanel();
+        mainPanel.add(importPanel, gbc);
+
+        // --- Keyboard shortcuts section ---
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         JLabel shortcutTitle = new JLabel("Keyboard Shortcuts (click field and press key combination, Esc to clear):");
         shortcutTitle.setFont(shortcutTitle.getFont().deriveFont(Font.BOLD, 12f));
         mainPanel.add(shortcutTitle, gbc);
@@ -84,34 +94,60 @@ public class NovelReaderConfigurable implements Configurable {
         gbc.gridwidth = 1;
 
         // Open novel file
-        gbc.gridx = 0; gbc.gridy = 6;
+        gbc.gridx = 0; gbc.gridy = 7;
         mainPanel.add(new JLabel("Open file:"), gbc);
         gbc.gridx = 1;
         shortcutOpenField = new ShortcutKeyField(settings.getShortcutOpen());
         mainPanel.add(shortcutOpenField, gbc);
 
         // Next page
-        gbc.gridx = 0; gbc.gridy = 7;
+        gbc.gridx = 0; gbc.gridy = 8;
         mainPanel.add(new JLabel("Next page:"), gbc);
         gbc.gridx = 1;
         shortcutNextPageField = new ShortcutKeyField(settings.getShortcutNextPage());
         mainPanel.add(shortcutNextPageField, gbc);
 
         // Previous page
-        gbc.gridx = 0; gbc.gridy = 8;
+        gbc.gridx = 0; gbc.gridy = 9;
         mainPanel.add(new JLabel("Previous page:"), gbc);
         gbc.gridx = 1;
         shortcutPrevPageField = new ShortcutKeyField(settings.getShortcutPrevPage());
         mainPanel.add(shortcutPrevPageField, gbc);
 
         // Toggle visibility
-        gbc.gridx = 0; gbc.gridy = 9;
+        gbc.gridx = 0; gbc.gridy = 10;
         mainPanel.add(new JLabel("Toggle visibility:"), gbc);
         gbc.gridx = 1;
         shortcutToggleField = new ShortcutKeyField(settings.getShortcutToggle());
         mainPanel.add(shortcutToggleField, gbc);
 
         return mainPanel;
+    }
+
+    private static @NotNull JPanel getJPanel() {
+        JPanel importPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JButton importFileButton = new JButton("Import File...");
+        importFileButton.setToolTipText("Select a novel file (.txt/.text) to load");
+        importFileButton.addActionListener(e -> {
+            FileChooserDescriptor descriptor = new FileChooserDescriptor(true, false, false, false, false, false)
+                    .withFileFilter(file -> {
+                        String ext = file.getExtension();
+                        return ext != null && (ext.equalsIgnoreCase("txt") || ext.equalsIgnoreCase("text"));
+                    })
+                    .withTitle("Select File")
+                    .withDescription("Choose a .txt / .text file to read");
+            VirtualFile[] files = FileChooser.chooseFiles(descriptor, null, null);
+            if (files.length > 0) {
+                boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
+                if (success) {
+                    Messages.showInfoMessage("File loaded successfully: " + files[0].getName(), "Fish Toucher Literature");
+                } else {
+                    Messages.showErrorDialog("Failed to load the file. Please check if the file is a valid text file.", "Fish Toucher Literature");
+                }
+            }
+        });
+        importPanel.add(importFileButton);
+        return importPanel;
     }
 
     @Override
