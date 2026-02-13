@@ -22,7 +22,7 @@
         Settings → Tools → Fish Toucher Literature
     ]]></description>
 
-    <idea-version since-build="252.*" until-build="253.*"/>
+    <idea-version since-build="252" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>
 
