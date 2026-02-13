@@ -1,25 +1,28 @@
 <idea-plugin>
     <id>com.fishtoucher.literature</id>
-    <name>Fish Toucher literature</name>
+    <name>Fish Toucher Literature</name>
     <version>1.0.0</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
     A fish-toucher literature plugin for IntelliJ IDEA.
-    Read local novel files (.txt) disguised as code comments in the editor.
+    Read local files (.txt) disguised as code comments in the editor.
     <br/>
     Features:
     <ul>
-        <li>Read .txt novel files line by line</li>
+        <li>Read .txt files line by line</li>
         <li>Content displayed in the status bar (boss-friendly)</li>
         <li>Keyboard shortcuts for next/previous line navigation</li>
         <li>Adjustable lines per page</li>
         <li>Reading progress saved automatically</li>
         <li>Toggle visibility with a hotkey</li>
     </ul>
+    Set up routing:
+    <br/>
+        Settings → Tools → Fish Toucher Literature
     ]]></description>
 
-    <idea-version since-build="253" until-build="253.*"/>
+    <idea-version since-build="252.*" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>
 

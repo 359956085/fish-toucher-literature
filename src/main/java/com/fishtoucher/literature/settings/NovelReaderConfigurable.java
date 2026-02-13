@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.util.ui.JBUI;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +37,7 @@ public class NovelReaderConfigurable implements Configurable {
     public @Nullable JComponent createComponent() {
         mainPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = JBUI.insets(5);
         gbc.anchor = GridBagConstraints.WEST;
 
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
@@ -50,7 +51,7 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Chars per line
         gbc.gridx = 0; gbc.gridy = 1;
-        mainPanel.add(new JLabel("Chars per line (0=unlimited):"), gbc);
+        mainPanel.add(new JLabel("Chars per line:"), gbc);
         gbc.gridx = 1;
         charsPerLineSpinner = new JSpinner(new SpinnerNumberModel(settings.getCharsPerLine(), 10, 500, 10));
         mainPanel.add(charsPerLineSpinner, gbc);
@@ -84,7 +85,7 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Open novel file
         gbc.gridx = 0; gbc.gridy = 6;
-        mainPanel.add(new JLabel("Open novel file:"), gbc);
+        mainPanel.add(new JLabel("Open file:"), gbc);
         gbc.gridx = 1;
         shortcutOpenField = new ShortcutKeyField(settings.getShortcutOpen());
         mainPanel.add(shortcutOpenField, gbc);
