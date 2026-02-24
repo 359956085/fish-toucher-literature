@@ -5,7 +5,9 @@
       "WebFetch(domain:plugins.jetbrains.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:youtrack.jetbrains.com)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(./gradlew:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
