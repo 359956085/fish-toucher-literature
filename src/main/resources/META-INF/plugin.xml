@@ -1,28 +1,39 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher Literature</name>
-    <version>1.0.0</version>
+    <version>1.3.3</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
-    A fish-toucher literature plugin for IntelliJ IDEA.
-    Read local files (.txt) disguised as code comments in the editor.
-    <br/>
-    Features:
+    <p>A fish-toucher literature plugin for IntelliJ IDEA.
+    Read local text files (.txt) disguised as code comments in the editor.</p>
+    <b>Features:</b>
     <ul>
         <li>Read .txt files line by line</li>
         <li>Content displayed in the status bar (boss-friendly)</li>
-        <li>Keyboard shortcuts for next/previous line navigation</li>
-        <li>Adjustable lines per page</li>
+        <li>Keyboard shortcuts for next/previous page navigation</li>
+        <li>Adjustable lines per page and characters per line</li>
         <li>Reading progress saved automatically</li>
-        <li>Toggle visibility with a hotkey</li>
+        <li>Toggle visibility with a hotkey (boss key)</li>
     </ul>
-    Set up routing:
-    <br/>
-        Settings → Tools → Fish Toucher Literature
+    <b>Settings:</b> Settings → Tools → Fish Toucher Literature
+    <br/><br/>
+    <hr/>
+    <p>一款适用于 IntelliJ IDEA 的摸鱼阅读插件。
+    在编辑器中将本地文本文件（.txt）伪装成代码注释进行阅读。</p>
+    <b>功能特性：</b>
+    <ul>
+        <li>逐行阅读 .txt 文本文件</li>
+        <li>内容显示在状态栏中（老板键友好）</li>
+        <li>快捷键翻页导航（上一页/下一页）</li>
+        <li>可调节每页行数和每行字数</li>
+        <li>自动保存阅读进度</li>
+        <li>一键隐藏/显示阅读内容（老板键）</li>
+    </ul>
+    <b>设置路径：</b> Settings → Tools → Fish Toucher Literature
     ]]></description>
 
-    <idea-version since-build="231" until-build="253.*"/>
+    <idea-version since-build="242" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>
 

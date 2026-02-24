@@ -1,6 +1,6 @@
 # 📖 Fish Toucher Literature — IntelliJ IDEA Plugin
 
-在 IntelliJ IDEA 中隐秘阅读本地小说 (TXT) 文件的插件，支持 IDEA **2025.1 (Build 253.x)** 版本。
+在 IntelliJ IDEA 中隐秘阅读本地小说 (TXT) 文件的插件，支持 IDEA **2024.2 (Build 242.x)** 以上版本。
 
 ## ✨ 功能特性
 
@@ -73,7 +73,7 @@ build/distributions/fish-toucher-literature-1.0.0.zip
 
 ## ⚙️ 设置
 
-`Settings → Tools → Novel Reader` 中可以调整:
+`Settings → Tools → Fish Toucher Literature` 中可以调整:
 - 每页显示行数 (1-50)
 - 字体名称 (推荐: Microsoft YaHei, SimSun, Source Han Sans)
 - 字号大小
@@ -111,7 +111,7 @@ fish-toucher-literature/
 
 ## 💡 隐蔽技巧
 
-- Tool Window 标题为 "Novel Reader"，可以右键改名为 "Build Output" 等更隐蔽的名字
+- Tool Window 标题为 "Fish Toucher Literature"，可以右键改名为 "Build Output" 等更隐蔽的名字
 - 隐藏状态下显示虚假的构建成功信息
-- 状态栏模式下内容自动截断为 80 字符，不会太显眼
+- 状态栏模式下内容自动截断为 60 字符，不会太显眼
 - 可在设置中关闭状态栏显示，仅在底部面板中阅读
