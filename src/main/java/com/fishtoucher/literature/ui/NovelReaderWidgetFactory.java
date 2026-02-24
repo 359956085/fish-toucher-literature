@@ -15,7 +15,7 @@ public class NovelReaderWidgetFactory implements StatusBarWidgetFactory {
 
     @Override
     public @NonNls @NotNull String getId() {
-        return "FishToucherLiteratureWidget";
+        return "NovelReaderWidget";
     }
 
     @Override
