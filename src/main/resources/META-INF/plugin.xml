@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher Literature</name>
     <version>1.0.0</version>
@@ -22,7 +22,7 @@
         Settings → Tools → Fish Toucher Literature
     ]]></description>
 
-    <idea-version since-build="252" until-build="253.*"/>
+    <idea-version since-build="231" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>
 
@@ -44,6 +44,8 @@
                 serviceImplementation="com.fishtoucher.literature.settings.NovelReaderSettings"/>
         <postStartupActivity
                 implementation="com.fishtoucher.literature.ShortcutInitializer"/>
+        <notificationGroup id="Fish Toucher Literature"
+                           displayType="STICKY_BALLOON"/>
     </extensions>
 
     <actions>

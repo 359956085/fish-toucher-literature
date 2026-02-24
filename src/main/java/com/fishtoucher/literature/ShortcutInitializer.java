@@ -1,8 +1,14 @@
 package com.fishtoucher.literature;
 
+import com.intellij.ide.plugins.IdeaPluginDescriptor;
+import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import com.intellij.openapi.actionSystem.Shortcut;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.project.Project;
@@ -17,10 +23,12 @@ import javax.swing.*;
 
 /**
  * Applies custom keyboard shortcuts from plugin settings to the active keymap on project open.
+ * Also shows a notification when the plugin is first installed or updated.
  */
 public class ShortcutInitializer implements ProjectActivity {
 
     private static final Logger LOG = Logger.getInstance(ShortcutInitializer.class);
+    private static final String PLUGIN_ID = "com.fishtoucher.literature";
 
     @Nullable
     @Override
@@ -31,7 +39,49 @@ public class ShortcutInitializer implements ProjectActivity {
         applyShortcut("NovelReader.NextPage", settings.getShortcutNextPage());
         applyShortcut("NovelReader.PrevPage", settings.getShortcutPrevPage());
         applyShortcut("NovelReader.Toggle", settings.getShortcutToggle());
+
+        checkFirstInstallOrUpdate(project, settings);
+
         return Unit.INSTANCE;
+    }
+
+    private void checkFirstInstallOrUpdate(@NotNull Project project, @NotNull NovelReaderSettings settings) {
+        String currentVersion = getPluginVersion();
+        if (currentVersion == null) {
+            return;
+        }
+
+        String installedVersion = settings.getInstalledVersion();
+        if (currentVersion.equals(installedVersion)) {
+            return;
+        }
+
+        boolean isFirstInstall = installedVersion == null || installedVersion.isEmpty();
+        settings.setInstalledVersion(currentVersion);
+
+        ApplicationManager.getApplication().invokeLater(() -> {
+            String title;
+            String content;
+            if (isFirstInstall) {
+                title = "Fish Toucher Literature Installed Successfully";
+                content = "Plugin v" + currentVersion + " has been installed. Please restart the IDE for the best experience.\n"
+                        + "Settings: Settings → Tools → Fish Toucher Literature";
+            } else {
+                title = "Fish Toucher Literature Updated Successfully";
+                content = "Plugin has been updated to v" + currentVersion + ". Please restart the IDE to apply all changes.";
+            }
+
+            NotificationGroupManager.getInstance()
+                    .getNotificationGroup("Fish Toucher Literature")
+                    .createNotification(title, content, NotificationType.INFORMATION)
+                    .notify(project);
+        });
+    }
+
+    @Nullable
+    private String getPluginVersion() {
+        IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID));
+        return descriptor != null ? descriptor.getVersion() : null;
     }
 
     private void applyShortcut(String actionId, String keystrokeStr) {
