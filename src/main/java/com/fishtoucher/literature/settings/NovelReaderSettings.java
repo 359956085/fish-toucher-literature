@@ -23,6 +23,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public String fontFamily = "Microsoft YaHei";
         public int fontSize = 13;
         public boolean showInStatusBar = true;
+        public String installedVersion = "";
         // file path -> line number (reading progress)
         public Map<String, Integer> readingProgress = new HashMap<>();
         // custom keyboard shortcuts (IntelliJ keystroke format)
@@ -123,4 +124,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     public String getShortcutToggle() { return myState.shortcutToggle; }
     public void setShortcutToggle(String s) { myState.shortcutToggle = s != null ? s : ""; }
+
+    public String getInstalledVersion() { return myState.installedVersion; }
+    public void setInstalledVersion(String v) { myState.installedVersion = v != null ? v : ""; }
 }

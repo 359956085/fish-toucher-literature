@@ -20,9 +20,9 @@ public class OpenNovelAction extends AnAction {
         FileChooserDescriptor descriptor = new FileChooserDescriptor(true, false, false, false, false, false)
                 .withFileFilter(file -> {
                     String ext = file.getExtension();
-                    return ext != null && (ext.equalsIgnoreCase("txt") || ext.equalsIgnoreCase("novel") || ext.equalsIgnoreCase("text"));
+                    return ext != null && (ext.equalsIgnoreCase("txt") || ext.equalsIgnoreCase("text"));
                 })
-                .withTitle("Select Novel File")
+                .withTitle("Select File")
                 .withDescription("Choose a .txt file to read");
 
         VirtualFile[] files = FileChooser.chooseFiles(descriptor, e.getProject(), null);
@@ -33,7 +33,7 @@ public class OpenNovelAction extends AnAction {
                 LOG.warn("actionPerformed: failed to load file: " + files[0].getPath());
                 Messages.showErrorDialog(e.getProject(),
                         "Failed to load the file. Please check if the file is a valid text file.",
-                        "Novel Reader");
+                        "Fish Toucher Literature");
             }
         } else {
             LOG.info("actionPerformed: user cancelled file selection");

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.novelreader"
-version = "1.2.1"
+version = "1.3.1"
 
 repositories {
     mavenCentral()
@@ -37,7 +37,7 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "252"
+            sinceBuild = "231"
             untilBuild = "253.*"
         }
     }
