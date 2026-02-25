@@ -69,6 +69,18 @@
     <b>设置路径：</b> Settings → Tools → Fish Toucher Literature
     ]]></description>
 
+    <change-notes><![CDATA[
+    <b>1.4.0</b>
+    <ul>
+        <li>New: Two independent reading modes — Stealth Mode (status bar) and Normal Mode (tool window)<br/>
+            新增：两种独立阅读模式 — 隐秘模式（状态栏）和普通模式（工具窗口）</li>
+        <li>New: Each mode has its own reading progress, chars per line, and lines per page settings<br/>
+            新增：每种模式拥有独立的阅读进度、每行字数、每页行数配置</li>
+        <li>Improved: New bright orange fish into icon for better visibility<br/>
+            优化：图标加入一条橙红色小鱼</li>
+    </ul>
+    ]]></change-notes>
+
     <idea-version since-build="242" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>

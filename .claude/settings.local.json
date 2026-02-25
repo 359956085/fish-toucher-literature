@@ -7,7 +7,8 @@
       "WebFetch(domain:youtrack.jetbrains.com)",
       "Bash(dir:*)",
       "Bash(./gradlew:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
