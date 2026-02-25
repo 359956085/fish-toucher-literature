@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- Background circle -->
+  <circle cx="20" cy="20" r="19" fill="#F0F4F8" stroke="#D1D5DB" stroke-width="0.5"/>
+
+  <!-- Book left page -->
+  <path d="M7 12C7 11.2 7.7 10.5 8.5 10.5H17.5C19.2 10.5 20 11.5 20 13V36C20 36 17.5 34.5 14.5 34.5H8.5C7.7 34.5 7 33.8 7 33V12Z" fill="#6B7280"/>
+  <!-- Book left page lines -->
+  <line x1="10" y1="16" x2="17" y2="16" stroke="#9CA3AF" stroke-width="0.5" opacity="0.5"/>
+  <line x1="10" y1="19" x2="17" y2="19" stroke="#9CA3AF" stroke-width="0.5" opacity="0.5"/>
+  <line x1="10" y1="22" x2="17" y2="22" stroke="#9CA3AF" stroke-width="0.5" opacity="0.5"/>
+  <line x1="10" y1="25" x2="16" y2="25" stroke="#9CA3AF" stroke-width="0.5" opacity="0.5"/>
+  <line x1="10" y1="28" x2="17" y2="28" stroke="#9CA3AF" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- Book right page -->
+  <path d="M33 12C33 11.2 32.3 10.5 31.5 10.5H22.5C20.8 10.5 20 11.5 20 13V36C20 36 22.5 34.5 25.5 34.5H31.5C32.3 34.5 33 33.8 33 33V12Z" fill="#9CA3AF"/>
+  <!-- Book right page lines -->
+  <line x1="23" y1="16" x2="30" y2="16" stroke="#B0B5BC" stroke-width="0.5" opacity="0.5"/>
+  <line x1="23" y1="19" x2="30" y2="19" stroke="#B0B5BC" stroke-width="0.5" opacity="0.5"/>
+  <line x1="23" y1="22" x2="30" y2="22" stroke="#B0B5BC" stroke-width="0.5" opacity="0.5"/>
+  <line x1="23" y1="25" x2="29" y2="25" stroke="#B0B5BC" stroke-width="0.5" opacity="0.5"/>
+  <line x1="23" y1="28" x2="30" y2="28" stroke="#B0B5BC" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- Book spine -->
+  <line x1="20" y1="11" x2="20" y2="36" stroke="#4B5563" stroke-width="0.8"/>
+
+  <!-- Fish body - bright orange -->
+  <ellipse cx="20" cy="8.5" rx="9" ry="4.5" fill="#FF6B35" stroke="#CC4400" stroke-width="0.8"/>
+  <!-- Fish body highlight -->
+  <ellipse cx="20" cy="6.8" rx="6" ry="2" fill="#FFA070" opacity="0.5"/>
+  <!-- Fish tail -->
+  <path d="M10 8.5L5 4L5 13Z" fill="#FF6B35" stroke="#CC4400" stroke-width="0.6"/>
+  <!-- Fish dorsal fin -->
+  <path d="M18 8.5L20 2.5L22 8.5" fill="#E85D26" stroke="#CC4400" stroke-width="0.4"/>
+  <!-- Fish belly fin -->
+  <path d="M17 11.5L18.5 14L20 11.5" fill="#E85D26" opacity="0.7"/>
+  <!-- Fish eye -->
+  <circle cx="26" cy="7.5" r="1.8" fill="white" stroke="#CC4400" stroke-width="0.3"/>
+  <circle cx="26.5" cy="7.2" r="0.9" fill="#1A1A2E"/>
+  <circle cx="26.9" cy="6.9" r="0.35" fill="white"/>
+  <!-- Fish mouth -->
+  <path d="M28.8 9.2C29.4 8.8 29.4 8.2 28.8 7.8" fill="none" stroke="#CC4400" stroke-width="0.6"/>
+  <!-- Fish scales -->
+  <path d="M14 7.5Q16 9 14 10.5" fill="none" stroke="#E85D26" stroke-width="0.5" opacity="0.5"/>
+  <path d="M17 7Q19 8.5 17 10" fill="none" stroke="#E85D26" stroke-width="0.5" opacity="0.5"/>
+</svg>
