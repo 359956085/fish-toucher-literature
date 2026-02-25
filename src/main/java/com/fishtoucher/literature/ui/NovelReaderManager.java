@@ -13,17 +13,22 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Singleton manager that holds the novel content and current reading position.
+ * Singleton manager that holds the novel content and current reading positions.
+ * Supports two independent reading modes: stealth (status bar) and normal (tool window).
  */
 public class NovelReaderManager {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderManager.class);
     private static final NovelReaderManager INSTANCE = new NovelReaderManager();
 
-    private final List<String> lines = new ArrayList<>();
+    /** Raw lines from file (split by charsPerLine at load time is removed; we store original lines now). */
+    private final List<String> rawLines = new ArrayList<>();
     private String currentFilePath = "";
-    private int currentLine = 0;
     private boolean visible = true;
+
+    // Independent reading positions for each mode
+    private int stealthCurrentLine = 0;
+    private int normalCurrentLine = 0;
 
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
 
@@ -47,6 +52,8 @@ public class NovelReaderManager {
         }
     }
 
+    // ========== File loading ==========
+
     /**
      * Load a novel file with auto charset detection (UTF-8 / GBK fallback).
      */
@@ -58,7 +65,6 @@ public class NovelReaderManager {
             return false;
         }
 
-        // 读取文件全部字节
         byte[] rawBytes;
         try (FileInputStream fis = new FileInputStream(file)) {
             rawBytes = fis.readAllBytes();
@@ -73,7 +79,7 @@ public class NovelReaderManager {
             return false;
         }
 
-        // 检测并跳过 BOM，确定编码
+        // Detect charset
         int offset = 0;
         Charset charset;
 
@@ -81,62 +87,41 @@ public class NovelReaderManager {
                 && (rawBytes[0] & 0xFF) == 0xEF
                 && (rawBytes[1] & 0xFF) == 0xBB
                 && (rawBytes[2] & 0xFF) == 0xBF) {
-            // UTF-8 BOM
-            LOG.info("loadFile: detected UTF-8 BOM");
             charset = StandardCharsets.UTF_8;
             offset = 3;
         } else if (rawBytes.length >= 2
                 && (rawBytes[0] & 0xFF) == 0xFF
                 && (rawBytes[1] & 0xFF) == 0xFE) {
-            // UTF-16 LE BOM
-            LOG.info("loadFile: detected UTF-16 LE BOM");
             charset = StandardCharsets.UTF_16LE;
             offset = 2;
         } else if (rawBytes.length >= 2
                 && (rawBytes[0] & 0xFF) == 0xFE
                 && (rawBytes[1] & 0xFF) == 0xFF) {
-            // UTF-16 BE BOM
-            LOG.info("loadFile: detected UTF-16 BE BOM");
             charset = StandardCharsets.UTF_16BE;
             offset = 2;
         } else if (isValidUtf8(rawBytes)) {
-            LOG.info("loadFile: detected encoding as UTF-8 (no BOM)");
             charset = StandardCharsets.UTF_8;
-            offset = 0;
         } else {
-            // fallback to GBK for Chinese novels
             try {
                 charset = Charset.forName("GBK");
-                LOG.info("loadFile: falling back to GBK encoding");
             } catch (Exception e) {
-                LOG.warn("loadFile: GBK charset not available, falling back to UTF-8", e);
                 charset = StandardCharsets.UTF_8;
             }
-            offset = 0;
         }
 
-        // 解码文本
         String content;
         try {
             content = new String(rawBytes, offset, rawBytes.length - offset, charset);
         } catch (Exception e) {
-            LOG.warn("loadFile: decoding with " + charset + " failed, falling back to UTF-8", e);
             content = new String(rawBytes, offset, rawBytes.length - offset, StandardCharsets.UTF_8);
         }
 
-        // 按行分割，过滤空行
+        // Split into lines, filter empty
         List<String> newLines = new ArrayList<>();
-        int linesPerPage = NovelReaderSettings.getInstance().getCharsPerLine();
         for (String line : content.split("\\r?\\n")) {
             String trimmed = line.trim();
-
             if (!trimmed.isEmpty()) {
-                int idx = 0;
-                while (idx < trimmed.length()) {
-                    int end = Math.min(idx + linesPerPage, trimmed.length());
-                    newLines.add(paddingStr(trimmed.substring(idx, end), linesPerPage));
-                    idx = end;
-                }
+                newLines.add(trimmed);
             }
         }
 
@@ -145,149 +130,110 @@ public class NovelReaderManager {
             return false;
         }
 
-        lines.clear();
-        lines.addAll(newLines);
+        rawLines.clear();
+        rawLines.addAll(newLines);
         currentFilePath = filePath;
 
-        // Restore reading progress
+        // Restore independent reading progress for each mode
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         settings.setLastFilePath(filePath);
-        currentLine = settings.getReadingProgress(filePath);
-        if (currentLine >= lines.size()) {
-            currentLine = 0;
-        }
 
-        LOG.info("loadFile: successfully loaded " + lines.size() + " lines from " + filePath
-                + ", restored progress to line " + currentLine);
+        stealthCurrentLine = settings.getStealthReadingProgress(filePath);
+        if (stealthCurrentLine >= rawLines.size()) stealthCurrentLine = 0;
+
+        normalCurrentLine = settings.getNormalReadingProgress(filePath);
+        if (normalCurrentLine >= rawLines.size()) normalCurrentLine = 0;
+
+        LOG.info("loadFile: loaded " + rawLines.size() + " lines, stealth@" + stealthCurrentLine + ", normal@" + normalCurrentLine);
         visible = true;
         fireChange();
         return true;
     }
 
-    public String paddingStr(String s, int max) {
-        if (s.length() >= max) {
-            return s;
-        }
-        StringBuilder sBuilder = new StringBuilder(s);
-        sBuilder.append("　".repeat(max - sBuilder.length()));
-        return sBuilder.toString();
+    // ========== Stealth mode (status bar): 1 line at a time ==========
+
+    public void stealthNextPage() {
+        if (rawLines.isEmpty()) return;
+        stealthCurrentLine = Math.min(stealthCurrentLine + 1, rawLines.size() - 1);
+        saveStealthProgress();
+        fireChange();
     }
 
-    /**
-     * Strict UTF-8 validation by checking byte sequences.
-     * Much more reliable than String decode + check for replacement char.
-     */
-    private boolean isValidUtf8(byte[] data) {
-        int len = Math.min(data.length, 8192); // check first 8KB
-        int i = 0;
-        boolean hasHighByte = false;
-        while (i < len) {
-            int b = data[i] & 0xFF;
-            int expectedBytes;
-            if (b <= 0x7F) {
-                i++;
-                continue;
-            } else if (b >= 0xC2 && b <= 0xDF) {
-                expectedBytes = 1;
-            } else if (b >= 0xE0 && b <= 0xEF) {
-                expectedBytes = 2;
-            } else if (b >= 0xF0 && b <= 0xF4) {
-                expectedBytes = 3;
-            } else {
-                return false; // invalid leading byte
+    public void stealthPrevPage() {
+        if (rawLines.isEmpty()) return;
+        stealthCurrentLine = Math.max(stealthCurrentLine - 1, 0);
+        saveStealthProgress();
+        fireChange();
+    }
+
+    public String getStealthText() {
+        if (rawLines.isEmpty()) return "[No novel loaded]";
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        int maxChars = settings.getStealthCharsPerLine();
+        String line = rawLines.get(stealthCurrentLine);
+        if (maxChars > 0) {
+            if (line.length() > maxChars) {
+                line = line.substring(0, maxChars);
+            } else if (line.length() < maxChars) {
+                // Pad with ideographic spaces to fixed width for stable left-aligned display
+                line = line + "\u3000".repeat(maxChars - line.length());
             }
-            hasHighByte = true;
-            if (i + expectedBytes >= len) break; // not enough bytes to check
-            for (int j = 1; j <= expectedBytes; j++) {
-                int cb = data[i + j] & 0xFF;
-                if (cb < 0x80 || cb > 0xBF) {
-                    return false; // invalid continuation byte
-                }
-            }
-            i += expectedBytes + 1;
         }
-        // if all ASCII, still treat as UTF-8
-        return true;
+        return line;
     }
 
-    public void nextPage() {
-        if (lines.isEmpty()) return;
-        int linesPerPage = NovelReaderSettings.getInstance().getLinesPerPage();
-        int prevLine = currentLine;
-        currentLine = Math.min(currentLine + linesPerPage, lines.size() - 1);
-        LOG.debug("nextPage: " + prevLine + " -> " + currentLine + " (linesPerPage=" + linesPerPage + ")");
-        saveProgress();
-        fireChange();
+    public String getStealthStatusText() {
+        if (rawLines.isEmpty()) return "";
+        int percent = (int) ((long) stealthCurrentLine * 100 / rawLines.size());
+        return String.format("[%d/%d] %d%%", stealthCurrentLine + 1, rawLines.size(), percent);
     }
 
-    public void prevPage() {
-        if (lines.isEmpty()) return;
-        int linesPerPage = NovelReaderSettings.getInstance().getLinesPerPage();
-        int prevLine = currentLine;
-        currentLine = Math.max(currentLine - linesPerPage, 0);
-        LOG.debug("prevPage: " + prevLine + " -> " + currentLine + " (linesPerPage=" + linesPerPage + ")");
-        saveProgress();
-        fireChange();
-    }
+    public int getStealthCurrentLine() { return stealthCurrentLine; }
 
-    public void jumpToLine(int line) {
-        if (lines.isEmpty()) return;
-        int prevLine = currentLine;
-        currentLine = Math.max(0, Math.min(line, lines.size() - 1));
-        LOG.debug("jumpToLine: " + prevLine + " -> " + currentLine + " (requested=" + line + ")");
-        saveProgress();
-        fireChange();
-    }
-
-    public void jumpToPercent(int percent) {
-        if (lines.isEmpty()) return;
-        int prevLine = currentLine;
-        currentLine = (int) ((long) percent * (lines.size() - 1) / 100);
-        LOG.debug("jumpToPercent: " + prevLine + " -> " + currentLine + " (percent=" + percent + "%)");
-        saveProgress();
-        fireChange();
-    }
-
-    private void saveProgress() {
+    private void saveStealthProgress() {
         if (!currentFilePath.isEmpty()) {
-            NovelReaderSettings.getInstance().setReadingProgress(currentFilePath, currentLine);
+            NovelReaderSettings.getInstance().setStealthReadingProgress(currentFilePath, stealthCurrentLine);
         }
     }
 
-    public List<String> getCurrentPageLines() {
-        List<String> result = new ArrayList<>();
-        if (lines.isEmpty()) return result;
-        NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int linesPerPage = settings.getLinesPerPage();
-        int charsPerLine = settings.getCharsPerLine();
-        int end = Math.min(currentLine + linesPerPage, lines.size());
-        for (int i = currentLine; i < end; i++) {
-            String line = lines.get(i);
-            if (charsPerLine > 0 && line.length() > charsPerLine) {
-                // 按指定字数截断，剩余内容不丢失（会在原始行中保留，翻页后继续显示）
-                result.add(line.substring(0, charsPerLine));
-            } else {
-                result.add(line);
-            }
-        }
-        return result;
+    // ========== Normal mode (tool window): multi-line ==========
+
+    public void normalNextPage() {
+        if (rawLines.isEmpty()) return;
+        int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
+        normalCurrentLine = Math.min(normalCurrentLine + linesPerPage, rawLines.size() - 1);
+        saveNormalProgress();
+        fireChange();
+    }
+
+    public void normalPrevPage() {
+        if (rawLines.isEmpty()) return;
+        int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
+        normalCurrentLine = Math.max(normalCurrentLine - linesPerPage, 0);
+        saveNormalProgress();
+        fireChange();
+    }
+
+    public void normalJumpToPercent(int percent) {
+        if (rawLines.isEmpty()) return;
+        normalCurrentLine = (int) ((long) percent * (rawLines.size() - 1) / 100);
+        saveNormalProgress();
+        fireChange();
     }
 
     /**
-     * 获取当前页的显示行（考虑 charsPerLine 折行）。
-     * 与 getCurrentPageLines 不同，此方法会将超长行拆分为多个显示行。
+     * Get display lines for normal mode tool window (respects normalCharsPerLine wrapping).
      */
-    public List<String> getCurrentPageDisplayLines() {
+    public List<String> getNormalPageDisplayLines() {
         List<String> result = new ArrayList<>();
-        if (lines.isEmpty()) return result;
+        if (rawLines.isEmpty()) return result;
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int linesPerPage = settings.getLinesPerPage();
-        int charsPerLine = settings.getCharsPerLine();
-        int end = Math.min(currentLine + linesPerPage, lines.size());
-        for (int i = currentLine; i < end; i++) {
-            String line = lines.get(i);
+        int linesPerPage = settings.getNormalLinesPerPage();
+        int charsPerLine = settings.getNormalCharsPerLine();
+        int end = Math.min(normalCurrentLine + linesPerPage, rawLines.size());
+        for (int i = normalCurrentLine; i < end; i++) {
+            String line = rawLines.get(i);
             if (charsPerLine > 0 && line.length() > charsPerLine) {
-                // 将长行拆分为多个显示行
                 int pos = 0;
                 while (pos < line.length()) {
                     int lineEnd = Math.min(pos + charsPerLine, line.length());
@@ -301,22 +247,61 @@ public class NovelReaderManager {
         return result;
     }
 
-    public String getCurrentPageText() {
-        List<String> pageLines = getCurrentPageLines();
-        if (pageLines.isEmpty()) return "[No novel loaded — Alt+Shift+N to open]";
-        return String.join("  ", pageLines);
+    public String getNormalStatusText() {
+        if (rawLines.isEmpty()) return "";
+        int percent = (int) ((long) normalCurrentLine * 100 / rawLines.size());
+        return String.format("[%d/%d] %d%%", normalCurrentLine + 1, rawLines.size(), percent);
     }
 
-    public String getStatusText() {
-        if (lines.isEmpty()) return "";
-        int percent = (int) ((long) currentLine * 100 / lines.size());
-        return String.format("[%d/%d] %d%%", currentLine + 1, lines.size(), percent);
+    public int getNormalCurrentLine() { return normalCurrentLine; }
+
+    private void saveNormalProgress() {
+        if (!currentFilePath.isEmpty()) {
+            NovelReaderSettings.getInstance().setNormalReadingProgress(currentFilePath, normalCurrentLine);
+        }
     }
+
+    // ========== Shared ==========
 
     public boolean isVisible() { return visible; }
     public void toggleVisibility() { visible = !visible; LOG.info("toggleVisibility: visible=" + visible); fireChange(); }
-    public boolean hasContent() { return !lines.isEmpty(); }
-    public int getCurrentLine() { return currentLine; }
-    public int getTotalLines() { return lines.size(); }
+    public boolean hasContent() { return !rawLines.isEmpty(); }
+    public int getTotalLines() { return rawLines.size(); }
     public String getCurrentFilePath() { return currentFilePath; }
+
+    // ========== Legacy compatibility (used by actions) ==========
+
+    /** Next page: advances both modes so keyboard shortcuts work everywhere. */
+    public void nextPage() {
+        stealthNextPage();
+        // normal mode also fires via the shared listener
+    }
+
+    /** Prev page: retreats both modes. */
+    public void prevPage() {
+        stealthPrevPage();
+    }
+
+    // ========== Charset detection ==========
+
+    private boolean isValidUtf8(byte[] data) {
+        int len = Math.min(data.length, 8192);
+        int i = 0;
+        while (i < len) {
+            int b = data[i] & 0xFF;
+            int expectedBytes;
+            if (b <= 0x7F) { i++; continue; }
+            else if (b >= 0xC2 && b <= 0xDF) expectedBytes = 1;
+            else if (b >= 0xE0 && b <= 0xEF) expectedBytes = 2;
+            else if (b >= 0xF0 && b <= 0xF4) expectedBytes = 3;
+            else return false;
+            if (i + expectedBytes >= len) break;
+            for (int j = 1; j <= expectedBytes; j++) {
+                int cb = data[i + j] & 0xFF;
+                if (cb < 0x80 || cb > 0xBF) return false;
+            }
+            i += expectedBytes + 1;
+        }
+        return true;
+    }
 }

@@ -13,8 +13,8 @@ import org.jetbrains.annotations.Nullable;
 import java.awt.event.MouseEvent;
 
 /**
- * Status bar widget that shows novel content in a single line at the bottom of the IDE.
- * Clicking advances to the next page.
+ * Stealth mode: status bar widget that shows novel content in a single line.
+ * Clicking advances to the next line. Has its own independent reading progress.
  */
 public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWidget.TextPresentation {
 
@@ -64,14 +64,9 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         NovelReaderManager manager = NovelReaderManager.getInstance();
         if (!manager.hasContent() || !manager.isVisible()) return "";
 
-        String content = manager.getCurrentPageText();
-        String status = manager.getStatusText();
-        // Truncate for status bar — use charsPerLine if set, otherwise default 80
-        int maxChars = settings.getCharsPerLine() > 0 ? settings.getCharsPerLine() : 80;
-        if (content.length() > maxChars) {
-            content = content.substring(0, maxChars - 3) + "...";
-        }
-        return "📖 " + content + "  " + status;
+        String content = manager.getStealthText();
+        String status = manager.getStealthStatusText();
+        return "\uD83D\uDCD6 " + content + "  " + status;
     }
 
     @Override
@@ -81,7 +76,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
     @Override
     public @Nullable String getTooltipText() {
-        return "Click to go to next page | Fish Toucher Literature";
+        return "Stealth mode | Click to next line | Fish Toucher Literature";
     }
 
     @Override
@@ -89,7 +84,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         return mouseEvent -> {
             NovelReaderManager manager = NovelReaderManager.getInstance();
             if (manager.hasContent()) {
-                manager.nextPage();
+                manager.stealthNextPage();
             }
         };
     }

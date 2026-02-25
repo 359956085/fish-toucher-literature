@@ -17,15 +17,26 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     private static final Logger LOG = Logger.getInstance(NovelReaderSettings.class);
 
     public static class State {
-        public int linesPerPage = 1;
-        public int charsPerLine = 60; // 0 = 不限制，自动换行
+        // --- Stealth mode (status bar): fixed 1 line ---
+        public int stealthCharsPerLine = 60;
+
+        // --- Normal mode (tool window): configurable multi-line ---
+        public int normalLinesPerPage = 5;
+        public int normalCharsPerLine = 60;
+
+        // --- Shared settings ---
         public String lastFilePath = "";
         public String fontFamily = "Microsoft YaHei";
         public int fontSize = 13;
         public boolean showInStatusBar = true;
         public String installedVersion = "";
-        // file path -> line number (reading progress)
+
+        // reading progress per mode (file path -> line number)
+        public Map<String, Integer> stealthReadingProgress = new HashMap<>();
+        public Map<String, Integer> normalReadingProgress = new HashMap<>();
+        // legacy field kept for migration
         public Map<String, Integer> readingProgress = new HashMap<>();
+
         // custom keyboard shortcuts (IntelliJ keystroke format)
         public String shortcutOpen = "ctrl shift alt M";
         public String shortcutNextPage = "alt shift RIGHT";
@@ -46,72 +57,64 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     @Override
     public void loadState(@NotNull State state) {
-        LOG.info("loadState: restoring settings - linesPerPage=" + state.linesPerPage
-                + ", charsPerLine=" + state.charsPerLine
+        LOG.info("loadState: restoring settings"
+                + ", stealthCharsPerLine=" + state.stealthCharsPerLine
+                + ", normalLinesPerPage=" + state.normalLinesPerPage
+                + ", normalCharsPerLine=" + state.normalCharsPerLine
                 + ", fontFamily=" + state.fontFamily
                 + ", fontSize=" + state.fontSize
                 + ", showInStatusBar=" + state.showInStatusBar
-                + ", lastFilePath=" + state.lastFilePath
-                + ", progressEntries=" + state.readingProgress.size());
+                + ", lastFilePath=" + state.lastFilePath);
         myState = state;
+        // Migrate legacy readingProgress to both modes if new maps are empty
+        if (!state.readingProgress.isEmpty()) {
+            if (state.stealthReadingProgress.isEmpty()) {
+                state.stealthReadingProgress.putAll(state.readingProgress);
+            }
+            if (state.normalReadingProgress.isEmpty()) {
+                state.normalReadingProgress.putAll(state.readingProgress);
+            }
+            state.readingProgress.clear();
+        }
     }
 
-    public int getLinesPerPage() {
-        return myState.linesPerPage;
+    // --- Stealth mode ---
+    public int getStealthCharsPerLine() { return myState.stealthCharsPerLine; }
+    public void setStealthCharsPerLine(int chars) { myState.stealthCharsPerLine = Math.max(10, Math.min(500, chars)); }
+
+    public int getStealthReadingProgress(String filePath) {
+        return myState.stealthReadingProgress.getOrDefault(filePath, 0);
+    }
+    public void setStealthReadingProgress(String filePath, int lineNumber) {
+        myState.stealthReadingProgress.put(filePath, lineNumber);
     }
 
-    public void setLinesPerPage(int lines) {
-        myState.linesPerPage = Math.max(1, Math.min(50, lines));
+    // --- Normal mode ---
+    public int getNormalLinesPerPage() { return myState.normalLinesPerPage; }
+    public void setNormalLinesPerPage(int lines) { myState.normalLinesPerPage = Math.max(1, Math.min(50, lines)); }
+
+    public int getNormalCharsPerLine() { return myState.normalCharsPerLine; }
+    public void setNormalCharsPerLine(int chars) { myState.normalCharsPerLine = Math.max(10, Math.min(500, chars)); }
+
+    public int getNormalReadingProgress(String filePath) {
+        return myState.normalReadingProgress.getOrDefault(filePath, 0);
+    }
+    public void setNormalReadingProgress(String filePath, int lineNumber) {
+        myState.normalReadingProgress.put(filePath, lineNumber);
     }
 
-    public String getLastFilePath() {
-        return myState.lastFilePath;
-    }
+    // --- Shared ---
+    public String getLastFilePath() { return myState.lastFilePath; }
+    public void setLastFilePath(String path) { myState.lastFilePath = path; }
 
-    public void setLastFilePath(String path) {
-        myState.lastFilePath = path;
-    }
+    public String getFontFamily() { return myState.fontFamily; }
+    public void setFontFamily(String fontFamily) { myState.fontFamily = fontFamily; }
 
-    public int getReadingProgress(String filePath) {
-        return myState.readingProgress.getOrDefault(filePath, 0);
-    }
+    public int getFontSize() { return myState.fontSize; }
+    public void setFontSize(int fontSize) { myState.fontSize = fontSize; }
 
-    public void setReadingProgress(String filePath, int lineNumber) {
-        LOG.debug("setReadingProgress: " + filePath + " -> line " + lineNumber);
-        myState.readingProgress.put(filePath, lineNumber);
-    }
-
-    public String getFontFamily() {
-        return myState.fontFamily;
-    }
-
-    public void setFontFamily(String fontFamily) {
-        myState.fontFamily = fontFamily;
-    }
-
-    public int getFontSize() {
-        return myState.fontSize;
-    }
-
-    public void setFontSize(int fontSize) {
-        myState.fontSize = fontSize;
-    }
-
-    public boolean isShowInStatusBar() {
-        return myState.showInStatusBar;
-    }
-
-    public void setShowInStatusBar(boolean show) {
-        myState.showInStatusBar = show;
-    }
-
-    public int getCharsPerLine() {
-        return myState.charsPerLine;
-    }
-
-    public void setCharsPerLine(int chars) {
-        myState.charsPerLine = Math.max(0, Math.min(500, chars)); // 0=不限制
-    }
+    public boolean isShowInStatusBar() { return myState.showInStatusBar; }
+    public void setShowInStatusBar(boolean show) { myState.showInStatusBar = show; }
 
     public String getShortcutOpen() { return myState.shortcutOpen; }
     public void setShortcutOpen(String s) { myState.shortcutOpen = s != null ? s : ""; }
