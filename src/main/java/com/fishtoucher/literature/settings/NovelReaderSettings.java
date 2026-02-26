@@ -31,11 +31,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public boolean showInStatusBar = true;
         public String installedVersion = "";
 
-        // reading progress per mode (file path -> line number)
+        // unified reading progress (file path -> line number)
+        public Map<String, Integer> readingProgress = new HashMap<>();
+        // legacy fields kept for migration from dual-progress versions
         public Map<String, Integer> stealthReadingProgress = new HashMap<>();
         public Map<String, Integer> normalReadingProgress = new HashMap<>();
-        // legacy field kept for migration
-        public Map<String, Integer> readingProgress = new HashMap<>();
 
         // custom keyboard shortcuts (IntelliJ keystroke format)
         public String shortcutOpen = "ctrl shift alt M";
@@ -66,28 +66,23 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
                 + ", showInStatusBar=" + state.showInStatusBar
                 + ", lastFilePath=" + state.lastFilePath);
         myState = state;
-        // Migrate legacy readingProgress to both modes if new maps are empty
-        if (!state.readingProgress.isEmpty()) {
-            if (state.stealthReadingProgress.isEmpty()) {
-                state.stealthReadingProgress.putAll(state.readingProgress);
+        // Migrate legacy dual-progress maps into unified readingProgress
+        if (!state.stealthReadingProgress.isEmpty() || !state.normalReadingProgress.isEmpty()) {
+            // Merge: take the greater progress (further reading position) for each file
+            for (Map.Entry<String, Integer> entry : state.stealthReadingProgress.entrySet()) {
+                state.readingProgress.merge(entry.getKey(), entry.getValue(), Math::max);
             }
-            if (state.normalReadingProgress.isEmpty()) {
-                state.normalReadingProgress.putAll(state.readingProgress);
+            for (Map.Entry<String, Integer> entry : state.normalReadingProgress.entrySet()) {
+                state.readingProgress.merge(entry.getKey(), entry.getValue(), Math::max);
             }
-            state.readingProgress.clear();
+            state.stealthReadingProgress.clear();
+            state.normalReadingProgress.clear();
         }
     }
 
     // --- Stealth mode ---
     public int getStealthCharsPerLine() { return myState.stealthCharsPerLine; }
     public void setStealthCharsPerLine(int chars) { myState.stealthCharsPerLine = Math.max(10, Math.min(500, chars)); }
-
-    public int getStealthReadingProgress(String filePath) {
-        return myState.stealthReadingProgress.getOrDefault(filePath, 0);
-    }
-    public void setStealthReadingProgress(String filePath, int lineNumber) {
-        myState.stealthReadingProgress.put(filePath, lineNumber);
-    }
 
     // --- Normal mode ---
     public int getNormalLinesPerPage() { return myState.normalLinesPerPage; }
@@ -96,11 +91,12 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public int getNormalCharsPerLine() { return myState.normalCharsPerLine; }
     public void setNormalCharsPerLine(int chars) { myState.normalCharsPerLine = Math.max(10, Math.min(500, chars)); }
 
-    public int getNormalReadingProgress(String filePath) {
-        return myState.normalReadingProgress.getOrDefault(filePath, 0);
+    // --- Unified reading progress ---
+    public int getReadingProgress(String filePath) {
+        return myState.readingProgress.getOrDefault(filePath, 0);
     }
-    public void setNormalReadingProgress(String filePath, int lineNumber) {
-        myState.normalReadingProgress.put(filePath, lineNumber);
+    public void setReadingProgress(String filePath, int lineNumber) {
+        myState.readingProgress.put(filePath, lineNumber);
     }
 
     // --- Shared ---

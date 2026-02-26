@@ -1,11 +1,11 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher Literature</name>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
-    <p>A novel reader plugin for IntelliJ IDEA with two reading modes, each with independent progress and settings.</p>
+    <p>A novel reader plugin for IntelliJ IDEA with two reading modes that share unified reading progress.</p>
 
     <b>Stealth Mode (Status Bar)</b>
     <ul>
@@ -26,7 +26,7 @@
 
     <b>Shared Features</b>
     <ul>
-        <li>Each mode maintains its own independent reading progress</li>
+        <li>Both modes share unified reading progress</li>
         <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
         <li>Boss key to instantly hide all content (toggle visibility)</li>
         <li>Customizable keyboard shortcuts and font settings</li>
@@ -38,7 +38,7 @@
     <br/><br/>
     <hr/>
 
-    <p>一款适用于 IntelliJ IDEA 的摸鱼阅读插件，提供两种阅读模式，各自拥有独立的阅读进度和配置。</p>
+    <p>一款适用于 IntelliJ IDEA 的摸鱼阅读插件，提供两种阅读模式，共用统一阅读进度。</p>
 
     <b>隐秘模式（状态栏）</b>
     <ul>
@@ -59,7 +59,7 @@
 
     <b>通用特性</b>
     <ul>
-        <li>两种模式各自维护独立的阅读进度</li>
+        <li>两种模式共用统一阅读进度</li>
         <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
         <li>老板键一键隐藏所有阅读内容</li>
         <li>可自定义快捷键和字体设置</li>
@@ -70,6 +70,13 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>1.4.1</b>
+    <ul>
+        <li>Changed: Stealth mode and Normal mode now share unified reading progress<br/>
+            变更：隐秘模式与普通模式共用统一阅读进度</li>
+        <li>Improved: Existing dual-progress data automatically migrated to unified progress (keeps the further position)<br/>
+            优化：已有的双进度数据自动迁移为统一进度（保留较远的阅读位置）</li>
+    </ul>
     <b>1.4.0</b>
     <ul>
         <li>New: Two independent reading modes — Stealth Mode (status bar) and Normal Mode (tool window)<br/>

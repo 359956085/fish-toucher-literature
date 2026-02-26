@@ -13,22 +13,21 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Singleton manager that holds the novel content and current reading positions.
- * Supports two independent reading modes: stealth (status bar) and normal (tool window).
+ * Singleton manager that holds the novel content and current reading position.
+ * Both stealth (status bar) and normal (tool window) modes share a unified reading position.
  */
 public class NovelReaderManager {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderManager.class);
     private static final NovelReaderManager INSTANCE = new NovelReaderManager();
 
-    /** Raw lines from file (split by charsPerLine at load time is removed; we store original lines now). */
+    /** Raw lines from file. */
     private final List<String> rawLines = new ArrayList<>();
     private String currentFilePath = "";
     private boolean visible = true;
 
-    // Independent reading positions for each mode
-    private int stealthCurrentLine = 0;
-    private int normalCurrentLine = 0;
+    // Unified reading position shared by both modes
+    private int currentLine = 0;
 
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
 
@@ -134,17 +133,14 @@ public class NovelReaderManager {
         rawLines.addAll(newLines);
         currentFilePath = filePath;
 
-        // Restore independent reading progress for each mode
+        // Restore unified reading progress
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         settings.setLastFilePath(filePath);
 
-        stealthCurrentLine = settings.getStealthReadingProgress(filePath);
-        if (stealthCurrentLine >= rawLines.size()) stealthCurrentLine = 0;
+        currentLine = settings.getReadingProgress(filePath);
+        if (currentLine >= rawLines.size()) currentLine = 0;
 
-        normalCurrentLine = settings.getNormalReadingProgress(filePath);
-        if (normalCurrentLine >= rawLines.size()) normalCurrentLine = 0;
-
-        LOG.info("loadFile: loaded " + rawLines.size() + " lines, stealth@" + stealthCurrentLine + ", normal@" + normalCurrentLine);
+        LOG.info("loadFile: loaded " + rawLines.size() + " lines, position@" + currentLine);
         visible = true;
         fireChange();
         return true;
@@ -154,15 +150,15 @@ public class NovelReaderManager {
 
     public void stealthNextPage() {
         if (rawLines.isEmpty()) return;
-        stealthCurrentLine = Math.min(stealthCurrentLine + 1, rawLines.size() - 1);
-        saveStealthProgress();
+        currentLine = Math.min(currentLine + 1, rawLines.size() - 1);
+        saveProgress();
         fireChange();
     }
 
     public void stealthPrevPage() {
         if (rawLines.isEmpty()) return;
-        stealthCurrentLine = Math.max(stealthCurrentLine - 1, 0);
-        saveStealthProgress();
+        currentLine = Math.max(currentLine - 1, 0);
+        saveProgress();
         fireChange();
     }
 
@@ -170,7 +166,7 @@ public class NovelReaderManager {
         if (rawLines.isEmpty()) return "[No novel loaded]";
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int maxChars = settings.getStealthCharsPerLine();
-        String line = rawLines.get(stealthCurrentLine);
+        String line = rawLines.get(currentLine);
         if (maxChars > 0) {
             if (line.length() > maxChars) {
                 line = line.substring(0, maxChars);
@@ -184,40 +180,34 @@ public class NovelReaderManager {
 
     public String getStealthStatusText() {
         if (rawLines.isEmpty()) return "";
-        int percent = (int) ((long) stealthCurrentLine * 100 / rawLines.size());
-        return String.format("[%d/%d] %d%%", stealthCurrentLine + 1, rawLines.size(), percent);
+        int percent = (int) ((long) currentLine * 100 / rawLines.size());
+        return String.format("[%d/%d] %d%%", currentLine + 1, rawLines.size(), percent);
     }
 
-    public int getStealthCurrentLine() { return stealthCurrentLine; }
-
-    private void saveStealthProgress() {
-        if (!currentFilePath.isEmpty()) {
-            NovelReaderSettings.getInstance().setStealthReadingProgress(currentFilePath, stealthCurrentLine);
-        }
-    }
+    public int getStealthCurrentLine() { return currentLine; }
 
     // ========== Normal mode (tool window): multi-line ==========
 
     public void normalNextPage() {
         if (rawLines.isEmpty()) return;
         int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
-        normalCurrentLine = Math.min(normalCurrentLine + linesPerPage, rawLines.size() - 1);
-        saveNormalProgress();
+        currentLine = Math.min(currentLine + linesPerPage, rawLines.size() - 1);
+        saveProgress();
         fireChange();
     }
 
     public void normalPrevPage() {
         if (rawLines.isEmpty()) return;
         int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
-        normalCurrentLine = Math.max(normalCurrentLine - linesPerPage, 0);
-        saveNormalProgress();
+        currentLine = Math.max(currentLine - linesPerPage, 0);
+        saveProgress();
         fireChange();
     }
 
     public void normalJumpToPercent(int percent) {
         if (rawLines.isEmpty()) return;
-        normalCurrentLine = (int) ((long) percent * (rawLines.size() - 1) / 100);
-        saveNormalProgress();
+        currentLine = (int) ((long) percent * (rawLines.size() - 1) / 100);
+        saveProgress();
         fireChange();
     }
 
@@ -230,8 +220,8 @@ public class NovelReaderManager {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int linesPerPage = settings.getNormalLinesPerPage();
         int charsPerLine = settings.getNormalCharsPerLine();
-        int end = Math.min(normalCurrentLine + linesPerPage, rawLines.size());
-        for (int i = normalCurrentLine; i < end; i++) {
+        int end = Math.min(currentLine + linesPerPage, rawLines.size());
+        for (int i = currentLine; i < end; i++) {
             String line = rawLines.get(i);
             if (charsPerLine > 0 && line.length() > charsPerLine) {
                 int pos = 0;
@@ -249,15 +239,17 @@ public class NovelReaderManager {
 
     public String getNormalStatusText() {
         if (rawLines.isEmpty()) return "";
-        int percent = (int) ((long) normalCurrentLine * 100 / rawLines.size());
-        return String.format("[%d/%d] %d%%", normalCurrentLine + 1, rawLines.size(), percent);
+        int percent = (int) ((long) currentLine * 100 / rawLines.size());
+        return String.format("[%d/%d] %d%%", currentLine + 1, rawLines.size(), percent);
     }
 
-    public int getNormalCurrentLine() { return normalCurrentLine; }
+    public int getNormalCurrentLine() { return currentLine; }
 
-    private void saveNormalProgress() {
+    // ========== Progress persistence ==========
+
+    private void saveProgress() {
         if (!currentFilePath.isEmpty()) {
-            NovelReaderSettings.getInstance().setNormalReadingProgress(currentFilePath, normalCurrentLine);
+            NovelReaderSettings.getInstance().setReadingProgress(currentFilePath, currentLine);
         }
     }
 
@@ -269,15 +261,14 @@ public class NovelReaderManager {
     public int getTotalLines() { return rawLines.size(); }
     public String getCurrentFilePath() { return currentFilePath; }
 
-    // ========== Legacy compatibility (used by actions) ==========
+    // ========== Shortcut actions ==========
 
-    /** Next page: advances both modes so keyboard shortcuts work everywhere. */
+    /** Next page: advances by 1 line (used by keyboard shortcuts). */
     public void nextPage() {
         stealthNextPage();
-        // normal mode also fires via the shared listener
     }
 
-    /** Prev page: retreats both modes. */
+    /** Prev page: retreats by 1 line (used by keyboard shortcuts). */
     public void prevPage() {
         stealthPrevPage();
     }

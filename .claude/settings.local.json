@@ -8,7 +8,9 @@
       "Bash(dir:*)",
       "Bash(./gradlew:*)",
       "Bash(git checkout:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(chmod +x /home/fengshi/fish-toucher-literature/gradlew)",
+      "Bash(/home/fengshi/fish-toucher-literature/gradlew compileJava)"
     ]
   }
 }
