@@ -133,25 +133,24 @@ public class HotSearchManager {
      */
     private void parseResponse(String json) {
         List<HotSearchItem> newItems = new ArrayList<>();
-        // Match each "word":"..." in the content array
         // The API returns items in data.cards[0].content[0].content array
-        // Each item has "word":"title", "index":N, "hotTag":"N"
+        // Each item starts with {"isTop":... and contains "word":"title", "index":N, "hotTag":"N"
         Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
         Pattern indexPattern = Pattern.compile("\"index\"\\s*:\\s*(\\d+)");
-        Pattern hotTagPattern = Pattern.compile("\"hotTag\"\\s*:\\s*\"?(\\d+)\"?");
+        Pattern hotTagPattern = Pattern.compile("\"hotTag\"\\s*:\\s*\"(\\d+)\"");
 
-        // Split by item boundaries - each item is a JSON object in the content array
-        // We look for "word" fields that appear after "content" sections
-        String[] parts = json.split("\\{\"word\"");
+        // Split by item boundaries - each item starts with {"isTop"
+        String[] parts = json.split("\\{\"isTop\"");
+        int rank = 0;
         for (int i = 1; i < parts.length; i++) {
-            String part = "{\"word\"" + parts[i];
+            String part = "{\"isTop\"" + parts[i];
             Matcher wm = wordPattern.matcher(part);
             if (wm.find()) {
                 String word = wm.group(1)
                         .replace("\\u0026", "&")
                         .replace("\\\"", "\"")
                         .replace("\\/", "/");
-                int index = i;
+                int index = rank++;
                 Matcher im = indexPattern.matcher(part);
                 if (im.find()) {
                     try { index = Integer.parseInt(im.group(1)); } catch (NumberFormatException ignored) {}
