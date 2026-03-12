@@ -63,16 +63,16 @@ public class ShortcutInitializer implements ProjectActivity {
             String title;
             String content;
             if (isFirstInstall) {
-                title = "Fish Toucher Literature Installed Successfully";
+                title = "Fish Toucher Installed Successfully";
                 content = "Plugin v" + currentVersion + " has been installed. Please restart the IDE for the best experience.\n"
-                        + "Settings: Settings → Tools → Fish Toucher Literature";
+                        + "Settings: Settings → Tools → Fish Toucher";
             } else {
-                title = "Fish Toucher Literature Updated Successfully";
+                title = "Fish Toucher Updated Successfully";
                 content = "Plugin has been updated to v" + currentVersion + ". Please restart the IDE to apply all changes.";
             }
 
             NotificationGroupManager.getInstance()
-                    .getNotificationGroup("Fish Toucher Literature")
+                    .getNotificationGroup("Fish Toucher")
                     .createNotification(title, content, NotificationType.INFORMATION)
                     .notify(project);
         });

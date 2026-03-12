@@ -20,7 +20,7 @@ public class NovelReaderWidgetFactory implements StatusBarWidgetFactory {
 
     @Override
     public @Nls @NotNull String getDisplayName() {
-        return "Fish Toucher Literature";
+        return "Fish Toucher";
     }
 
     @Override
