@@ -10,7 +10,9 @@ import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.net.URI;
 
 /**
  * Stealth mode: status bar widget that shows novel content in a single line.
@@ -103,7 +105,14 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     public @Nullable Consumer<MouseEvent> getClickConsumer() {
         return mouseEvent -> {
             if (NovelReaderSettings.getInstance().isHotSearchMode()) {
-                // In hot search mode, clicking is a no-op (auto carousel)
+                String url = HotSearchManager.getInstance().getCurrentUrl();
+                if (url != null && !url.isEmpty()) {
+                    try {
+                        Desktop.getDesktop().browse(new URI(url));
+                    } catch (Exception e) {
+                        LOG.warn("getClickConsumer: failed to open URL: " + e.getMessage());
+                    }
+                }
                 return;
             }
             NovelReaderManager manager = NovelReaderManager.getInstance();

@@ -136,6 +136,7 @@ public class HotSearchManager {
         // The API returns items in data.cards[0].content[0].content array
         // Each item starts with {"isTop":... and contains "word":"title", "index":N, "hotTag":"N"
         Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern urlPattern = Pattern.compile("\"url\"\\s*:\\s*\"([^\"]+)\"");
         Pattern indexPattern = Pattern.compile("\"index\"\\s*:\\s*(\\d+)");
         Pattern hotTagPattern = Pattern.compile("\"hotTag\"\\s*:\\s*\"(\\d+)\"");
 
@@ -160,7 +161,14 @@ public class HotSearchManager {
                 if (hm.find()) {
                     hotTag = hm.group(1);
                 }
-                newItems.add(new HotSearchItem(index, word, hotTag));
+                String url = "";
+                Matcher um = urlPattern.matcher(part);
+                if (um.find()) {
+                    url = um.group(1)
+                            .replace("\\u0026", "&")
+                            .replace("\\/", "/");
+                }
+                newItems.add(new HotSearchItem(index, word, hotTag, url));
             }
         }
 
@@ -205,6 +213,11 @@ public class HotSearchManager {
         return String.format("[%d/%d]", currentIndex + 1, items.size());
     }
 
+    public synchronized String getCurrentUrl() {
+        if (items.isEmpty()) return "";
+        return items.get(currentIndex).url();
+    }
+
     public synchronized List<HotSearchItem> getAllItems() {
         return Collections.unmodifiableList(new ArrayList<>(items));
     }
@@ -223,5 +236,5 @@ public class HotSearchManager {
 
     // ========== Data model ==========
 
-    public record HotSearchItem(int rank, String word, String hotTag) {}
+    public record HotSearchItem(int rank, String word, String hotTag, String url) {}
 }
