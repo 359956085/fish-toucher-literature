@@ -166,7 +166,8 @@ public class HotSearchManager {
                 if (um.find()) {
                     url = um.group(1)
                             .replace("\\u0026", "&")
-                            .replace("\\/", "/");
+                            .replace("\\/", "/")
+                            .replace("m.baidu.com", "www.baidu.com");
                 }
                 newItems.add(new HotSearchItem(index, word, hotTag, url));
             }
