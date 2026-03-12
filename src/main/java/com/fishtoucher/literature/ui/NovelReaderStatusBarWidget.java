@@ -53,6 +53,8 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     public void install(@NotNull StatusBar statusBar) {
         LOG.info("install: status bar widget installed");
         this.statusBar = statusBar;
+        // Force an initial update so the widget shows current state immediately
+        statusBar.updateWidget(ID());
     }
 
     @Override
