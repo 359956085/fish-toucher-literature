@@ -11,7 +11,8 @@
       "Bash(findstr:*)",
       "Bash(chmod +x /home/fengshi/fish-toucher-literature/gradlew)",
       "Bash(/home/fengshi/fish-toucher-literature/gradlew compileJava)",
-      "WebFetch(domain:top.baidu.com)"
+      "WebFetch(domain:top.baidu.com)",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://top.baidu.com/api/board?platform=wise&tab=realtime\")"
     ]
   }
 }
