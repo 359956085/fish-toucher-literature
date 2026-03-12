@@ -5,11 +5,9 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.fishtoucher.literature.settings.NovelReaderSettings;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -130,11 +128,6 @@ public class HotSearchManager {
                     .GET();
 
             switch (source) {
-                case "weibo" -> {
-                    reqBuilder.uri(URI.create("https://weibo.com/ajax/side/hotSearch"));
-                    reqBuilder.header("Referer", "https://weibo.com");
-                    reqBuilder.header("X-Requested-With", "XMLHttpRequest");
-                }
                 case "toutiao" -> reqBuilder.uri(URI.create("https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"));
                 case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
                 default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
@@ -143,7 +136,6 @@ public class HotSearchManager {
             HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 List<HotSearchItem> newItems = switch (source) {
-                    case "weibo" -> parseWeibo(response.body());
                     case "toutiao" -> parseToutiao(response.body());
                     case "zhihu" -> parseZhihu(response.body());
                     default -> parseBaidu(response.body());
@@ -200,39 +192,6 @@ public class HotSearchManager {
                     url = unescapeJson(um.group(1)).replace("m.baidu.com", "www.baidu.com");
                 }
                 newItems.add(new HotSearchItem(index, word, hotTag, url));
-            }
-        }
-        return newItems;
-    }
-
-    private List<HotSearchItem> parseWeibo(String json) {
-        List<HotSearchItem> newItems = new ArrayList<>();
-        // Response: {"ok":1,"data":{"realtime":[{"word":"...", "num":N, "rank":N, "label_name":"新/热/..."}]}}
-        // Filter out ad items (is_ad:1)
-        Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
-        Pattern numPattern = Pattern.compile("\"num\"\\s*:\\s*(\\d+)");
-        Pattern labelPattern = Pattern.compile("\"label_name\"\\s*:\\s*\"([^\"]*)\"");
-        Pattern adPattern = Pattern.compile("\"is_ad\"\\s*:\\s*1");
-
-        // Find the realtime array
-        int rtIdx = json.indexOf("\"realtime\"");
-        if (rtIdx < 0) return newItems;
-        String realtimeJson = json.substring(rtIdx);
-
-        String[] parts = realtimeJson.split("\\{\"num\"");
-        int rank = 0;
-        for (int i = 1; i < parts.length; i++) {
-            String part = "{\"num\"" + parts[i];
-            // Skip ads
-            if (adPattern.matcher(part).find()) continue;
-            Matcher wm = wordPattern.matcher(part);
-            if (wm.find()) {
-                String word = unescapeJson(wm.group(1));
-                String hotTag = "";
-                Matcher lm = labelPattern.matcher(part);
-                if (lm.find()) hotTag = lm.group(1);
-                String url = "https://s.weibo.com/weibo?q=" + URLEncoder.encode("#" + word + "#", StandardCharsets.UTF_8);
-                newItems.add(new HotSearchItem(rank++, word, hotTag, url));
             }
         }
         return newItems;
@@ -365,8 +324,8 @@ public class HotSearchManager {
 
     // ========== Source labels ==========
 
-    public static final String[] SOURCE_VALUES = {"baidu", "weibo", "toutiao", "zhihu"};
-    public static final String[] SOURCE_LABELS = {"Baidu", "Weibo", "Toutiao", "Zhihu"};
+    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu"};
+    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu"};
 
     public static String getSourceLabel(String value) {
         for (int i = 0; i < SOURCE_VALUES.length; i++) {
