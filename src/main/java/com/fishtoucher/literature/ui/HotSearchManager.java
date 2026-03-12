@@ -77,9 +77,7 @@ public class HotSearchManager {
         refreshTask = scheduler.scheduleAtFixedRate(
                 this::fetchHotSearch, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
 
-        // Carousel rotation every 10 seconds
-        carouselTask = scheduler.scheduleAtFixedRate(
-                this::rotateCarousel, CAROUSEL_INTERVAL_SECONDS, CAROUSEL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        // Carousel will be started after first successful data fetch (see startCarouselIfNeeded)
     }
 
     public synchronized void stop() {
@@ -181,6 +179,7 @@ public class HotSearchManager {
                     currentIndex = 0;
                 }
             }
+            startCarouselIfNeeded();
             fireChange();
         }
     }
@@ -192,6 +191,14 @@ public class HotSearchManager {
     }
 
     // ========== Carousel ==========
+
+    private synchronized void startCarouselIfNeeded() {
+        if (carouselTask == null && scheduler != null && running) {
+            LOG.info("startCarouselIfNeeded: starting carousel after first data fetch");
+            carouselTask = scheduler.scheduleAtFixedRate(
+                    this::rotateCarousel, CAROUSEL_INTERVAL_SECONDS, CAROUSEL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        }
+    }
 
     private void rotateCarousel() {
         synchronized (this) {
