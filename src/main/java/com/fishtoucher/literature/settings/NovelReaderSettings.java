@@ -24,6 +24,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public int normalLinesPerPage = 5;
         public int normalCharsPerLine = 60;
 
+        // --- Plugin mode: "novel" or "hotsearch" ---
+        public String pluginMode = "novel";
+
         // --- Shared settings ---
         public String lastFilePath = "";
         public String fontFamily = "Microsoft YaHei";
@@ -126,4 +129,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     public String getInstalledVersion() { return myState.installedVersion; }
     public void setInstalledVersion(String v) { myState.installedVersion = v != null ? v : ""; }
+
+    // --- Plugin mode ---
+    public String getPluginMode() { return myState.pluginMode; }
+    public void setPluginMode(String mode) { myState.pluginMode = (mode != null && !mode.isEmpty()) ? mode : "novel"; }
+    public boolean isHotSearchMode() { return "hotsearch".equals(myState.pluginMode); }
 }

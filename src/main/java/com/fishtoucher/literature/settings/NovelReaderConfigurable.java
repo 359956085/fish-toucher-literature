@@ -11,6 +11,7 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
+import com.fishtoucher.literature.ui.HotSearchManager;
 import com.fishtoucher.literature.ui.NovelReaderManager;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +23,11 @@ import java.awt.*;
 public class NovelReaderConfigurable implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderConfigurable.class);
+
+    // Mode selector
+    private JComboBox<String> modeComboBox;
+    private static final String[] MODE_LABELS = {"Novel Reading", "Hot Search Carousel"};
+    private static final String[] MODE_VALUES = {"novel", "hotsearch"};
 
     // Stealth mode
     private JSpinner stealthCharsPerLineSpinner;
@@ -42,6 +48,9 @@ public class NovelReaderConfigurable implements Configurable {
     private ShortcutKeyField shortcutPrevPageField;
     private ShortcutKeyField shortcutToggleField;
 
+    // Novel-only settings panel (hidden in hot search mode)
+    private JPanel novelSettingsPanel;
+
     @Nls(capitalization = Nls.Capitalization.Title)
     @Override
     public String getDisplayName() {
@@ -59,125 +68,154 @@ public class NovelReaderConfigurable implements Configurable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int row = 0;
 
-        // ========== Stealth Mode Section ==========
+        // ========== Plugin Mode Section ==========
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        JLabel modeTitle = new JLabel("Plugin Mode");
+        modeTitle.setFont(modeTitle.getFont().deriveFont(Font.BOLD, 12f));
+        mainPanel.add(modeTitle, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = row;
+        mainPanel.add(new JLabel("Mode:"), gbc);
+        gbc.gridx = 1; gbc.gridy = row++;
+        modeComboBox = new JComboBox<>(MODE_LABELS);
+        int modeIdx = "hotsearch".equals(settings.getPluginMode()) ? 1 : 0;
+        modeComboBox.setSelectedIndex(modeIdx);
+        modeComboBox.addActionListener(e -> updateNovelComponentsVisibility());
+        mainPanel.add(modeComboBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        JLabel modeHint = new JLabel("<html><i>Note: Restart IDE or reopen tool window after changing mode.</i></html>");
+        modeHint.setForeground(com.intellij.ui.JBColor.GRAY);
+        mainPanel.add(modeHint, gbc);
+
+        // ========== Separator ==========
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        mainPanel.add(new JSeparator(), gbc);
+
+        // ========== Novel Settings (wrapped in a panel for show/hide) ==========
+        novelSettingsPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints ngbc = new GridBagConstraints();
+        ngbc.insets = JBUI.insets(5);
+        ngbc.anchor = GridBagConstraints.WEST;
+        ngbc.fill = GridBagConstraints.HORIZONTAL;
+        int nrow = 0;
+
+        // Stealth Mode
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
         JLabel stealthTitle = new JLabel("Stealth Mode (Status Bar) \u2014 1 line at a time");
         stealthTitle.setFont(stealthTitle.getFont().deriveFont(Font.BOLD, 12f));
-        mainPanel.add(stealthTitle, gbc);
+        novelSettingsPanel.add(stealthTitle, ngbc);
 
-        gbc.gridwidth = 1;
-
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Chars per line:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridwidth = 1;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Chars per line:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         stealthCharsPerLineSpinner = new JSpinner(new SpinnerNumberModel(settings.getStealthCharsPerLine(), 10, 500, 10));
-        mainPanel.add(stealthCharsPerLineSpinner, gbc);
+        novelSettingsPanel.add(stealthCharsPerLineSpinner, ngbc);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        showInStatusBarCheckBox = new JCheckBox("Enable stealth mode in status bar", settings.isShowInStatusBar());
-        mainPanel.add(showInStatusBarCheckBox, gbc);
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        showInStatusBarCheckBox = new JCheckBox("Enable status bar display", settings.isShowInStatusBar());
+        novelSettingsPanel.add(showInStatusBarCheckBox, ngbc);
 
-        // ========== Separator ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        mainPanel.add(new JSeparator(), gbc);
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        novelSettingsPanel.add(new JSeparator(), ngbc);
 
-        // ========== Normal Mode Section ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        // Normal Mode
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
         JLabel normalTitle = new JLabel("Normal Mode (Tool Window) \u2014 multi-line display");
         normalTitle.setFont(normalTitle.getFont().deriveFont(Font.BOLD, 12f));
-        mainPanel.add(normalTitle, gbc);
+        novelSettingsPanel.add(normalTitle, ngbc);
 
-        gbc.gridwidth = 1;
-
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Lines per page:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridwidth = 1;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Lines per page:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         normalLinesPerPageSpinner = new JSpinner(new SpinnerNumberModel(settings.getNormalLinesPerPage(), 1, 50, 1));
-        mainPanel.add(normalLinesPerPageSpinner, gbc);
+        novelSettingsPanel.add(normalLinesPerPageSpinner, ngbc);
 
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Chars per line:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Chars per line:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         normalCharsPerLineSpinner = new JSpinner(new SpinnerNumberModel(settings.getNormalCharsPerLine(), 10, 500, 10));
-        mainPanel.add(normalCharsPerLineSpinner, gbc);
+        novelSettingsPanel.add(normalCharsPerLineSpinner, ngbc);
 
-        // ========== Separator ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        mainPanel.add(new JSeparator(), gbc);
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        novelSettingsPanel.add(new JSeparator(), ngbc);
 
-        // ========== Shared Settings ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        // Shared Settings
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
         JLabel sharedTitle = new JLabel("Shared Settings");
         sharedTitle.setFont(sharedTitle.getFont().deriveFont(Font.BOLD, 12f));
-        mainPanel.add(sharedTitle, gbc);
+        novelSettingsPanel.add(sharedTitle, ngbc);
 
-        gbc.gridwidth = 1;
-
-        // Font family
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Font family:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridwidth = 1;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Font family:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         fontFamilyField = new JTextField(settings.getFontFamily(), 20);
-        mainPanel.add(fontFamilyField, gbc);
+        novelSettingsPanel.add(fontFamilyField, ngbc);
 
-        // Font size
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Font size:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Font size:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         fontSizeSpinner = new JSpinner(new SpinnerNumberModel(settings.getFontSize(), 8, 30, 1));
-        mainPanel.add(fontSizeSpinner, gbc);
+        novelSettingsPanel.add(fontSizeSpinner, ngbc);
 
-        // Current file path
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1;
-        mainPanel.add(new JLabel("Current file:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1.0;
+        ngbc.gridx = 0; ngbc.gridy = nrow; ngbc.gridwidth = 1;
+        novelSettingsPanel.add(new JLabel("Current file:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++; ngbc.weightx = 1.0;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
         currentFileLabel = new JLabel(filePath.isEmpty() ? "No file loaded" : filePath);
         currentFileLabel.setForeground(filePath.isEmpty() ? com.intellij.ui.JBColor.GRAY : com.intellij.ui.JBColor.foreground());
         currentFileLabel.setToolTipText(filePath.isEmpty() ? null : filePath);
-        mainPanel.add(currentFileLabel, gbc);
-        gbc.weightx = 0;
+        novelSettingsPanel.add(currentFileLabel, ngbc);
+        ngbc.weightx = 0;
 
-        // Import file button
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
         JPanel importPanel = getJPanel();
-        mainPanel.add(importPanel, gbc);
+        novelSettingsPanel.add(importPanel, ngbc);
 
-        // ========== Separator ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        mainPanel.add(new JSeparator(), gbc);
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        novelSettingsPanel.add(new JSeparator(), ngbc);
 
-        // ========== Keyboard shortcuts ==========
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        // Keyboard shortcuts
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
         JLabel shortcutTitle = new JLabel("Keyboard Shortcuts (click field and press key combination, Esc to clear):");
         shortcutTitle.setFont(shortcutTitle.getFont().deriveFont(Font.BOLD, 12f));
-        mainPanel.add(shortcutTitle, gbc);
+        novelSettingsPanel.add(shortcutTitle, ngbc);
 
-        gbc.gridwidth = 1;
-
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Open file:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridwidth = 1;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Open file:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutOpenField = new ShortcutKeyField(settings.getShortcutOpen());
-        mainPanel.add(shortcutOpenField, gbc);
+        novelSettingsPanel.add(shortcutOpenField, ngbc);
 
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Next page:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Next page:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutNextPageField = new ShortcutKeyField(settings.getShortcutNextPage());
-        mainPanel.add(shortcutNextPageField, gbc);
+        novelSettingsPanel.add(shortcutNextPageField, ngbc);
 
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Previous page:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Previous page:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutPrevPageField = new ShortcutKeyField(settings.getShortcutPrevPage());
-        mainPanel.add(shortcutPrevPageField, gbc);
+        novelSettingsPanel.add(shortcutPrevPageField, ngbc);
 
-        gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Toggle visibility:"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++;
+        ngbc.gridx = 0; ngbc.gridy = nrow;
+        novelSettingsPanel.add(new JLabel("Toggle visibility:"), ngbc);
+        ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutToggleField = new ShortcutKeyField(settings.getShortcutToggle());
-        mainPanel.add(shortcutToggleField, gbc);
+        novelSettingsPanel.add(shortcutToggleField, ngbc);
+
+        // Add novel settings panel to main panel
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        mainPanel.add(novelSettingsPanel, gbc);
+
+        // Set initial visibility
+        updateNovelComponentsVisibility();
 
         return mainPanel;
     }
@@ -209,6 +247,15 @@ public class NovelReaderConfigurable implements Configurable {
         return importPanel;
     }
 
+    private void updateNovelComponentsVisibility() {
+        boolean isNovel = modeComboBox.getSelectedIndex() == 0;
+        novelSettingsPanel.setVisible(isNovel);
+    }
+
+    private String getSelectedMode() {
+        return MODE_VALUES[modeComboBox.getSelectedIndex()];
+    }
+
     private void updateCurrentFileLabel() {
         if (currentFileLabel == null) return;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
@@ -226,7 +273,8 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public boolean isModified() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        return (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
+        return !getSelectedMode().equals(settings.getPluginMode())
+                || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
                 || (int) normalCharsPerLineSpinner.getValue() != settings.getNormalCharsPerLine()
@@ -241,13 +289,25 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public void apply() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        String newMode = getSelectedMode();
         LOG.info("apply: saving settings"
-                + " stealthCharsPerLine=" + stealthCharsPerLineSpinner.getValue()
+                + " pluginMode=" + newMode
+                + ", stealthCharsPerLine=" + stealthCharsPerLineSpinner.getValue()
                 + ", normalLinesPerPage=" + normalLinesPerPageSpinner.getValue()
                 + ", normalCharsPerLine=" + normalCharsPerLineSpinner.getValue()
                 + ", fontSize=" + fontSizeSpinner.getValue()
                 + ", fontFamily=" + fontFamilyField.getText()
                 + ", showInStatusBar=" + showInStatusBarCheckBox.isSelected());
+
+        String oldMode = settings.getPluginMode();
+        settings.setPluginMode(newMode);
+
+        // Start/stop HotSearchManager based on mode change
+        if ("hotsearch".equals(newMode) && !HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().start();
+        } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().stop();
+        }
 
         settings.setStealthCharsPerLine((int) stealthCharsPerLineSpinner.getValue());
         settings.setShowInStatusBar(showInStatusBarCheckBox.isSelected());
@@ -308,6 +368,8 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public void reset() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        modeComboBox.setSelectedIndex("hotsearch".equals(settings.getPluginMode()) ? 1 : 0);
+        updateNovelComponentsVisibility();
         stealthCharsPerLineSpinner.setValue(settings.getStealthCharsPerLine());
         showInStatusBarCheckBox.setSelected(settings.isShowInStatusBar());
         normalLinesPerPageSpinner.setValue(settings.getNormalLinesPerPage());
