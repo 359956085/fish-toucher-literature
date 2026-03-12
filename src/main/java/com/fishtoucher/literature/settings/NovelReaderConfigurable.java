@@ -45,7 +45,7 @@ public class NovelReaderConfigurable implements Configurable {
     @Nls(capitalization = Nls.Capitalization.Title)
     @Override
     public String getDisplayName() {
-        return "Fish Toucher Literature";
+        return "Fish Toucher";
     }
 
     @Override
@@ -198,10 +198,10 @@ public class NovelReaderConfigurable implements Configurable {
             if (files.length > 0) {
                 boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
                 if (success) {
-                    Messages.showInfoMessage("File loaded successfully: " + files[0].getName(), "Fish Toucher Literature");
+                    Messages.showInfoMessage("File loaded successfully: " + files[0].getName(), "Fish Toucher");
                     updateCurrentFileLabel();
                 } else {
-                    Messages.showErrorDialog("Failed to load the file. Please check if the file is a valid text file.", "Fish Toucher Literature");
+                    Messages.showErrorDialog("Failed to load the file. Please check if the file is a valid text file.", "Fish Toucher");
                 }
             }
         });

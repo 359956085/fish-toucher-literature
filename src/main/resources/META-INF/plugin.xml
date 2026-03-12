@@ -1,6 +1,6 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
-    <name>Fish Toucher Literature</name>
+    <name>Fish Toucher</name>
     <version>1.4.1</version>
     <vendor>FishToucher</vendor>
 
@@ -12,7 +12,7 @@
         <li>Displays one line of text in the IDE status bar — looks like a normal status message</li>
         <li>Click the status bar text to advance to the next line</li>
         <li>Configurable characters per line</li>
-        <li>Toggle on/off via: Settings → Tools → Fish Toucher Literature → "Enable stealth mode in status bar"</li>
+        <li>Toggle on/off via: Settings → Tools → Fish Toucher → "Enable stealth mode in status bar"</li>
     </ul>
 
     <b>Normal Mode (Tool Window)</b>
@@ -21,7 +21,7 @@
         <li>Displays multiple lines per page, disguised as build log output</li>
         <li>Navigate with prev/next buttons, progress slider, or keyboard shortcuts</li>
         <li>Configurable lines per page and characters per line</li>
-        <li>Access via: View → Tool Windows → Fish Toucher Literature</li>
+        <li>Access via: View → Tool Windows → Fish Toucher</li>
     </ul>
 
     <b>Shared Features</b>
@@ -30,10 +30,10 @@
         <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
         <li>Boss key to instantly hide all content (toggle visibility)</li>
         <li>Customizable keyboard shortcuts and font settings</li>
-        <li>Import files from: Settings → Tools → Fish Toucher Literature → "Import File..."</li>
+        <li>Import files from: Settings → Tools → Fish Toucher → "Import File..."</li>
     </ul>
 
-    <b>Settings:</b> Settings → Tools → Fish Toucher Literature
+    <b>Settings:</b> Settings → Tools → Fish Toucher
 
     <br/><br/>
     <hr/>
@@ -45,7 +45,7 @@
         <li>在 IDE 底部状态栏显示一行文本，外观与普通状态信息无异</li>
         <li>点击状态栏文本即可翻到下一行</li>
         <li>可配置每行显示字数</li>
-        <li>开关路径: Settings → Tools → Fish Toucher Literature → "Enable stealth mode in status bar"</li>
+        <li>开关路径: Settings → Tools → Fish Toucher → "Enable stealth mode in status bar"</li>
     </ul>
 
     <b>普通模式（工具窗口）</b>
@@ -54,7 +54,7 @@
         <li>一次显示多行内容，伪装成构建日志输出</li>
         <li>支持上一页/下一页按钮、进度滑块、快捷键导航</li>
         <li>可配置每页行数和每行字数</li>
-        <li>打开方式: View → Tool Windows → Fish Toucher Literature</li>
+        <li>打开方式: View → Tool Windows → Fish Toucher</li>
     </ul>
 
     <b>通用特性</b>
@@ -63,10 +63,10 @@
         <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
         <li>老板键一键隐藏所有阅读内容</li>
         <li>可自定义快捷键和字体设置</li>
-        <li>导入文件: Settings → Tools → Fish Toucher Literature → "Import File..."</li>
+        <li>导入文件: Settings → Tools → Fish Toucher → "Import File..."</li>
     </ul>
 
-    <b>设置路径：</b> Settings → Tools → Fish Toucher Literature
+    <b>设置路径：</b> Settings → Tools → Fish Toucher
     ]]></description>
 
     <change-notes><![CDATA[
@@ -96,7 +96,7 @@
         <statusBarWidgetFactory id="NovelReaderWidget"
                                 implementation="com.fishtoucher.literature.ui.NovelReaderWidgetFactory"
                                 order="first"/>
-        <toolWindow id="Fish Toucher Literature"
+        <toolWindow id="Fish Toucher"
                     anchor="bottom"
                     secondary="true"
                     factoryClass="com.fishtoucher.literature.ui.NovelReaderToolWindowFactory"
@@ -105,12 +105,12 @@
                 parentId="tools"
                 instance="com.fishtoucher.literature.settings.NovelReaderConfigurable"
                 id="com.fishtoucher.literature.settings.NovelReaderConfigurable"
-                displayName="Fish Toucher Literature"/>
+                displayName="Fish Toucher"/>
         <applicationService
                 serviceImplementation="com.fishtoucher.literature.settings.NovelReaderSettings"/>
         <postStartupActivity
                 implementation="com.fishtoucher.literature.ShortcutInitializer"/>
-        <notificationGroup id="Fish Toucher Literature"
+        <notificationGroup id="Fish Toucher"
                            displayType="STICKY_BALLOON"/>
     </extensions>
 
@@ -131,7 +131,7 @@
                     description="Go to previous page"/>
             <action id="NovelReader.Toggle"
                     class="com.fishtoucher.literature.actions.ToggleVisibilityAction"
-                    text="Fish Toucher Literature"
+                    text="Fish Toucher"
                     description="Show/Hide novel reader panel"/>
         </group>
     </actions>

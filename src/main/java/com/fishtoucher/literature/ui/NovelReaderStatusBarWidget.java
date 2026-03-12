@@ -76,7 +76,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
     @Override
     public @Nullable String getTooltipText() {
-        return "Stealth mode | Click to next line | Fish Toucher Literature";
+        return "Stealth mode | Click to next line | Fish Toucher";
     }
 
     @Override

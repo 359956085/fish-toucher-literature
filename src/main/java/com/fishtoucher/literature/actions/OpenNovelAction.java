@@ -33,7 +33,7 @@ public class OpenNovelAction extends AnAction {
                 LOG.warn("actionPerformed: failed to load file: " + files[0].getPath());
                 Messages.showErrorDialog(e.getProject(),
                         "Failed to load the file. Please check if the file is a valid text file.",
-                        "Fish Toucher Literature");
+                        "Fish Toucher");
             }
         } else {
             LOG.info("actionPerformed: user cancelled file selection");
