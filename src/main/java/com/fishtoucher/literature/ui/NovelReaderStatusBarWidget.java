@@ -72,7 +72,6 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     @Override
     public @NotNull String getText() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        if (!settings.isShowInStatusBar()) return "";
 
         if (settings.isHotSearchMode()) {
             HotSearchManager manager = HotSearchManager.getInstance();
