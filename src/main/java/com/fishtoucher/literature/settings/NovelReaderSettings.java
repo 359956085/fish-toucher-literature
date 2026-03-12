@@ -26,6 +26,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
         // --- Plugin mode: "novel" or "hotsearch" ---
         public String pluginMode = "novel";
+        // --- Hot search source: "baidu", "weibo", "toutiao", "zhihu" ---
+        public String hotSearchSource = "baidu";
 
         // --- Shared settings ---
         public String lastFilePath = "";
@@ -134,4 +136,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public String getPluginMode() { return myState.pluginMode; }
     public void setPluginMode(String mode) { myState.pluginMode = (mode != null && !mode.isEmpty()) ? mode : "novel"; }
     public boolean isHotSearchMode() { return "hotsearch".equals(myState.pluginMode); }
+
+    // --- Hot search source ---
+    public String getHotSearchSource() { return myState.hotSearchSource; }
+    public void setHotSearchSource(String source) { myState.hotSearchSource = (source != null && !source.isEmpty()) ? source : "baidu"; }
 }

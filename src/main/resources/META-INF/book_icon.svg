@@ -1,15 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
-  <!-- Book left page -->
-  <path d="M2 2.5C2 2.22 2.22 2 2.5 2H5.5C6.05 2 6.5 2.45 6.5 3V12C6.5 12 5.5 11.5 4.5 11.5H2.5C2.22 11.5 2 11.28 2 11V2.5Z" fill="#6B7280"/>
-  <!-- Book right page -->
-  <path d="M11 2.5C11 2.22 10.78 2 10.5 2H7.5C6.95 2 6.5 2.45 6.5 3V12C6.5 12 7.5 11.5 8.5 11.5H10.5C10.78 11.5 11 11.28 11 11V2.5Z" fill="#9CA3AF"/>
   <!-- Fish body -->
-  <ellipse cx="6.5" cy="3.2" rx="2.8" ry="1.5" fill="#FF6B35" stroke="#CC4400" stroke-width="0.3"/>
+  <ellipse cx="7.5" cy="5" rx="3" ry="1.5" fill="#FF6B35" stroke="#CC4400" stroke-width="0.3"/>
   <!-- Fish tail -->
-  <path d="M3.3 3.2L1.8 1.8L1.8 4.6Z" fill="#FF6B35" stroke="#CC4400" stroke-width="0.2"/>
+  <path d="M4.2 5L3 3.8L3 6.2Z" fill="#FF6B35" stroke="#CC4400" stroke-width="0.2"/>
   <!-- Fish eye -->
-  <circle cx="8.2" cy="2.8" r="0.55" fill="white"/>
-  <circle cx="8.35" cy="2.75" r="0.25" fill="#1A1A2E"/>
+  <circle cx="9.2" cy="4.6" r="0.5" fill="white"/>
+  <circle cx="9.35" cy="4.5" r="0.25" fill="#1A1A2E"/>
   <!-- Fish fin -->
-  <path d="M5.8 3.2L6.5 1.3L7.2 3.2" fill="#E85D26"/>
+  <path d="M7 5L7.5 3.5L8 5" fill="#E85D26"/>
+
+  <!-- Thumb from top -->
+  <path d="M6 3.8C6 3 6.5 2 7 1.8C7.5 1.6 8 2.2 8 3L8 4"
+        fill="#FDBCB4" stroke="#D4956B" stroke-width="0.3" stroke-linecap="round"/>
+
+  <!-- Index finger from bottom -->
+  <path d="M6 6.2C6 7 6.5 8 7 8.2C7.5 8.4 8 7.8 8 7L8 6"
+        fill="#FDBCB4" stroke="#D4956B" stroke-width="0.3" stroke-linecap="round"/>
+
+  <!-- Palm -->
+  <path d="M5.2 4C4.5 4.5 4.5 5.5 5.2 6L6 6.2L6 3.8Z"
+        fill="#FDBCB4" stroke="#D4956B" stroke-width="0.2"/>
 </svg>

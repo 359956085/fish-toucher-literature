@@ -14,7 +14,22 @@
       "WebFetch(domain:top.baidu.com)",
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://top.baidu.com/api/board?platform=wise&tab=realtime\")",
       "Bash(git status -u)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://weibo.com/ajax/side/hotSearch\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" -H \"Cookie: SUB=_2A25FHnotDeRhGeFK6FIR8y7EzzmIHXVo_kfXrDV8PUNbmtANLXTlkW9NQuZG-9C-rEhHUepwGXSYXLkrH9OGkUm2S\" \"https://weibo.com/ajax/side/hotSearch\")",
+      "Bash(curl -s -L -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://weibo.com/ajax/statuses/hot_band\")",
+      "Bash(curl -s -L -H \"User-Agent: Mozilla/5.0 \\(iPhone; CPU iPhone OS 16_6 like Mac OS X\\) AppleWebKit/605.1.15 \\(KHTML, like Gecko\\) Version/16.6 Mobile/15E148 Safari/604.1\" \"https://m.weibo.cn/api/container/getIndex?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot\")",
+      "Bash(curl -s -L -H \"User-Agent: Mozilla/5.0 \\(iPhone; CPU iPhone OS 16_6 like Mac OS X\\) AppleWebKit/605.1.15\" \"https://m.weibo.cn/api/container/getIndex?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot\")",
+      "Bash(curl -s \"https://tenapi.cn/v2/weibohot\")",
+      "Bash(curl -s \"https://api.vvhan.com/api/hotlist/wbHot\")",
+      "Bash(curl -s \"https://api.oioweb.cn/api/common/HotList?type=weibo\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0\" \"https://weibo.com/ajax/side/hotSearch\" -H \"Referer: https://weibo.com\" -H \"X-Requested-With: XMLHttpRequest\" -v)",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" -H \"Referer: https://weibo.com\" -H \"X-Requested-With: XMLHttpRequest\" \"https://weibo.com/ajax/side/hotSearch\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://edith.xiaohongshu.com/api/sns/v1/search/hot_list\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://edith.xiaohongshu.com/api/sns/v10/search/hot_list\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(iPhone; CPU iPhone OS 16_6 like Mac OS X\\)\" \"https://edith.xiaohongshu.com/api/sns/v1/search/hot_list\")",
+      "Bash(curl -s \"https://api.zhihu.com/topstory/hot-lists/total?limit=50\" -H \"User-Agent: Mozilla/5.0\")"
     ]
   }
 }
