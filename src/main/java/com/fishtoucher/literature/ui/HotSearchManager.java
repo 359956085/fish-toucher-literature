@@ -2,11 +2,14 @@ package com.fishtoucher.literature.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.fishtoucher.literature.settings.NovelReaderSettings;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -18,21 +21,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Singleton manager for Baidu hot search carousel.
- * Fetches hot search data periodically and rotates titles in the status bar.
+ * Singleton manager for hot search carousel.
+ * Supports multiple sources: Baidu, Weibo, Toutiao, Zhihu.
  */
 public class HotSearchManager {
 
     private static final Logger LOG = Logger.getInstance(HotSearchManager.class);
     private static final HotSearchManager INSTANCE = new HotSearchManager();
 
-    private static final String API_URL = "https://top.baidu.com/api/board?platform=wise&tab=realtime";
     private static final long REFRESH_INTERVAL_MINUTES = 15;
     private static final long CAROUSEL_INTERVAL_SECONDS = 10;
+
+    private static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
     private final List<HotSearchItem> items = new ArrayList<>();
     private int currentIndex = 0;
     private String lastRefreshTime = "";
+    private String currentSource = "";
     private boolean running = false;
 
     private ScheduledExecutorService scheduler;
@@ -73,11 +78,8 @@ public class HotSearchManager {
             return t;
         });
 
-        // Initial fetch immediately, then every 15 minutes
         refreshTask = scheduler.scheduleAtFixedRate(
                 this::fetchHotSearch, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
-
-        // Carousel will be started after first successful data fetch (see startCarouselIfNeeded)
     }
 
     public synchronized void stop() {
@@ -96,59 +98,94 @@ public class HotSearchManager {
         return running;
     }
 
+    /**
+     * Called when the user changes the hot search source in settings.
+     * Clears current data and triggers an immediate refresh.
+     */
+    public void switchSource() {
+        synchronized (this) {
+            items.clear();
+            currentIndex = 0;
+            lastRefreshTime = "";
+        }
+        fireChange();
+        if (scheduler != null && running) {
+            scheduler.submit(this::fetchHotSearch);
+        }
+    }
+
     // ========== Data fetch ==========
 
     private void fetchHotSearch() {
-        LOG.info("fetchHotSearch: fetching Baidu hot search data");
+        String source = NovelReaderSettings.getInstance().getHotSearchSource();
+        LOG.info("fetchHotSearch: fetching from source: " + source);
         try {
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(API_URL))
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .timeout(Duration.ofSeconds(15))
-                    .GET()
-                    .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .header("User-Agent", UA)
+                    .timeout(Duration.ofSeconds(15))
+                    .GET();
+
+            switch (source) {
+                case "weibo" -> {
+                    reqBuilder.uri(URI.create("https://weibo.com/ajax/side/hotSearch"));
+                    reqBuilder.header("Referer", "https://weibo.com");
+                    reqBuilder.header("X-Requested-With", "XMLHttpRequest");
+                }
+                case "toutiao" -> reqBuilder.uri(URI.create("https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"));
+                case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
+                default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
+            }
+
+            HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
-                parseResponse(response.body());
+                List<HotSearchItem> newItems = switch (source) {
+                    case "weibo" -> parseWeibo(response.body());
+                    case "toutiao" -> parseToutiao(response.body());
+                    case "zhihu" -> parseZhihu(response.body());
+                    default -> parseBaidu(response.body());
+                };
+                if (!newItems.isEmpty()) {
+                    synchronized (this) {
+                        items.clear();
+                        items.addAll(newItems);
+                        currentSource = source;
+                        if (currentIndex >= items.size()) {
+                            currentIndex = 0;
+                        }
+                    }
+                    startCarouselIfNeeded();
+                    fireChange();
+                }
                 lastRefreshTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-                LOG.info("fetchHotSearch: successfully fetched " + items.size() + " items");
+                LOG.info("fetchHotSearch: successfully fetched " + items.size() + " items from " + source);
             } else {
-                LOG.warn("fetchHotSearch: HTTP " + response.statusCode());
+                LOG.warn("fetchHotSearch: HTTP " + response.statusCode() + " from " + source);
             }
         } catch (Exception e) {
-            LOG.warn("fetchHotSearch: failed to fetch data: " + e.getMessage());
+            LOG.warn("fetchHotSearch: failed to fetch from " + source + ": " + e.getMessage());
         }
     }
 
-    /**
-     * Parse the JSON response. We use simple regex/string parsing to avoid
-     * adding a JSON library dependency (IntelliJ platform bundles Gson but
-     * we keep it minimal with manual parsing).
-     */
-    private void parseResponse(String json) {
+    // ========== Parsers ==========
+
+    private List<HotSearchItem> parseBaidu(String json) {
         List<HotSearchItem> newItems = new ArrayList<>();
-        // The API returns items in data.cards[0].content[0].content array
-        // Each item starts with {"isTop":... and contains "word":"title", "index":N, "hotTag":"N"
         Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
         Pattern urlPattern = Pattern.compile("\"url\"\\s*:\\s*\"([^\"]+)\"");
         Pattern indexPattern = Pattern.compile("\"index\"\\s*:\\s*(\\d+)");
         Pattern hotTagPattern = Pattern.compile("\"hotTag\"\\s*:\\s*\"(\\d+)\"");
 
-        // Split by item boundaries - each item starts with {"isTop"
         String[] parts = json.split("\\{\"isTop\"");
         int rank = 0;
         for (int i = 1; i < parts.length; i++) {
             String part = "{\"isTop\"" + parts[i];
             Matcher wm = wordPattern.matcher(part);
             if (wm.find()) {
-                String word = wm.group(1)
-                        .replace("\\u0026", "&")
-                        .replace("\\\"", "\"")
-                        .replace("\\/", "/");
+                String word = unescapeJson(wm.group(1));
                 int index = rank++;
                 Matcher im = indexPattern.matcher(part);
                 if (im.find()) {
@@ -156,33 +193,114 @@ public class HotSearchManager {
                 }
                 String hotTag = "";
                 Matcher hm = hotTagPattern.matcher(part);
-                if (hm.find()) {
-                    hotTag = hm.group(1);
-                }
+                if (hm.find()) hotTag = hm.group(1);
                 String url = "";
                 Matcher um = urlPattern.matcher(part);
                 if (um.find()) {
-                    url = um.group(1)
-                            .replace("\\u0026", "&")
-                            .replace("\\/", "/")
-                            .replace("m.baidu.com", "www.baidu.com");
+                    url = unescapeJson(um.group(1)).replace("m.baidu.com", "www.baidu.com");
                 }
                 newItems.add(new HotSearchItem(index, word, hotTag, url));
             }
         }
-
-        if (!newItems.isEmpty()) {
-            synchronized (this) {
-                items.clear();
-                items.addAll(newItems);
-                if (currentIndex >= items.size()) {
-                    currentIndex = 0;
-                }
-            }
-            startCarouselIfNeeded();
-            fireChange();
-        }
+        return newItems;
     }
+
+    private List<HotSearchItem> parseWeibo(String json) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Response: {"ok":1,"data":{"realtime":[{"word":"...", "num":N, "rank":N, "label_name":"新/热/..."}]}}
+        // Filter out ad items (is_ad:1)
+        Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern numPattern = Pattern.compile("\"num\"\\s*:\\s*(\\d+)");
+        Pattern labelPattern = Pattern.compile("\"label_name\"\\s*:\\s*\"([^\"]*)\"");
+        Pattern adPattern = Pattern.compile("\"is_ad\"\\s*:\\s*1");
+
+        // Find the realtime array
+        int rtIdx = json.indexOf("\"realtime\"");
+        if (rtIdx < 0) return newItems;
+        String realtimeJson = json.substring(rtIdx);
+
+        String[] parts = realtimeJson.split("\\{\"num\"");
+        int rank = 0;
+        for (int i = 1; i < parts.length; i++) {
+            String part = "{\"num\"" + parts[i];
+            // Skip ads
+            if (adPattern.matcher(part).find()) continue;
+            Matcher wm = wordPattern.matcher(part);
+            if (wm.find()) {
+                String word = unescapeJson(wm.group(1));
+                String hotTag = "";
+                Matcher lm = labelPattern.matcher(part);
+                if (lm.find()) hotTag = lm.group(1);
+                String url = "https://s.weibo.com/weibo?q=" + URLEncoder.encode("#" + word + "#", StandardCharsets.UTF_8);
+                newItems.add(new HotSearchItem(rank++, word, hotTag, url));
+            }
+        }
+        return newItems;
+    }
+
+    private List<HotSearchItem> parseToutiao(String json) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Response: {"data":[{"Title":"...", "Url":"...", "HotValue":"N", "ClusterIdStr":"..."}]}
+        Pattern titlePattern = Pattern.compile("\"Title\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern urlPattern = Pattern.compile("\"Url\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern hotValuePattern = Pattern.compile("\"HotValue\"\\s*:\\s*\"(\\d+)\"");
+
+        String[] parts = json.split("\\{\"ClusterId\"");
+        int rank = 0;
+        for (int i = 1; i < parts.length; i++) {
+            String part = "{\"ClusterId\"" + parts[i];
+            Matcher tm = titlePattern.matcher(part);
+            if (tm.find()) {
+                String title = unescapeJson(tm.group(1));
+                String hotTag = "";
+                Matcher hm = hotValuePattern.matcher(part);
+                if (hm.find()) hotTag = hm.group(1);
+                String url = "";
+                Matcher um = urlPattern.matcher(part);
+                if (um.find()) url = unescapeJson(um.group(1));
+                newItems.add(new HotSearchItem(rank++, title, hotTag, url));
+            }
+        }
+        return newItems;
+    }
+
+    private List<HotSearchItem> parseZhihu(String json) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Response: {"data":[{"target":{"id":N,"title":"...","url":"..."}}]}
+        Pattern titlePattern = Pattern.compile("\"title\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern idPattern = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
+
+        String[] parts = json.split("\"hot_list_feed\"");
+        int rank = 0;
+        for (int i = 1; i < parts.length; i++) {
+            String part = parts[i];
+            // Find the target section
+            int targetIdx = part.indexOf("\"target\"");
+            if (targetIdx < 0) continue;
+            String targetPart = part.substring(targetIdx);
+            Matcher tm = titlePattern.matcher(targetPart);
+            if (tm.find()) {
+                String title = unescapeJson(tm.group(1));
+                long questionId = 0;
+                Matcher im = idPattern.matcher(targetPart);
+                if (im.find()) {
+                    try { questionId = Long.parseLong(im.group(1)); } catch (NumberFormatException ignored) {}
+                }
+                String url = questionId > 0 ? "https://www.zhihu.com/question/" + questionId : "";
+                newItems.add(new HotSearchItem(rank++, title, "", url));
+            }
+        }
+        return newItems;
+    }
+
+    private String unescapeJson(String s) {
+        return s.replace("\\u0026", "&")
+                .replace("\\\"", "\"")
+                .replace("\\/", "/")
+                .replace("\\n", "\n");
+    }
+
+    // ========== Manual refresh ==========
 
     public void manualRefresh() {
         if (scheduler != null && running) {
@@ -212,8 +330,7 @@ public class HotSearchManager {
 
     public synchronized String getCurrentTitle() {
         if (items.isEmpty()) return "[Loading hot search...]";
-        HotSearchItem item = items.get(currentIndex);
-        return item.word();
+        return items.get(currentIndex).word();
     }
 
     public synchronized String getCurrentStatusText() {
@@ -238,8 +355,24 @@ public class HotSearchManager {
         return lastRefreshTime;
     }
 
+    public String getCurrentSource() {
+        return currentSource;
+    }
+
     public boolean hasContent() {
         return !items.isEmpty();
+    }
+
+    // ========== Source labels ==========
+
+    public static final String[] SOURCE_VALUES = {"baidu", "weibo", "toutiao", "zhihu"};
+    public static final String[] SOURCE_LABELS = {"Baidu", "Weibo", "Toutiao", "Zhihu"};
+
+    public static String getSourceLabel(String value) {
+        for (int i = 0; i < SOURCE_VALUES.length; i++) {
+            if (SOURCE_VALUES[i].equals(value)) return SOURCE_LABELS[i];
+        }
+        return "Baidu";
     }
 
     // ========== Data model ==========

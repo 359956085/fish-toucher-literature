@@ -48,6 +48,10 @@ public class NovelReaderConfigurable implements Configurable {
     private ShortcutKeyField shortcutPrevPageField;
     private ShortcutKeyField shortcutToggleField;
 
+    // Hot search source selector
+    private JComboBox<String> sourceComboBox;
+    private JPanel hotSearchSettingsPanel;
+
     // Novel-only settings panel (hidden in hot search mode)
     private JPanel novelSettingsPanel;
 
@@ -88,6 +92,29 @@ public class NovelReaderConfigurable implements Configurable {
         JLabel modeHint = new JLabel("<html><i>Note: Restart IDE or reopen tool window after changing mode.</i></html>");
         modeHint.setForeground(com.intellij.ui.JBColor.GRAY);
         mainPanel.add(modeHint, gbc);
+
+        // ========== Hot Search Settings (visible only in hot search mode) ==========
+        hotSearchSettingsPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints hgbc = new GridBagConstraints();
+        hgbc.insets = JBUI.insets(5);
+        hgbc.anchor = GridBagConstraints.WEST;
+        hgbc.fill = GridBagConstraints.HORIZONTAL;
+
+        hgbc.gridx = 0; hgbc.gridy = 0; hgbc.gridwidth = 1;
+        hotSearchSettingsPanel.add(new JLabel("Source:"), hgbc);
+        hgbc.gridx = 1; hgbc.gridy = 0;
+        sourceComboBox = new JComboBox<>(HotSearchManager.SOURCE_LABELS);
+        String currentSource = settings.getHotSearchSource();
+        for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
+            if (HotSearchManager.SOURCE_VALUES[i].equals(currentSource)) {
+                sourceComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
+        hotSearchSettingsPanel.add(sourceComboBox, hgbc);
+
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        mainPanel.add(hotSearchSettingsPanel, gbc);
 
         // ========== Separator ==========
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
@@ -250,10 +277,17 @@ public class NovelReaderConfigurable implements Configurable {
     private void updateNovelComponentsVisibility() {
         boolean isNovel = modeComboBox.getSelectedIndex() == 0;
         novelSettingsPanel.setVisible(isNovel);
+        hotSearchSettingsPanel.setVisible(!isNovel);
     }
 
     private String getSelectedMode() {
         return MODE_VALUES[modeComboBox.getSelectedIndex()];
+    }
+
+    private String getSelectedSource() {
+        int idx = sourceComboBox.getSelectedIndex();
+        return (idx >= 0 && idx < HotSearchManager.SOURCE_VALUES.length)
+                ? HotSearchManager.SOURCE_VALUES[idx] : "baidu";
     }
 
     private void updateCurrentFileLabel() {
@@ -274,6 +308,7 @@ public class NovelReaderConfigurable implements Configurable {
     public boolean isModified() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         return !getSelectedMode().equals(settings.getPluginMode())
+                || !getSelectedSource().equals(settings.getHotSearchSource())
                 || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
@@ -307,6 +342,14 @@ public class NovelReaderConfigurable implements Configurable {
             HotSearchManager.getInstance().start();
         } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().stop();
+        }
+
+        // Hot search source
+        String oldSource = settings.getHotSearchSource();
+        String newSource = getSelectedSource();
+        settings.setHotSearchSource(newSource);
+        if (!newSource.equals(oldSource) && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().switchSource();
         }
 
         settings.setStealthCharsPerLine((int) stealthCharsPerLineSpinner.getValue());
@@ -369,6 +412,13 @@ public class NovelReaderConfigurable implements Configurable {
     public void reset() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         modeComboBox.setSelectedIndex("hotsearch".equals(settings.getPluginMode()) ? 1 : 0);
+        String source = settings.getHotSearchSource();
+        for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
+            if (HotSearchManager.SOURCE_VALUES[i].equals(source)) {
+                sourceComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
         updateNovelComponentsVisibility();
         stealthCharsPerLineSpinner.setValue(settings.getStealthCharsPerLine());
         showInStatusBarCheckBox.setSelected(settings.isShowInStatusBar());
