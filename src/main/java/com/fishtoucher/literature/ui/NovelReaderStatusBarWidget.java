@@ -81,6 +81,8 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
             return "\uD83D\uDD25 " + title + "  " + status;
         }
 
+        if (!settings.isShowInStatusBar()) return "";
+
         NovelReaderManager manager = NovelReaderManager.getInstance();
         if (!manager.hasContent() || !manager.isVisible()) return "";
 
