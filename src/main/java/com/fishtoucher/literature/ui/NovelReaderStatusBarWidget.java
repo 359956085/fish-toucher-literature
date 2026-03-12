@@ -23,6 +23,8 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     private StatusBar statusBar;
     private final Runnable changeListener;
 
+    private final Runnable hotSearchChangeListener;
+
     public NovelReaderStatusBarWidget(@NotNull Project project) {
         LOG.info("NovelReaderStatusBarWidget: creating for project " + project.getName());
         this.project = project;
@@ -31,7 +33,13 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
                 statusBar.updateWidget(ID());
             }
         };
+        this.hotSearchChangeListener = () -> {
+            if (statusBar != null) {
+                statusBar.updateWidget(ID());
+            }
+        };
         NovelReaderManager.getInstance().addChangeListener(changeListener);
+        HotSearchManager.getInstance().addChangeListener(hotSearchChangeListener);
     }
 
     @Override
@@ -49,6 +57,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     public void dispose() {
         LOG.info("dispose: status bar widget disposed");
         NovelReaderManager.getInstance().removeChangeListener(changeListener);
+        HotSearchManager.getInstance().removeChangeListener(hotSearchChangeListener);
     }
 
     @Override
@@ -60,6 +69,14 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     public @NotNull String getText() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (!settings.isShowInStatusBar()) return "";
+
+        if (settings.isHotSearchMode()) {
+            HotSearchManager manager = HotSearchManager.getInstance();
+            if (!manager.hasContent()) return "\uD83D\uDD25 [Loading...]";
+            String title = manager.getCurrentTitle();
+            String status = manager.getCurrentStatusText();
+            return "\uD83D\uDD25 " + title + "  " + status;
+        }
 
         NovelReaderManager manager = NovelReaderManager.getInstance();
         if (!manager.hasContent() || !manager.isVisible()) return "";
@@ -76,12 +93,19 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
     @Override
     public @Nullable String getTooltipText() {
+        if (NovelReaderSettings.getInstance().isHotSearchMode()) {
+            return "Hot search carousel | Click to next | Fish Toucher";
+        }
         return "Stealth mode | Click to next line | Fish Toucher";
     }
 
     @Override
     public @Nullable Consumer<MouseEvent> getClickConsumer() {
         return mouseEvent -> {
+            if (NovelReaderSettings.getInstance().isHotSearchMode()) {
+                // In hot search mode, clicking is a no-op (auto carousel)
+                return;
+            }
             NovelReaderManager manager = NovelReaderManager.getInstance();
             if (manager.hasContent()) {
                 manager.stealthNextPage();

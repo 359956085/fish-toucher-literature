@@ -14,6 +14,7 @@ import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.fishtoucher.literature.settings.NovelReaderSettings;
+import com.fishtoucher.literature.ui.HotSearchManager;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +42,11 @@ public class ShortcutInitializer implements ProjectActivity {
         applyShortcut("NovelReader.Toggle", settings.getShortcutToggle());
 
         checkFirstInstallOrUpdate(project, settings);
+
+        // Auto-start HotSearchManager if in hot search mode
+        if (settings.isHotSearchMode()) {
+            HotSearchManager.getInstance().start();
+        }
 
         return Unit.INSTANCE;
     }
