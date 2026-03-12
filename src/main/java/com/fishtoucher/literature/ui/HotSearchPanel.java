@@ -8,34 +8,63 @@ import com.fishtoucher.literature.settings.NovelReaderSettings;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.net.URI;
 import java.util.List;
 
 /**
  * Tool window panel for hot search mode.
  * Displays all Baidu hot search titles in a list format.
+ * Clicking a title opens it in the default browser.
  */
 public class HotSearchPanel extends JPanel {
 
     private static final Logger LOG = Logger.getInstance(HotSearchPanel.class);
-    private final JTextArea textArea;
+    private final DefaultListModel<HotSearchManager.HotSearchItem> listModel;
+    private final JList<HotSearchManager.HotSearchItem> list;
     private final JLabel statusLabel;
     private final Runnable changeListener;
+    private int currentIndex = -1;
 
     public HotSearchPanel(Project project) {
         LOG.info("HotSearchPanel: initializing for project " + project.getName());
         setLayout(new BorderLayout());
 
-        // --- Text area styled as console/log output ---
-        textArea = new JTextArea();
-        textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setBackground(JBColor.background());
-        textArea.setForeground(JBColor.foreground());
-        textArea.setBorder(new EmptyBorder(8, 10, 8, 10));
+        // --- List displaying hot search items ---
+        listModel = new DefaultListModel<>();
+        list = new JList<>(listModel);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setBackground(JBColor.background());
+        list.setForeground(JBColor.foreground());
+        list.setCellRenderer(new HotSearchCellRenderer());
         updateFont();
 
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        list.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int idx = list.locationToIndex(e.getPoint());
+                if (idx >= 0 && idx < listModel.size()) {
+                    String url = listModel.get(idx).url();
+                    openInBrowser(url);
+                }
+            }
+        });
+
+        // Hand cursor on hover
+        list.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int idx = list.locationToIndex(e.getPoint());
+                if (idx >= 0 && idx < listModel.size() && !listModel.get(idx).url().isEmpty()) {
+                    list.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                } else {
+                    list.setCursor(Cursor.getDefaultCursor());
+                }
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(list);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         add(scrollPane, BorderLayout.CENTER);
 
@@ -78,34 +107,63 @@ public class HotSearchPanel extends JPanel {
 
     private void updateFont() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        textArea.setFont(new Font(settings.getFontFamily(), Font.PLAIN, settings.getFontSize()));
+        list.setFont(new Font(settings.getFontFamily(), Font.PLAIN, settings.getFontSize()));
     }
 
     private void refreshContent() {
         HotSearchManager manager = HotSearchManager.getInstance();
 
         if (!manager.hasContent()) {
-            textArea.setText("  [INFO] Loading Baidu hot search...\n");
-            statusLabel.setText("");
+            listModel.clear();
+            statusLabel.setText("Loading...");
             return;
         }
 
         updateFont();
 
         List<HotSearchManager.HotSearchItem> items = manager.getAllItems();
-        int currentIdx = manager.getCurrentIndex();
+        currentIndex = manager.getCurrentIndex();
 
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            HotSearchManager.HotSearchItem item = items.get(i);
-            String prefix = (i == currentIdx) ? "  \u25B6 " : "    ";
-            String rankStr = item.rank() > 0 ? String.valueOf(item.rank()) : "TOP";
-            sb.append(String.format("%s[%3s] %s\n", prefix, rankStr, item.word()));
+        listModel.clear();
+        for (HotSearchManager.HotSearchItem item : items) {
+            listModel.addElement(item);
         }
 
-        textArea.setText(sb.toString());
+        list.repaint();
 
         String refreshTime = manager.getLastRefreshTime();
         statusLabel.setText(items.size() + " items | Updated " + refreshTime);
+    }
+
+    private void openInBrowser(String url) {
+        if (url == null || url.isEmpty()) return;
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception e) {
+            LOG.warn("openInBrowser: failed to open URL: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Custom cell renderer that highlights the current carousel item.
+     */
+    private class HotSearchCellRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                      boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, false, false);
+            if (value instanceof HotSearchManager.HotSearchItem item) {
+                String prefix = (index == currentIndex) ? "\u25B6 " : "   ";
+                String rankStr = item.rank() > 0 ? String.valueOf(item.rank()) : "TOP";
+                setText(String.format("%s[%3s] %s", prefix, rankStr, item.word()));
+                setBorder(new EmptyBorder(4, 8, 4, 8));
+                setBackground(JBColor.background());
+                setForeground(JBColor.foreground());
+                if (isSelected) {
+                    setBackground(JBColor.background().brighter());
+                }
+            }
+            return this;
+        }
     }
 }
