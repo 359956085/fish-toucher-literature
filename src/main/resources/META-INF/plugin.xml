@@ -1,36 +1,28 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>1.4.1</version>
+    <version>2.0.0</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
-    <p>A novel reader plugin for IntelliJ IDEA with two reading modes that share unified reading progress.</p>
+    <p>A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search trends while pretending to work.</p>
 
-    <b>Stealth Mode (Status Bar)</b>
+    <b>Novel Reading Mode</b>
     <ul>
-        <li>Displays one line of text in the IDE status bar — looks like a normal status message</li>
-        <li>Click the status bar text to advance to the next line</li>
-        <li>Configurable characters per line</li>
-        <li>Toggle on/off via: Settings → Tools → Fish Toucher → "Enable stealth mode in status bar"</li>
-    </ul>
-
-    <b>Normal Mode (Tool Window)</b>
-    <ul>
-        <li>Opens a dedicated tool window panel at the bottom of the IDE</li>
-        <li>Displays multiple lines per page, disguised as build log output</li>
-        <li>Navigate with prev/next buttons, progress slider, or keyboard shortcuts</li>
-        <li>Configurable lines per page and characters per line</li>
-        <li>Access via: View → Tool Windows → Fish Toucher</li>
-    </ul>
-
-    <b>Shared Features</b>
-    <ul>
+        <li><b>Stealth Mode (Status Bar):</b> One line of text in the status bar — looks like a normal status message. Click to advance.</li>
+        <li><b>Normal Mode (Tool Window):</b> Multi-line display disguised as build log output, with page navigation and progress slider.</li>
         <li>Both modes share unified reading progress</li>
         <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
-        <li>Boss key to instantly hide all content (toggle visibility)</li>
+        <li>Boss key to instantly hide all content</li>
         <li>Customizable keyboard shortcuts and font settings</li>
-        <li>Import files from: Settings → Tools → Fish Toucher → "Import File..."</li>
+    </ul>
+
+    <b>Hot Search Carousel Mode</b>
+    <ul>
+        <li>Real-time hot search trends displayed in both tool window and status bar</li>
+        <li>Multiple sources: Baidu, Toutiao, Zhihu — switchable in settings</li>
+        <li>Click any hot search title to open in browser</li>
+        <li>Auto-refreshing data with carousel rotation</li>
     </ul>
 
     <b>Settings:</b> Settings → Tools → Fish Toucher
@@ -38,38 +30,43 @@
     <br/><br/>
     <hr/>
 
-    <p>一款适用于 IntelliJ IDEA 的摸鱼阅读插件，提供两种阅读模式，共用统一阅读进度。</p>
+    <p>一款适用于 IntelliJ IDEA 的摸鱼插件 — 在假装工作的同时看小说或浏览热搜。</p>
 
-    <b>隐秘模式（状态栏）</b>
+    <b>小说阅读模式</b>
     <ul>
-        <li>在 IDE 底部状态栏显示一行文本，外观与普通状态信息无异</li>
-        <li>点击状态栏文本即可翻到下一行</li>
-        <li>可配置每行显示字数</li>
-        <li>开关路径: Settings → Tools → Fish Toucher → "Enable stealth mode in status bar"</li>
-    </ul>
-
-    <b>普通模式（工具窗口）</b>
-    <ul>
-        <li>在 IDE 底部打开专用工具窗口面板</li>
-        <li>一次显示多行内容，伪装成构建日志输出</li>
-        <li>支持上一页/下一页按钮、进度滑块、快捷键导航</li>
-        <li>可配置每页行数和每行字数</li>
-        <li>打开方式: View → Tool Windows → Fish Toucher</li>
-    </ul>
-
-    <b>通用特性</b>
-    <ul>
+        <li><b>隐秘模式（状态栏）：</b>在状态栏显示一行文本，外观与普通状态信息无异，点击翻页</li>
+        <li><b>普通模式（工具窗口）：</b>多行显示，伪装成构建日志，支持翻页和进度滑块</li>
         <li>两种模式共用统一阅读进度</li>
         <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
         <li>老板键一键隐藏所有阅读内容</li>
         <li>可自定义快捷键和字体设置</li>
-        <li>导入文件: Settings → Tools → Fish Toucher → "Import File..."</li>
+    </ul>
+
+    <b>热搜轮播模式</b>
+    <ul>
+        <li>实时热搜榜单，同时显示在工具窗口和状态栏</li>
+        <li>多热搜源支持：百度、今日头条、知乎，可在设置中切换</li>
+        <li>点击热搜标题直接在浏览器中打开</li>
+        <li>自动刷新数据，轮播滚动显示</li>
     </ul>
 
     <b>设置路径：</b> Settings → Tools → Fish Toucher
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>2.0.0</b>
+    <ul>
+        <li>New: Hot Search Carousel mode — browse real-time hot search trends in the IDE<br/>
+            新增：热搜轮播模式 — 在 IDE 中浏览实时热搜榜单</li>
+        <li>New: Multiple hot search sources — Baidu, Toutiao, Zhihu, switchable in settings<br/>
+            新增：多热搜源支持 — 百度、今日头条、知乎，可在设置中切换</li>
+        <li>New: Click hot search titles to open in browser<br/>
+            新增：点击热搜标题可在浏览器中打开</li>
+        <li>New: Hot search displayed in both tool window and status bar with carousel rotation<br/>
+            新增：热搜同时显示在工具窗口和状态栏，自动轮播</li>
+        <li>Improved: New cute fish plugin icon<br/>
+            优化：全新萌鱼插件图标</li>
+    </ul>
     <b>1.4.1</b>
     <ul>
         <li>Changed: Stealth mode and Normal mode now share unified reading progress<br/>
