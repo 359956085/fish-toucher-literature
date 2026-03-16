@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 /**
  * Singleton manager for hot search carousel.
- * Supports multiple sources: Baidu, Toutiao, Zhihu, Douyin.
+ * Supports multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou.
  */
 public class HotSearchManager {
 
@@ -141,25 +141,42 @@ public class HotSearchManager {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .header("User-Agent", UA)
-                    .timeout(Duration.ofSeconds(15))
-                    .GET();
+            HttpRequest request;
+            if ("kuaishou".equals(source)) {
+                String graphql = "{\"operationName\":\"visionHotRank\",\"variables\":{\"page\":\"1\"},"
+                        + "\"query\":\"query visionHotRank($page: String) { visionHotRank(page: $page) "
+                        + "{ result items { rank name hotValue } } }\"}";
+                request = HttpRequest.newBuilder()
+                        .uri(URI.create("https://www.kuaishou.com/graphql"))
+                        .header("User-Agent", UA)
+                        .header("Referer", "https://www.kuaishou.com/")
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofSeconds(15))
+                        .POST(HttpRequest.BodyPublishers.ofString(graphql))
+                        .build();
+            } else {
+                HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                        .header("User-Agent", UA)
+                        .timeout(Duration.ofSeconds(15))
+                        .GET();
 
-            switch (source) {
-                case "toutiao" -> reqBuilder.uri(URI.create("https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"));
-                case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
-                case "douyin" -> reqBuilder.uri(URI.create("https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
-                        .header("Referer", "https://www.douyin.com/");
-                default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
+                switch (source) {
+                    case "toutiao" -> reqBuilder.uri(URI.create("https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"));
+                    case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
+                    case "douyin" -> reqBuilder.uri(URI.create("https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
+                            .header("Referer", "https://www.douyin.com/");
+                    default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
+                }
+                request = reqBuilder.build();
             }
 
-            HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 List<HotSearchItem> newItems = switch (source) {
                     case "toutiao" -> parseToutiao(response.body());
                     case "zhihu" -> parseZhihu(response.body());
                     case "douyin" -> parseDouyin(response.body());
+                    case "kuaishou" -> parseKuaishou(response.body());
                     default -> parseBaidu(response.body());
                 };
                 if (!newItems.isEmpty()) {
@@ -297,6 +314,34 @@ public class HotSearchManager {
         return newItems;
     }
 
+    private List<HotSearchItem> parseKuaishou(String json) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Response: {"data":{"visionHotRank":{"items":[{"rank":N,"name":"...","hotValue":"N万"}]}}}
+        Pattern namePattern = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern rankPattern = Pattern.compile("\"rank\"\\s*:\\s*(\\d+)");
+        Pattern hotValuePattern = Pattern.compile("\"hotValue\"\\s*:\\s*\"([^\"]+)\"");
+
+        String[] parts = json.split("\\{\"rank\"");
+        for (int i = 1; i < parts.length; i++) {
+            String part = "{\"rank\"" + parts[i];
+            Matcher nm = namePattern.matcher(part);
+            if (nm.find()) {
+                String name = unescapeJson(nm.group(1));
+                int rank = i - 1;
+                Matcher rm = rankPattern.matcher(part);
+                if (rm.find()) {
+                    try { rank = Integer.parseInt(rm.group(1)); } catch (NumberFormatException ignored) {}
+                }
+                String hotTag = "";
+                Matcher hm = hotValuePattern.matcher(part);
+                if (hm.find()) hotTag = hm.group(1);
+                String url = "https://www.kuaishou.com/search/video?searchKey=" + name;
+                newItems.add(new HotSearchItem(rank, name, hotTag, url));
+            }
+        }
+        return newItems;
+    }
+
     private String unescapeJson(String s) {
         return s.replace("\\u0026", "&")
                 .replace("\\\"", "\"")
@@ -376,8 +421,8 @@ public class HotSearchManager {
 
     // ========== Source labels ==========
 
-    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin"};
-    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu", "Douyin"};
+    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou"};
+    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu", "Douyin", "Kuaishou"};
 
     public static String getSourceLabel(String value) {
         for (int i = 0; i < SOURCE_VALUES.length; i++) {
