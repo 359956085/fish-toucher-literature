@@ -93,10 +93,15 @@ public class HotSearchPanel extends JPanel {
 
         // Listen for changes
         changeListener = this::refreshContent;
-        HotSearchManager.getInstance().addChangeListener(changeListener);
+        HotSearchManager manager = HotSearchManager.getInstance();
+        manager.addChangeListener(changeListener);
 
-        // Ensure manager is running
-        HotSearchManager.getInstance().start();
+        // Ensure manager is running and trigger a fresh fetch
+        if (!manager.isRunning()) {
+            manager.start();
+        } else if (!manager.hasContent()) {
+            manager.manualRefresh();
+        }
 
         refreshContent();
     }
@@ -132,7 +137,8 @@ public class HotSearchPanel extends JPanel {
         list.repaint();
 
         String refreshTime = manager.getLastRefreshTime();
-        statusLabel.setText(items.size() + " items | Updated " + refreshTime);
+        String sourceLabel = HotSearchManager.getSourceLabel(manager.getCurrentSource());
+        statusLabel.setText(sourceLabel + " | " + items.size() + " items | Updated " + refreshTime);
     }
 
     private void openInBrowser(String url) {

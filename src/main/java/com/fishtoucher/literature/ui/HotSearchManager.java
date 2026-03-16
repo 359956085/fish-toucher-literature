@@ -76,8 +76,13 @@ public class HotSearchManager {
             return t;
         });
 
-        refreshTask = scheduler.scheduleAtFixedRate(
-                this::fetchHotSearch, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
+        refreshTask = scheduler.scheduleAtFixedRate(() -> {
+            try {
+                fetchHotSearch();
+            } catch (Exception e) {
+                LOG.error("start: uncaught exception in fetchHotSearch", e);
+            }
+        }, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
     }
 
     public synchronized void stop() {
@@ -272,8 +277,13 @@ public class HotSearchManager {
     private synchronized void startCarouselIfNeeded() {
         if (carouselTask == null && scheduler != null && running) {
             LOG.info("startCarouselIfNeeded: starting carousel after first data fetch");
-            carouselTask = scheduler.scheduleAtFixedRate(
-                    this::rotateCarousel, CAROUSEL_INTERVAL_SECONDS, CAROUSEL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            carouselTask = scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    rotateCarousel();
+                } catch (Exception e) {
+                    LOG.error("carousel: uncaught exception", e);
+                }
+            }, CAROUSEL_INTERVAL_SECONDS, CAROUSEL_INTERVAL_SECONDS, TimeUnit.SECONDS);
         }
     }
 
@@ -318,7 +328,7 @@ public class HotSearchManager {
         return currentSource;
     }
 
-    public boolean hasContent() {
+    public synchronized boolean hasContent() {
         return !items.isEmpty();
     }
 
