@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 /**
  * Singleton manager for hot search carousel.
- * Supports multiple sources: Baidu, Weibo, Toutiao, Zhihu.
+ * Supports multiple sources: Baidu, Toutiao, Zhihu, Douyin.
  */
 public class HotSearchManager {
 
@@ -149,6 +149,8 @@ public class HotSearchManager {
             switch (source) {
                 case "toutiao" -> reqBuilder.uri(URI.create("https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"));
                 case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
+                case "douyin" -> reqBuilder.uri(URI.create("https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
+                        .header("Referer", "https://www.douyin.com/");
                 default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
             }
 
@@ -157,6 +159,7 @@ public class HotSearchManager {
                 List<HotSearchItem> newItems = switch (source) {
                     case "toutiao" -> parseToutiao(response.body());
                     case "zhihu" -> parseZhihu(response.body());
+                    case "douyin" -> parseDouyin(response.body());
                     default -> parseBaidu(response.body());
                 };
                 if (!newItems.isEmpty()) {
@@ -271,6 +274,29 @@ public class HotSearchManager {
         return newItems;
     }
 
+    private List<HotSearchItem> parseDouyin(String json) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Response: {"word_list":[{"word":"...","hot_value":N,"label":N}]}
+        Pattern wordPattern = Pattern.compile("\"word\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern hotValuePattern = Pattern.compile("\"hot_value\"\\s*:\\s*(\\d+)");
+
+        String[] parts = json.split("\\{\"word\"\\s*:");
+        int rank = 0;
+        for (int i = 1; i < parts.length; i++) {
+            String part = "{\"word\":" + parts[i];
+            Matcher wm = wordPattern.matcher(part);
+            if (wm.find()) {
+                String word = unescapeJson(wm.group(1));
+                String hotTag = "";
+                Matcher hm = hotValuePattern.matcher(part);
+                if (hm.find()) hotTag = hm.group(1);
+                String url = "https://www.douyin.com/search/" + word;
+                newItems.add(new HotSearchItem(rank++, word, hotTag, url));
+            }
+        }
+        return newItems;
+    }
+
     private String unescapeJson(String s) {
         return s.replace("\\u0026", "&")
                 .replace("\\\"", "\"")
@@ -350,8 +376,8 @@ public class HotSearchManager {
 
     // ========== Source labels ==========
 
-    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu"};
-    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu"};
+    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin"};
+    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu", "Douyin"};
 
     public static String getSourceLabel(String value) {
         for (int i = 0; i < SOURCE_VALUES.length; i++) {
