@@ -28,6 +28,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public String pluginMode = "novel";
         // --- Hot search source: "baidu", "toutiao", "zhihu" ---
         public String hotSearchSource = "baidu";
+        // --- Hot search timing (seconds/minutes) ---
+        public int carouselIntervalSeconds = 10;
+        public int refreshIntervalMinutes = 15;
 
         // --- Shared settings ---
         public String lastFilePath = "";
@@ -140,4 +143,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     // --- Hot search source ---
     public String getHotSearchSource() { return myState.hotSearchSource; }
     public void setHotSearchSource(String source) { myState.hotSearchSource = (source != null && !source.isEmpty()) ? source : "baidu"; }
+
+    // --- Hot search timing ---
+    public int getCarouselIntervalSeconds() { return myState.carouselIntervalSeconds; }
+    public void setCarouselIntervalSeconds(int s) { myState.carouselIntervalSeconds = Math.max(3, Math.min(120, s)); }
+
+    public int getRefreshIntervalMinutes() { return myState.refreshIntervalMinutes; }
+    public void setRefreshIntervalMinutes(int m) { myState.refreshIntervalMinutes = Math.max(1, Math.min(120, m)); }
 }

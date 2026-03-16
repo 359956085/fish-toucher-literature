@@ -27,8 +27,9 @@ public class HotSearchManager {
     private static final Logger LOG = Logger.getInstance(HotSearchManager.class);
     private static final HotSearchManager INSTANCE = new HotSearchManager();
 
-    private static final long REFRESH_INTERVAL_MINUTES = 15;
-    private static final long CAROUSEL_INTERVAL_SECONDS = 10;
+    // defaults; actual values read from settings
+    private static final long DEFAULT_REFRESH_INTERVAL_MINUTES = 15;
+    private static final long DEFAULT_CAROUSEL_INTERVAL_SECONDS = 10;
 
     private static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
@@ -76,13 +77,15 @@ public class HotSearchManager {
             return t;
         });
 
+        long refreshMin = DEFAULT_REFRESH_INTERVAL_MINUTES;
+        try { refreshMin = NovelReaderSettings.getInstance().getRefreshIntervalMinutes(); } catch (Exception ignored) {}
         refreshTask = scheduler.scheduleAtFixedRate(() -> {
             try {
                 fetchHotSearch();
             } catch (Exception e) {
                 LOG.error("start: uncaught exception in fetchHotSearch", e);
             }
-        }, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
+        }, 0, refreshMin, TimeUnit.MINUTES);
     }
 
     public synchronized void stop() {
@@ -114,6 +117,16 @@ public class HotSearchManager {
         fireChange();
         if (scheduler != null && running) {
             scheduler.submit(this::fetchHotSearch);
+        }
+    }
+
+    /**
+     * Called when timing settings change. Restarts scheduler with new intervals.
+     */
+    public void applyTimingChanges() {
+        if (running) {
+            stop();
+            start();
         }
     }
 
@@ -276,14 +289,16 @@ public class HotSearchManager {
 
     private synchronized void startCarouselIfNeeded() {
         if (carouselTask == null && scheduler != null && running) {
-            LOG.info("startCarouselIfNeeded: starting carousel after first data fetch");
+            long carouselSec = DEFAULT_CAROUSEL_INTERVAL_SECONDS;
+            try { carouselSec = NovelReaderSettings.getInstance().getCarouselIntervalSeconds(); } catch (Exception ignored) {}
+            LOG.info("startCarouselIfNeeded: starting carousel, interval=" + carouselSec + "s");
             carouselTask = scheduler.scheduleAtFixedRate(() -> {
                 try {
                     rotateCarousel();
                 } catch (Exception e) {
                     LOG.error("carousel: uncaught exception", e);
                 }
-            }, CAROUSEL_INTERVAL_SECONDS, CAROUSEL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            }, carouselSec, carouselSec, TimeUnit.SECONDS);
         }
     }
 

@@ -48,8 +48,10 @@ public class NovelReaderConfigurable implements Configurable {
     private ShortcutKeyField shortcutPrevPageField;
     private ShortcutKeyField shortcutToggleField;
 
-    // Hot search source selector
+    // Hot search settings
     private JComboBox<String> sourceComboBox;
+    private JSpinner carouselIntervalSpinner;
+    private JSpinner refreshIntervalSpinner;
     private JPanel hotSearchSettingsPanel;
 
     // Novel-only settings panel (hidden in hot search mode)
@@ -112,6 +114,18 @@ public class NovelReaderConfigurable implements Configurable {
             }
         }
         hotSearchSettingsPanel.add(sourceComboBox, hgbc);
+
+        hgbc.gridx = 0; hgbc.gridy = 1;
+        hotSearchSettingsPanel.add(new JLabel("Carousel interval (sec):"), hgbc);
+        hgbc.gridx = 1; hgbc.gridy = 1;
+        carouselIntervalSpinner = new JSpinner(new SpinnerNumberModel(settings.getCarouselIntervalSeconds(), 3, 120, 1));
+        hotSearchSettingsPanel.add(carouselIntervalSpinner, hgbc);
+
+        hgbc.gridx = 0; hgbc.gridy = 2;
+        hotSearchSettingsPanel.add(new JLabel("Refresh interval (min):"), hgbc);
+        hgbc.gridx = 1; hgbc.gridy = 2;
+        refreshIntervalSpinner = new JSpinner(new SpinnerNumberModel(settings.getRefreshIntervalMinutes(), 1, 120, 1));
+        hotSearchSettingsPanel.add(refreshIntervalSpinner, hgbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(hotSearchSettingsPanel, gbc);
@@ -309,6 +323,8 @@ public class NovelReaderConfigurable implements Configurable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         return !getSelectedMode().equals(settings.getPluginMode())
                 || !getSelectedSource().equals(settings.getHotSearchSource())
+                || (int) carouselIntervalSpinner.getValue() != settings.getCarouselIntervalSeconds()
+                || (int) refreshIntervalSpinner.getValue() != settings.getRefreshIntervalMinutes()
                 || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
@@ -350,6 +366,16 @@ public class NovelReaderConfigurable implements Configurable {
         settings.setHotSearchSource(newSource);
         if (!newSource.equals(oldSource) && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().switchSource();
+        }
+
+        // Hot search timing
+        int oldCarousel = settings.getCarouselIntervalSeconds();
+        int oldRefresh = settings.getRefreshIntervalMinutes();
+        settings.setCarouselIntervalSeconds((int) carouselIntervalSpinner.getValue());
+        settings.setRefreshIntervalMinutes((int) refreshIntervalSpinner.getValue());
+        if ((oldCarousel != settings.getCarouselIntervalSeconds() || oldRefresh != settings.getRefreshIntervalMinutes())
+                && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().applyTimingChanges();
         }
 
         settings.setStealthCharsPerLine((int) stealthCharsPerLineSpinner.getValue());
@@ -419,6 +445,8 @@ public class NovelReaderConfigurable implements Configurable {
                 break;
             }
         }
+        carouselIntervalSpinner.setValue(settings.getCarouselIntervalSeconds());
+        refreshIntervalSpinner.setValue(settings.getRefreshIntervalMinutes());
         updateNovelComponentsVisibility();
         stealthCharsPerLineSpinner.setValue(settings.getStealthCharsPerLine());
         showInStatusBarCheckBox.setSelected(settings.isShowInStatusBar());
