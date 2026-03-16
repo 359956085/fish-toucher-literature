@@ -2,6 +2,7 @@ package com.fishtoucher.literature.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.fishtoucher.literature.FishToucherBundle;
 import com.fishtoucher.literature.settings.NovelReaderSettings;
 
 import java.net.URI;
@@ -313,7 +314,7 @@ public class HotSearchManager {
     // ========== Getters for UI ==========
 
     public synchronized String getCurrentTitle() {
-        if (items.isEmpty()) return "[Loading hot search...]";
+        if (items.isEmpty()) return "[" + FishToucherBundle.message("hotSearch.loading") + "]";
         return items.get(currentIndex).word();
     }
 

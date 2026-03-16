@@ -11,6 +11,7 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
+import com.fishtoucher.literature.FishToucherBundle;
 import com.fishtoucher.literature.ui.HotSearchManager;
 import com.fishtoucher.literature.ui.NovelReaderManager;
 import org.jetbrains.annotations.Nls;
@@ -26,7 +27,6 @@ public class NovelReaderConfigurable implements Configurable {
 
     // Mode selector
     private JComboBox<String> modeComboBox;
-    private static final String[] MODE_LABELS = {"Novel Reading", "Hot Search Carousel"};
     private static final String[] MODE_VALUES = {"novel", "hotsearch"};
 
     // Stealth mode
@@ -76,22 +76,23 @@ public class NovelReaderConfigurable implements Configurable {
 
         // ========== Plugin Mode Section ==========
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        JLabel modeTitle = new JLabel("Plugin Mode");
+        JLabel modeTitle = new JLabel(FishToucherBundle.message("settings.section.pluginMode"));
         modeTitle.setFont(modeTitle.getFont().deriveFont(Font.BOLD, 12f));
         mainPanel.add(modeTitle, gbc);
 
         gbc.gridwidth = 1;
         gbc.gridx = 0; gbc.gridy = row;
-        mainPanel.add(new JLabel("Mode:"), gbc);
+        mainPanel.add(new JLabel(FishToucherBundle.message("settings.label.mode")), gbc);
         gbc.gridx = 1; gbc.gridy = row++;
-        modeComboBox = new JComboBox<>(MODE_LABELS);
+        String[] modeLabels = {FishToucherBundle.message("settings.mode.novel"), FishToucherBundle.message("settings.mode.hotSearch")};
+        modeComboBox = new JComboBox<>(modeLabels);
         int modeIdx = "hotsearch".equals(settings.getPluginMode()) ? 1 : 0;
         modeComboBox.setSelectedIndex(modeIdx);
         modeComboBox.addActionListener(e -> updateNovelComponentsVisibility());
         mainPanel.add(modeComboBox, gbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        JLabel modeHint = new JLabel("<html><i>Note: Restart IDE or reopen tool window after changing mode.</i></html>");
+        JLabel modeHint = new JLabel(FishToucherBundle.message("settings.hint.modeChange"));
         modeHint.setForeground(com.intellij.ui.JBColor.GRAY);
         mainPanel.add(modeHint, gbc);
 
@@ -103,7 +104,7 @@ public class NovelReaderConfigurable implements Configurable {
         hgbc.fill = GridBagConstraints.HORIZONTAL;
 
         hgbc.gridx = 0; hgbc.gridy = 0; hgbc.gridwidth = 1;
-        hotSearchSettingsPanel.add(new JLabel("Source:"), hgbc);
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.source")), hgbc);
         hgbc.gridx = 1; hgbc.gridy = 0;
         sourceComboBox = new JComboBox<>(HotSearchManager.SOURCE_LABELS);
         String currentSource = settings.getHotSearchSource();
@@ -116,13 +117,13 @@ public class NovelReaderConfigurable implements Configurable {
         hotSearchSettingsPanel.add(sourceComboBox, hgbc);
 
         hgbc.gridx = 0; hgbc.gridy = 1;
-        hotSearchSettingsPanel.add(new JLabel("Carousel interval (sec):"), hgbc);
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.carouselInterval")), hgbc);
         hgbc.gridx = 1; hgbc.gridy = 1;
         carouselIntervalSpinner = new JSpinner(new SpinnerNumberModel(settings.getCarouselIntervalSeconds(), 3, 120, 1));
         hotSearchSettingsPanel.add(carouselIntervalSpinner, hgbc);
 
         hgbc.gridx = 0; hgbc.gridy = 2;
-        hotSearchSettingsPanel.add(new JLabel("Refresh interval (min):"), hgbc);
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.refreshInterval")), hgbc);
         hgbc.gridx = 1; hgbc.gridy = 2;
         refreshIntervalSpinner = new JSpinner(new SpinnerNumberModel(settings.getRefreshIntervalMinutes(), 1, 120, 1));
         hotSearchSettingsPanel.add(refreshIntervalSpinner, hgbc);
@@ -144,19 +145,19 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Stealth Mode
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
-        JLabel stealthTitle = new JLabel("Stealth Mode (Status Bar) \u2014 1 line at a time");
+        JLabel stealthTitle = new JLabel(FishToucherBundle.message("settings.section.stealthMode"));
         stealthTitle.setFont(stealthTitle.getFont().deriveFont(Font.BOLD, 12f));
         novelSettingsPanel.add(stealthTitle, ngbc);
 
         ngbc.gridwidth = 1;
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Chars per line:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.charsPerLine")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         stealthCharsPerLineSpinner = new JSpinner(new SpinnerNumberModel(settings.getStealthCharsPerLine(), 10, 500, 10));
         novelSettingsPanel.add(stealthCharsPerLineSpinner, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
-        showInStatusBarCheckBox = new JCheckBox("Enable status bar display", settings.isShowInStatusBar());
+        showInStatusBarCheckBox = new JCheckBox(FishToucherBundle.message("settings.label.enableStatusBar"), settings.isShowInStatusBar());
         novelSettingsPanel.add(showInStatusBarCheckBox, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
@@ -164,19 +165,19 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Normal Mode
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
-        JLabel normalTitle = new JLabel("Normal Mode (Tool Window) \u2014 multi-line display");
+        JLabel normalTitle = new JLabel(FishToucherBundle.message("settings.section.normalMode"));
         normalTitle.setFont(normalTitle.getFont().deriveFont(Font.BOLD, 12f));
         novelSettingsPanel.add(normalTitle, ngbc);
 
         ngbc.gridwidth = 1;
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Lines per page:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.linesPerPage")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         normalLinesPerPageSpinner = new JSpinner(new SpinnerNumberModel(settings.getNormalLinesPerPage(), 1, 50, 1));
         novelSettingsPanel.add(normalLinesPerPageSpinner, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Chars per line:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.charsPerLine")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         normalCharsPerLineSpinner = new JSpinner(new SpinnerNumberModel(settings.getNormalCharsPerLine(), 10, 500, 10));
         novelSettingsPanel.add(normalCharsPerLineSpinner, ngbc);
@@ -186,28 +187,28 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Shared Settings
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
-        JLabel sharedTitle = new JLabel("Shared Settings");
+        JLabel sharedTitle = new JLabel(FishToucherBundle.message("settings.section.shared"));
         sharedTitle.setFont(sharedTitle.getFont().deriveFont(Font.BOLD, 12f));
         novelSettingsPanel.add(sharedTitle, ngbc);
 
         ngbc.gridwidth = 1;
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Font family:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.fontFamily")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         fontFamilyField = new JTextField(settings.getFontFamily(), 20);
         novelSettingsPanel.add(fontFamilyField, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Font size:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.fontSize")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         fontSizeSpinner = new JSpinner(new SpinnerNumberModel(settings.getFontSize(), 8, 30, 1));
         novelSettingsPanel.add(fontSizeSpinner, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow; ngbc.gridwidth = 1;
-        novelSettingsPanel.add(new JLabel("Current file:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.currentFile")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++; ngbc.weightx = 1.0;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
-        currentFileLabel = new JLabel(filePath.isEmpty() ? "No file loaded" : filePath);
+        currentFileLabel = new JLabel(filePath.isEmpty() ? FishToucherBundle.message("settings.label.noFileLoaded") : filePath);
         currentFileLabel.setForeground(filePath.isEmpty() ? com.intellij.ui.JBColor.GRAY : com.intellij.ui.JBColor.foreground());
         currentFileLabel.setToolTipText(filePath.isEmpty() ? null : filePath);
         novelSettingsPanel.add(currentFileLabel, ngbc);
@@ -222,31 +223,31 @@ public class NovelReaderConfigurable implements Configurable {
 
         // Keyboard shortcuts
         ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
-        JLabel shortcutTitle = new JLabel("Keyboard Shortcuts (click field and press key combination, Esc to clear):");
+        JLabel shortcutTitle = new JLabel(FishToucherBundle.message("settings.section.shortcuts"));
         shortcutTitle.setFont(shortcutTitle.getFont().deriveFont(Font.BOLD, 12f));
         novelSettingsPanel.add(shortcutTitle, ngbc);
 
         ngbc.gridwidth = 1;
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Open file:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.shortcutOpen")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutOpenField = new ShortcutKeyField(settings.getShortcutOpen());
         novelSettingsPanel.add(shortcutOpenField, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Next page:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.shortcutNextPage")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutNextPageField = new ShortcutKeyField(settings.getShortcutNextPage());
         novelSettingsPanel.add(shortcutNextPageField, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Previous page:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.shortcutPrevPage")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutPrevPageField = new ShortcutKeyField(settings.getShortcutPrevPage());
         novelSettingsPanel.add(shortcutPrevPageField, ngbc);
 
         ngbc.gridx = 0; ngbc.gridy = nrow;
-        novelSettingsPanel.add(new JLabel("Toggle visibility:"), ngbc);
+        novelSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.shortcutToggle")), ngbc);
         ngbc.gridx = 1; ngbc.gridy = nrow++;
         shortcutToggleField = new ShortcutKeyField(settings.getShortcutToggle());
         novelSettingsPanel.add(shortcutToggleField, ngbc);
@@ -263,24 +264,24 @@ public class NovelReaderConfigurable implements Configurable {
 
     private @NotNull JPanel getJPanel() {
         JPanel importPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        JButton importFileButton = new JButton("Import File...");
-        importFileButton.setToolTipText("Select a novel file (.txt/.text) to load");
+        JButton importFileButton = new JButton(FishToucherBundle.message("settings.button.importFile"));
+        importFileButton.setToolTipText(FishToucherBundle.message("settings.tooltip.importFile"));
         importFileButton.addActionListener(e -> {
             FileChooserDescriptor descriptor = new FileChooserDescriptor(true, false, false, false, false, false)
                     .withFileFilter(file -> {
                         String ext = file.getExtension();
                         return ext != null && (ext.equalsIgnoreCase("txt") || ext.equalsIgnoreCase("text"));
                     })
-                    .withTitle("Select File")
-                    .withDescription("Choose a .txt / .text file to read");
+                    .withTitle(FishToucherBundle.message("settings.dialog.selectFile"))
+                    .withDescription(FishToucherBundle.message("settings.dialog.selectFileDesc"));
             VirtualFile[] files = FileChooser.chooseFiles(descriptor, null, null);
             if (files.length > 0) {
                 boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
                 if (success) {
-                    Messages.showInfoMessage("File loaded successfully: " + files[0].getName(), "Fish Toucher");
+                    Messages.showInfoMessage(FishToucherBundle.message("settings.dialog.fileLoadSuccess", files[0].getName()), "Fish Toucher");
                     updateCurrentFileLabel();
                 } else {
-                    Messages.showErrorDialog("Failed to load the file. Please check if the file is a valid text file.", "Fish Toucher");
+                    Messages.showErrorDialog(FishToucherBundle.message("settings.dialog.fileLoadFailed"), "Fish Toucher");
                 }
             }
         });
@@ -308,7 +309,7 @@ public class NovelReaderConfigurable implements Configurable {
         if (currentFileLabel == null) return;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
         if (filePath.isEmpty()) {
-            currentFileLabel.setText("No file loaded");
+            currentFileLabel.setText(FishToucherBundle.message("settings.label.noFileLoaded"));
             currentFileLabel.setForeground(com.intellij.ui.JBColor.GRAY);
             currentFileLabel.setToolTipText(null);
         } else {
