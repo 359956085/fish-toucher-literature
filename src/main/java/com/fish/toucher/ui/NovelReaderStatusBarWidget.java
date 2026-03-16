@@ -1,11 +1,11 @@
-package com.fishtoucher.literature.ui;
+package com.fish.toucher.ui;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.util.Consumer;
-import com.fishtoucher.literature.settings.NovelReaderSettings;
+import com.fish.toucher.settings.NovelReaderSettings;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -99,7 +99,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     @Override
     public @Nullable String getTooltipText() {
         if (NovelReaderSettings.getInstance().isHotSearchMode()) {
-            return "Hot search carousel | Click to next | Fish Toucher";
+            return "Hot search carousel | Click to details | Fish Toucher";
         }
         return "Stealth mode | Click to next line | Fish Toucher";
     }

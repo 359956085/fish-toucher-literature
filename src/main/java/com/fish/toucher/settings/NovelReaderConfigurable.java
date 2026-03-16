@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.settings;
+package com.fish.toucher.settings;
 
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import com.intellij.openapi.actionSystem.Shortcut;
@@ -11,9 +11,9 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
-import com.fishtoucher.literature.FishToucherBundle;
-import com.fishtoucher.literature.ui.HotSearchManager;
-import com.fishtoucher.literature.ui.NovelReaderManager;
+import com.fish.toucher.FishToucherBundle;
+import com.fish.toucher.ui.HotSearchManager;
+import com.fish.toucher.ui.NovelReaderManager;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

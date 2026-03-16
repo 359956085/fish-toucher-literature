@@ -1,9 +1,9 @@
-package com.fishtoucher.literature.actions;
+package com.fish.toucher.actions;
 
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.fishtoucher.literature.ui.NovelReaderManager;
+import com.fish.toucher.ui.NovelReaderManager;
 import org.jetbrains.annotations.NotNull;
 
 public class PrevPageAction extends AnAction {

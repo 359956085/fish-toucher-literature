@@ -1,4 +1,4 @@
-package com.fishtoucher.literature;
+package com.fish.toucher;
 
 import com.intellij.DynamicBundle;
 import org.jetbrains.annotations.Nls;

@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.settings;
+package com.fish.toucher.settings;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;

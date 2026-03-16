@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.ui;
+package com.fish.toucher.ui;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;

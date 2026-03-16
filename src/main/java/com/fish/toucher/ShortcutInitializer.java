@@ -1,4 +1,4 @@
-package com.fishtoucher.literature;
+package com.fish.toucher;
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -13,8 +13,8 @@ import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
-import com.fishtoucher.literature.settings.NovelReaderSettings;
-import com.fishtoucher.literature.ui.HotSearchManager;
+import com.fish.toucher.settings.NovelReaderSettings;
+import com.fish.toucher.ui.HotSearchManager;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;

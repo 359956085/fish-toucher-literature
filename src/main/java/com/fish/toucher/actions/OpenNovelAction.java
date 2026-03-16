@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.actions;
+package com.fish.toucher.actions;
 
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -7,7 +7,7 @@ import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.fishtoucher.literature.ui.NovelReaderManager;
+import com.fish.toucher.ui.NovelReaderManager;
 import org.jetbrains.annotations.NotNull;
 
 public class OpenNovelAction extends AnAction {
