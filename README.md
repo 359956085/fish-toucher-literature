@@ -104,10 +104,14 @@ The plugin zip will be at `build/distributions/`.
 
 ```
 src/main/
-├── java/com/fishtoucher/literature/
+├── java/com/fish/toucher/
 │   ├── FishToucherBundle.java              # i18n bundle
 │   ├── ShortcutInitializer.java            # Auto-start on project open
-│   ├── actions/                            # Open, NextPage, PrevPage, Toggle
+│   ├── actions/
+│   │   ├── OpenNovelAction.java            # Open novel file
+│   │   ├── NextPageAction.java             # Next page
+│   │   ├── PrevPageAction.java             # Previous page
+│   │   └── ToggleVisibilityAction.java     # Boss key toggle
 │   ├── settings/
 │   │   ├── NovelReaderSettings.java        # Persistent settings
 │   │   ├── NovelReaderConfigurable.java    # Settings UI
@@ -122,9 +126,9 @@ src/main/
 │       └── NovelReaderWidgetFactory.java
 └── resources/
     ├── META-INF/
-    │   ├── plugin.xml
-    │   ├── pluginIcon.svg
-    │   └── book_icon.svg
+    │   ├── plugin.xml                      # Plugin descriptor
+    │   ├── pluginIcon.svg                  # Plugin icon (40x40)
+    │   └── book_icon.svg                   # Tool window icon (13x13)
     └── messages/
         ├── FishToucherBundle.properties        # English
         └── FishToucherBundle_zh.properties     # Chinese
