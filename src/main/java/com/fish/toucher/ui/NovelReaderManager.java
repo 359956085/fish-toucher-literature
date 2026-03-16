@@ -1,8 +1,8 @@
-package com.fishtoucher.literature.ui;
+package com.fish.toucher.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.fishtoucher.literature.settings.NovelReaderSettings;
+import com.fish.toucher.settings.NovelReaderSettings;
 
 import java.io.File;
 import java.io.FileInputStream;

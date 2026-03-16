@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.settings;
+package com.fish.toucher.settings;
 
 import javax.swing.*;
 import java.awt.*;

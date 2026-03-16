@@ -1,4 +1,4 @@
-package com.fishtoucher.literature.ui;
+package com.fish.toucher.ui;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
@@ -9,7 +9,7 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
-import com.fishtoucher.literature.settings.NovelReaderSettings;
+import com.fish.toucher.settings.NovelReaderSettings;
 import org.jetbrains.annotations.NotNull;
 
 public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAware {

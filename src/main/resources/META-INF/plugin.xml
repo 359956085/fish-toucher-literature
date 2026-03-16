@@ -105,22 +105,22 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <statusBarWidgetFactory id="NovelReaderWidget"
-                                implementation="com.fishtoucher.literature.ui.NovelReaderWidgetFactory"
+                                implementation="com.fish.toucher.ui.NovelReaderWidgetFactory"
                                 order="first"/>
         <toolWindow id="Fish Toucher"
                     anchor="right"
                     secondary="true"
-                    factoryClass="com.fishtoucher.literature.ui.NovelReaderToolWindowFactory"
+                    factoryClass="com.fish.toucher.ui.NovelReaderToolWindowFactory"
                     icon="/META-INF/book_icon.svg"/>
         <applicationConfigurable
                 parentId="tools"
-                instance="com.fishtoucher.literature.settings.NovelReaderConfigurable"
-                id="com.fishtoucher.literature.settings.NovelReaderConfigurable"
+                instance="com.fish.toucher.settings.NovelReaderConfigurable"
+                id="com.fish.toucher.settings.NovelReaderConfigurable"
                 displayName="Fish Toucher"/>
         <applicationService
-                serviceImplementation="com.fishtoucher.literature.settings.NovelReaderSettings"/>
+                serviceImplementation="com.fish.toucher.settings.NovelReaderSettings"/>
         <postStartupActivity
-                implementation="com.fishtoucher.literature.ShortcutInitializer"/>
+                implementation="com.fish.toucher.ShortcutInitializer"/>
         <notificationGroup id="Fish Toucher"
                            displayType="STICKY_BALLOON"/>
     </extensions>
@@ -129,19 +129,19 @@
         <group id="NovelReader.ActionGroup" text="Novel Reader" description="Novel reader actions">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <action id="NovelReader.Open"
-                    class="com.fishtoucher.literature.actions.OpenNovelAction"
+                    class="com.fish.toucher.actions.OpenNovelAction"
                     text="Open Novel File"
                     description="Open a local novel text file"/>
             <action id="NovelReader.NextPage"
-                    class="com.fishtoucher.literature.actions.NextPageAction"
+                    class="com.fish.toucher.actions.NextPageAction"
                     text="Next Page"
                     description="Go to next page"/>
             <action id="NovelReader.PrevPage"
-                    class="com.fishtoucher.literature.actions.PrevPageAction"
+                    class="com.fish.toucher.actions.PrevPageAction"
                     text="Previous Page"
                     description="Go to previous page"/>
             <action id="NovelReader.Toggle"
-                    class="com.fishtoucher.literature.actions.ToggleVisibilityAction"
+                    class="com.fish.toucher.actions.ToggleVisibilityAction"
                     text="Fish Toucher"
                     description="Show/Hide novel reader panel"/>
         </group>

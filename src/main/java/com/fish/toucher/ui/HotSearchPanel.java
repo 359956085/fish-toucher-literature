@@ -1,10 +1,10 @@
-package com.fishtoucher.literature.ui;
+package com.fish.toucher.ui;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
-import com.fishtoucher.literature.FishToucherBundle;
-import com.fishtoucher.literature.settings.NovelReaderSettings;
+import com.fish.toucher.FishToucherBundle;
+import com.fish.toucher.settings.NovelReaderSettings;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
