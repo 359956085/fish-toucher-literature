@@ -32,7 +32,10 @@
       "Bash(curl -s \"https://api.zhihu.com/topstory/hot-lists/total?limit=50\" -H \"User-Agent: Mozilla/5.0\")",
       "Bash(curl -s -o /tmp/baidu_hot.json -w \"%{http_code}\" \"https://top.baidu.com/api/board?platform=wise&tab=realtime\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\")",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://www.douyin.com/aweme/v1/web/hot/search/list/\")",
+      "Bash(curl -s -v -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" \"https://www.douyin.com/aweme/v1/web/hot/search/list/\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" -H \"Referer: https://www.douyin.com/\" \"https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/\")"
     ]
   }
 }
