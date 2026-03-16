@@ -101,7 +101,7 @@
                                 implementation="com.fishtoucher.literature.ui.NovelReaderWidgetFactory"
                                 order="first"/>
         <toolWindow id="Fish Toucher"
-                    anchor="bottom"
+                    anchor="right"
                     secondary="true"
                     factoryClass="com.fishtoucher.literature.ui.NovelReaderToolWindowFactory"
                     icon="/META-INF/book_icon.svg"/>
