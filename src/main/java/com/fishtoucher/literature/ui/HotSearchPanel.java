@@ -3,6 +3,7 @@ package com.fishtoucher.literature.ui;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
+import com.fishtoucher.literature.FishToucherBundle;
 import com.fishtoucher.literature.settings.NovelReaderSettings;
 
 import javax.swing.*;
@@ -84,7 +85,7 @@ public class HotSearchPanel extends JPanel {
             }
         }
         sourceCombo.setFocusable(false);
-        sourceCombo.setToolTipText("Switch hot search source");
+        sourceCombo.setToolTipText(FishToucherBundle.message("hotSearch.tooltip.switchSource"));
         sourceCombo.addActionListener(e -> {
             int idx = sourceCombo.getSelectedIndex();
             if (idx >= 0 && idx < HotSearchManager.SOURCE_VALUES.length) {
@@ -99,7 +100,7 @@ public class HotSearchPanel extends JPanel {
         refreshBtn.setMargin(new Insets(1, 4, 1, 4));
         refreshBtn.setFont(refreshBtn.getFont().deriveFont(12f));
         refreshBtn.setFocusable(false);
-        refreshBtn.setToolTipText("Refresh hot search");
+        refreshBtn.setToolTipText(FishToucherBundle.message("hotSearch.tooltip.refresh"));
         refreshBtn.addActionListener(e -> HotSearchManager.getInstance().manualRefresh());
         navPanel.add(refreshBtn);
         bottomBar.add(navPanel, BorderLayout.WEST);
@@ -141,7 +142,7 @@ public class HotSearchPanel extends JPanel {
 
         if (!manager.hasContent()) {
             listModel.clear();
-            statusLabel.setText("Loading...");
+            statusLabel.setText(FishToucherBundle.message("hotSearch.status.loading"));
             return;
         }
 
@@ -159,7 +160,7 @@ public class HotSearchPanel extends JPanel {
 
         String refreshTime = manager.getLastRefreshTime();
         String sourceLabel = HotSearchManager.getSourceLabel(manager.getCurrentSource());
-        statusLabel.setText(sourceLabel + " | " + items.size() + " items | Updated " + refreshTime);
+        statusLabel.setText(FishToucherBundle.message("hotSearch.status.format", sourceLabel, items.size(), refreshTime));
     }
 
     private void openInBrowser(String url) {
