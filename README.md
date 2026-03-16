@@ -1,117 +1,135 @@
-# 📖 Fish Toucher — IntelliJ IDEA Plugin
+# Fish Toucher — IntelliJ IDEA Plugin
 
-在 IntelliJ IDEA 中隐秘阅读本地小说 (TXT) 文件的插件，支持 IDEA **2024.2 (Build 242.x)** 以上版本。
+A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search trends while pretending to work.
 
-## ✨ 功能特性
+一款适用于 IntelliJ IDEA 的摸鱼插件 — 在假装工作的同时看小说或浏览热搜。
+
+**Supported IDEs:** IntelliJ IDEA 2024.2+ (Build 242 ~ 253.*)
+
+## Features / 功能特性
+
+### Novel Reading Mode / 小说阅读模式
+
+| Feature | Description |
+|---------|-------------|
+| **Stealth Mode** | One line of text in the status bar — looks like a normal status message. Click to advance. |
+| **Normal Mode** | Multi-line display in tool window, disguised as build log output, with page navigation and progress slider. |
+| **Unified Progress** | Both modes share the same reading position per file. |
+| **Boss Key** | Instantly hide all content with a keyboard shortcut. |
+| **Auto Charset** | Automatically detects UTF-8 / GBK / UTF-16 encoding. |
+| **Customizable** | Font, font size, chars per line, lines per page — all configurable. |
 
 | 功能 | 说明 |
 |------|------|
-| **隐蔽阅读** | 底部 Tool Window 伪装成构建日志输出，不引人注目 |
-| **状态栏阅读** | 小说内容显示在底部状态栏，极度隐蔽 |
-| **一键隐藏** | `Alt+Shift+H` 瞬间隐藏内容，显示伪造的 "Build successful" 信息 |
-| **快捷翻页** | `Alt+Shift+←/→` 上一页/下一页 |
-| **阅读进度** | 自动保存每本书的阅读位置，下次打开自动恢复 |
-| **进度条** | 拖动滑块快速跳转到任意位置 |
-| **编码自适应** | 自动识别 UTF-8 / GBK 编码，完美支持中文小说 |
-| **可配置** | 每页行数、字体、字号均可自定义 |
+| **隐秘模式** | 状态栏显示一行文本，外观与普通状态信息无异，点击翻页 |
+| **普通模式** | 工具窗口多行显示，伪装成构建日志，支持翻页和进度滑块 |
+| **统一进度** | 两种模式共用统一阅读进度 |
+| **老板键** | 快捷键一键隐藏所有阅读内容 |
+| **编码自适应** | 自动识别 UTF-8 / GBK / UTF-16 编码 |
+| **可配置** | 字体、字号、每行字数、每页行数均可自定义 |
 
-## ⌨️ 快捷键
+### Hot Search Carousel Mode / 热搜轮播模式
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Alt + Shift + N` | 打开小说文件 |
-| `Alt + Shift + →` | 下一页 |
-| `Alt + Shift + ←` | 上一页 |
-| `Alt + Shift + H` | 隐藏/显示内容 (老板键) |
+| Feature | Description |
+|---------|-------------|
+| **Multiple Sources** | Baidu, Toutiao, Zhihu, Douyin, Kuaishou — switchable in settings or tool window. |
+| **Real-time Data** | Auto-refreshing hot search trends displayed in both tool window and status bar. |
+| **Click to Open** | Click any hot search title to open it in the default browser. |
+| **Carousel** | Automatic rotation with configurable interval. |
 
-## 🛠️ 构建方式
+| 功能 | 说明 |
+|------|------|
+| **多热搜源** | 百度、今日头条、知乎、抖音、快手，可在设置或工具窗口中切换 |
+| **实时数据** | 自动刷新热搜榜单，同时显示在工具窗口和状态栏 |
+| **点击打开** | 点击热搜标题直接在浏览器中打开 |
+| **轮播** | 自动轮播，间隔可自定义 |
 
-### 前置条件
-- JDK 21+
-- Gradle 8.13+ (项目包含 wrapper 配置)
-- 使用 **IntelliJ Platform Gradle Plugin 2.11.0** (新版 2.x)
-- 目标平台: **IntelliJ IDEA 2025.3** (Build 253.x)
+### i18n / 国际化
 
-> ⚠️ 从 2025.3 起，IntelliJ IDEA Community Edition (IC) 构建不再可用，
-> 本项目使用 `intellijIdea("2025.3")` 作为统一平台依赖。
+Settings UI automatically follows IntelliJ IDEA's language setting (Chinese / English).
 
-### 构建插件
+设置界面自动跟随 IDEA 语言设置（中文 / 英文）。
 
-**方式一：使用 Gradle Wrapper (推荐)**
+## Keyboard Shortcuts / 快捷键
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + Shift + Alt + M` | Open novel file / 打开小说文件 |
+| `Alt + Shift + Right` | Next page / 下一页 |
+| `Alt + Shift + Left` | Previous page / 上一页 |
+| `Alt + Shift + H` | Toggle visibility (Boss key) / 显示/隐藏 (老板键) |
+
+All shortcuts are customizable in Settings → Tools → Fish Toucher.
+
+所有快捷键均可在 Settings → Tools → Fish Toucher 中自定义。
+
+## Installation / 安装
+
+### From Disk / 本地安装
+
+1. Download or build the plugin `.zip` file
+2. Open IDEA → `Settings` → `Plugins` → gear icon → `Install Plugin from Disk...`
+3. Select the `.zip` file and restart IDEA
+
+### Build from Source / 从源码构建
+
+**Requirements:** JDK 21+, Gradle 8.13+
+
 ```bash
-cd fish-toucher-literature
-# 如果没有 gradlew，先生成:
-gradle wrapper --gradle-version 8.13
-# 然后构建:
 ./gradlew buildPlugin
 ```
 
-**方式二：直接使用本地 Gradle**
-```bash
-cd fish-toucher-literature
-gradle buildPlugin
-```
+The plugin zip will be at `build/distributions/`.
 
-构建完成后，插件 zip 包位于:
-```
-build/distributions/fish-toucher-literature-1.0.0.zip
-```
+## Settings / 设置
 
-### 安装插件
-1. 打开 IDEA → `Settings` → `Plugins`
-2. 点击齿轮图标 ⚙ → `Install Plugin from Disk...`
-3. 选择构建生成的 `.zip` 文件
-4. 重启 IDEA
+`Settings → Tools → Fish Toucher`
 
-## 📖 使用方法
+**Plugin Mode / 插件模式**
+- Switch between Novel Reading and Hot Search Carousel modes
+- 在小说阅读和热搜轮播模式之间切换
 
-1. **打开小说**: `Alt+Shift+N` 或 菜单 `Tools → Novel Reader → Open Novel File`
-2. **翻页**: 使用快捷键 `Alt+Shift+←/→`，或在底部面板点击 ◀ ▶ 按钮
-3. **快速跳转**: 拖动进度条滑块
-4. **老板来了**: 按 `Alt+Shift+H` 立即隐藏内容，面板会显示 "Build completed successfully"
-5. **状态栏阅读**: 也可以在状态栏看到当前内容，点击状态栏文字可翻页
+**Novel Settings / 小说设置**
+- Stealth mode: chars per line, status bar toggle
+- Normal mode: lines per page, chars per line
+- Font family and size
+- Keyboard shortcuts
 
-## ⚙️ 设置
+**Hot Search Settings / 热搜设置**
+- Source: Baidu / Toutiao / Zhihu / Douyin / Kuaishou
+- Carousel interval (3–120 sec)
+- Data refresh interval (1–120 min)
 
-`Settings → Tools → Fish Toucher` 中可以调整:
-- 每页显示行数 (1-50)
-- 字体名称 (推荐: Microsoft YaHei, SimSun, Source Han Sans)
-- 字号大小
-- 是否在状态栏显示
-
-## 📁 项目结构
+## Project Structure / 项目结构
 
 ```
-fish-toucher-literature/
-├── build.gradle.kts                 # Gradle 构建配置 (Platform Plugin 2.x)
-├── settings.gradle.kts              # 含 pluginManagement
-├── gradle.properties
-├── gradle/wrapper/
-│   └── gradle-wrapper.properties    # Gradle 8.13
-└── src/main/
-    ├── java/com/novelreader/
-    │   ├── actions/
-    │   │   ├── OpenNovelAction.java      # 打开文件
-    │   │   ├── NextPageAction.java       # 下一页
-    │   │   ├── PrevPageAction.java       # 上一页
-    │   │   └── ToggleVisibilityAction.java # 隐藏/显示
-    │   ├── settings/
-    │   │   ├── NovelReaderSettings.java  # 持久化设置
-    │   │   └── NovelReaderConfigurable.java # 设置界面
-    │   └── ui/
-    │       ├── NovelReaderManager.java   # 核心管理器
-    │       ├── NovelReaderPanel.java     # 阅读面板 (伪装成日志)
-    │       ├── NovelReaderToolWindowFactory.java
-    │       ├── NovelReaderStatusBarWidget.java
-    │       └── NovelReaderWidgetFactory.java
-    └── resources/META-INF/
-        ├── plugin.xml                    # 插件描述文件
-        └── book_icon.svg                 # 图标
+src/main/
+├── java/com/fishtoucher/literature/
+│   ├── FishToucherBundle.java              # i18n bundle
+│   ├── ShortcutInitializer.java            # Auto-start on project open
+│   ├── actions/                            # Open, NextPage, PrevPage, Toggle
+│   ├── settings/
+│   │   ├── NovelReaderSettings.java        # Persistent settings
+│   │   ├── NovelReaderConfigurable.java    # Settings UI
+│   │   └── ShortcutKeyField.java           # Custom shortcut input
+│   └── ui/
+│       ├── NovelReaderManager.java         # Novel reading core
+│       ├── NovelReaderPanel.java           # Novel tool window panel
+│       ├── HotSearchManager.java           # Hot search data & carousel
+│       ├── HotSearchPanel.java             # Hot search tool window panel
+│       ├── NovelReaderToolWindowFactory.java
+│       ├── NovelReaderStatusBarWidget.java
+│       └── NovelReaderWidgetFactory.java
+└── resources/
+    ├── META-INF/
+    │   ├── plugin.xml
+    │   ├── pluginIcon.svg
+    │   └── book_icon.svg
+    └── messages/
+        ├── FishToucherBundle.properties        # English
+        └── FishToucherBundle_zh.properties     # Chinese
 ```
 
-## 💡 隐蔽技巧
+## License
 
-- Tool Window 标题为 "Fish Toucher"，可以右键改名为 "Build Output" 等更隐蔽的名字
-- 隐藏状态下显示虚假的构建成功信息
-- 状态栏模式下内容自动截断为 60 字符，不会太显眼
-- 可在设置中关闭状态栏显示，仅在底部面板中阅读
+MIT
