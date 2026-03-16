@@ -29,7 +29,8 @@
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://edith.xiaohongshu.com/api/sns/v1/search/hot_list\")",
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://edith.xiaohongshu.com/api/sns/v10/search/hot_list\")",
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(iPhone; CPU iPhone OS 16_6 like Mac OS X\\)\" \"https://edith.xiaohongshu.com/api/sns/v1/search/hot_list\")",
-      "Bash(curl -s \"https://api.zhihu.com/topstory/hot-lists/total?limit=50\" -H \"User-Agent: Mozilla/5.0\")"
+      "Bash(curl -s \"https://api.zhihu.com/topstory/hot-lists/total?limit=50\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -s -o /tmp/baidu_hot.json -w \"%{http_code}\" \"https://top.baidu.com/api/board?platform=wise&tab=realtime\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\")"
     ]
   }
 }

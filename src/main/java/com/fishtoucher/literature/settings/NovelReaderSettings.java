@@ -26,7 +26,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
         // --- Plugin mode: "novel" or "hotsearch" ---
         public String pluginMode = "novel";
-        // --- Hot search source: "baidu", "weibo", "toutiao", "zhihu" ---
+        // --- Hot search source: "baidu", "toutiao", "zhihu" ---
         public String hotSearchSource = "baidu";
 
         // --- Shared settings ---
