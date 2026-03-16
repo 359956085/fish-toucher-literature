@@ -72,8 +72,29 @@ public class HotSearchPanel extends JPanel {
         JPanel bottomBar = new JPanel(new BorderLayout(5, 0));
         bottomBar.setBorder(new EmptyBorder(3, 8, 3, 8));
 
-        // Left: refresh button
-        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        // Left: source selector + refresh button
+        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+
+        JComboBox<String> sourceCombo = new JComboBox<>(HotSearchManager.SOURCE_LABELS);
+        String currentSource = NovelReaderSettings.getInstance().getHotSearchSource();
+        for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
+            if (HotSearchManager.SOURCE_VALUES[i].equals(currentSource)) {
+                sourceCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+        sourceCombo.setFocusable(false);
+        sourceCombo.setToolTipText("Switch hot search source");
+        sourceCombo.addActionListener(e -> {
+            int idx = sourceCombo.getSelectedIndex();
+            if (idx >= 0 && idx < HotSearchManager.SOURCE_VALUES.length) {
+                String newSource = HotSearchManager.SOURCE_VALUES[idx];
+                NovelReaderSettings.getInstance().setHotSearchSource(newSource);
+                HotSearchManager.getInstance().switchSource();
+            }
+        });
+        navPanel.add(sourceCombo);
+
         JButton refreshBtn = new JButton("\uD83D\uDD04");
         refreshBtn.setMargin(new Insets(1, 4, 1, 4));
         refreshBtn.setFont(refreshBtn.getFont().deriveFont(12f));
