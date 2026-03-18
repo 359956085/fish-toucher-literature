@@ -58,10 +58,6 @@
     <ul>
         <li>New: Added Douyin and Kuaishou hot search sources<br/>
             新增：抖音、快手热搜源</li>
-        <li>New: Settings UI supports Chinese and English, synced with IDEA language<br/>
-            新增：设置界面支持中英文国际化，跟随 IDEA 语言自动切换</li>
-        <li>New: Hot search source labels localized (百度/今日头条/知乎/抖音/快手)<br/>
-            新增：热搜来源选择文本适配国际化</li>
     </ul>
     <b>2.1.0</b>
     <ul>
