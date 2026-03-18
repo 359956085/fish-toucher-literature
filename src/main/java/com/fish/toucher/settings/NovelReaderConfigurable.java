@@ -53,6 +53,7 @@ public class NovelReaderConfigurable implements Configurable {
     private JSpinner carouselIntervalSpinner;
     private JSpinner refreshIntervalSpinner;
     private JComboBox<String> xTrendsRegionComboBox;
+    private JComboBox<String> googleTrendsGeoComboBox;
     private JPanel hotSearchSettingsPanel;
 
     static final String[] X_REGION_SLUGS = {
@@ -64,6 +65,16 @@ public class NovelReaderConfigurable implements Configurable {
             "Worldwide", "United States", "Japan", "Korea", "Russia", "France",
             "Germany", "Italy", "Spain", "Brazil", "India", "Indonesia",
             "Thailand", "Vietnam", "Saudi Arabia", "Portugal"
+    };
+    static final String[] GOOGLE_GEO_CODES = {
+            "US", "JP", "KR", "CN", "RU", "FR", "DE", "IT", "ES", "BR",
+            "IN", "ID", "TH", "VN", "SA", "PT", "GB", "AU", "CA", "MX"
+    };
+    static final String[] GOOGLE_GEO_LABELS = {
+            "United States", "Japan", "Korea", "China", "Russia", "France",
+            "Germany", "Italy", "Spain", "Brazil", "India", "Indonesia",
+            "Thailand", "Vietnam", "Saudi Arabia", "Portugal",
+            "United Kingdom", "Australia", "Canada", "Mexico"
     };
 
     // Novel-only settings panel (hidden in hot search mode)
@@ -152,6 +163,19 @@ public class NovelReaderConfigurable implements Configurable {
             }
         }
         hotSearchSettingsPanel.add(xTrendsRegionComboBox, hgbc);
+
+        hgbc.gridx = 0; hgbc.gridy = 4;
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.googleTrendsGeo")), hgbc);
+        hgbc.gridx = 1; hgbc.gridy = 4;
+        googleTrendsGeoComboBox = new JComboBox<>(GOOGLE_GEO_LABELS);
+        String currentGeo = settings.getGoogleTrendsGeo();
+        for (int i = 0; i < GOOGLE_GEO_CODES.length; i++) {
+            if (GOOGLE_GEO_CODES[i].equals(currentGeo)) {
+                googleTrendsGeoComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
+        hotSearchSettingsPanel.add(googleTrendsGeoComboBox, hgbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(hotSearchSettingsPanel, gbc);
@@ -336,6 +360,12 @@ public class NovelReaderConfigurable implements Configurable {
                 ? X_REGION_SLUGS[idx] : "";
     }
 
+    private String getSelectedGoogleGeo() {
+        int idx = googleTrendsGeoComboBox.getSelectedIndex();
+        return (idx >= 0 && idx < GOOGLE_GEO_CODES.length)
+                ? GOOGLE_GEO_CODES[idx] : "US";
+    }
+
     private void updateCurrentFileLabel() {
         if (currentFileLabel == null) return;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
@@ -358,6 +388,7 @@ public class NovelReaderConfigurable implements Configurable {
                 || (int) carouselIntervalSpinner.getValue() != settings.getCarouselIntervalSeconds()
                 || (int) refreshIntervalSpinner.getValue() != settings.getRefreshIntervalMinutes()
                 || !getSelectedXRegion().equals(settings.getXTrendsRegion())
+                || !getSelectedGoogleGeo().equals(settings.getGoogleTrendsGeo())
                 || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
@@ -416,6 +447,15 @@ public class NovelReaderConfigurable implements Configurable {
         settings.setXTrendsRegion(getSelectedXRegion());
         if (!oldRegion.equals(settings.getXTrendsRegion())
                 && "x".equals(settings.getHotSearchSource())
+                && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().switchSource();
+        }
+
+        // Google Trends geo
+        String oldGeo = settings.getGoogleTrendsGeo();
+        settings.setGoogleTrendsGeo(getSelectedGoogleGeo());
+        if (!oldGeo.equals(settings.getGoogleTrendsGeo())
+                && "google".equals(settings.getHotSearchSource())
                 && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().switchSource();
         }
@@ -493,6 +533,13 @@ public class NovelReaderConfigurable implements Configurable {
         for (int i = 0; i < X_REGION_SLUGS.length; i++) {
             if (X_REGION_SLUGS[i].equals(region)) {
                 xTrendsRegionComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
+        String geo = settings.getGoogleTrendsGeo();
+        for (int i = 0; i < GOOGLE_GEO_CODES.length; i++) {
+            if (GOOGLE_GEO_CODES[i].equals(geo)) {
+                googleTrendsGeoComboBox.setSelectedIndex(i);
                 break;
             }
         }

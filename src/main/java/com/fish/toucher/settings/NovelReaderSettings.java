@@ -33,6 +33,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public int refreshIntervalMinutes = 15;
         // --- X trends region slug (e.g. "united-states", "japan", "" for worldwide) ---
         public String xTrendsRegion = "";
+        // --- Google Trends geo code (e.g. "US", "JP", "CN") ---
+        public String googleTrendsGeo = "US";
 
         // --- Shared settings ---
         public String lastFilePath = "";
@@ -156,4 +158,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     // --- X trends region ---
     public String getXTrendsRegion() { return myState.xTrendsRegion; }
     public void setXTrendsRegion(String region) { myState.xTrendsRegion = region != null ? region : ""; }
+
+    // --- Google Trends geo ---
+    public String getGoogleTrendsGeo() { return myState.googleTrendsGeo; }
+    public void setGoogleTrendsGeo(String geo) { myState.googleTrendsGeo = (geo != null && !geo.isEmpty()) ? geo : "US"; }
 }
