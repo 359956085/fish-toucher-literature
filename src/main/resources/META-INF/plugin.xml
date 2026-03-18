@@ -20,7 +20,7 @@
     <b>Hot Search Carousel Mode</b>
     <ul>
         <li>Real-time hot search trends displayed in both tool window and status bar</li>
-        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou — switchable in settings</li>
+        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Global Trends — switchable in settings</li>
         <li>Click any hot search title to open in browser</li>
         <li>Auto-refreshing data with carousel rotation</li>
     </ul>
@@ -45,7 +45,7 @@
     <b>热搜轮播模式</b>
     <ul>
         <li>实时热搜榜单，同时显示在工具窗口和状态栏</li>
-        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手，可在设置中切换</li>
+        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X全球趋势，可在设置中切换</li>
         <li>点击热搜标题直接在浏览器中打开</li>
         <li>自动刷新数据，轮播滚动显示</li>
     </ul>

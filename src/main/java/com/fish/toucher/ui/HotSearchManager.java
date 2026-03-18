@@ -165,6 +165,7 @@ public class HotSearchManager {
                     case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
                     case "douyin" -> reqBuilder.uri(URI.create("https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
                             .header("Referer", "https://www.douyin.com/");
+                    case "x" -> reqBuilder.uri(URI.create("https://trends24.in/"));
                     default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
                 }
                 request = reqBuilder.build();
@@ -177,6 +178,7 @@ public class HotSearchManager {
                     case "zhihu" -> parseZhihu(response.body());
                     case "douyin" -> parseDouyin(response.body());
                     case "kuaishou" -> parseKuaishou(response.body());
+                    case "x" -> parseX(response.body());
                     default -> parseBaidu(response.body());
                 };
                 if (!newItems.isEmpty()) {
@@ -342,6 +344,22 @@ public class HotSearchManager {
         return newItems;
     }
 
+    private List<HotSearchItem> parseX(String html) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // Parse trends24.in HTML: <span class="trend-name"><a href="https://twitter.com/search?q=..." class=trend-link>NAME</a></span>
+        Pattern pattern = Pattern.compile("trend-name[^<]*<a\\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>");
+        Matcher m = pattern.matcher(html);
+        int rank = 0;
+        while (m.find() && rank < 50) {
+            String url = m.group(1);
+            String name = m.group(2).trim();
+            if (!name.isEmpty()) {
+                newItems.add(new HotSearchItem(rank++, name, "", url));
+            }
+        }
+        return newItems;
+    }
+
     private String unescapeJson(String s) {
         return s.replace("\\u0026", "&")
                 .replace("\\\"", "\"")
@@ -421,7 +439,7 @@ public class HotSearchManager {
 
     // ========== Source labels ==========
 
-    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou"};
+    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x"};
 
     public static String[] getSourceLabels() {
         return new String[]{
@@ -429,7 +447,8 @@ public class HotSearchManager {
                 FishToucherBundle.message("hotSearch.source.toutiao"),
                 FishToucherBundle.message("hotSearch.source.zhihu"),
                 FishToucherBundle.message("hotSearch.source.douyin"),
-                FishToucherBundle.message("hotSearch.source.kuaishou")
+                FishToucherBundle.message("hotSearch.source.kuaishou"),
+                FishToucherBundle.message("hotSearch.source.x")
         };
     }
 
