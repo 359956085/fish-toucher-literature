@@ -406,16 +406,19 @@ public class HotSearchManager {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // Response format: [[["translated","original",...],["translated2","original2",...],...],...]
-                // Extract translated text (first string) from each ["...","...",...] pair
+                // Response: [[["translated\n...","original\n...",...],[...],...],...]
+                // Collect translated segments until we have enough lines.
                 String body = response.body();
                 StringBuilder fullTranslation = new StringBuilder();
                 Pattern p = Pattern.compile("\\[\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,\\s*\"(?:[^\"\\\\]|\\\\.)*\"");
                 Matcher pm = p.matcher(body);
-                while (pm.find()) {
+                int linesCollected = 0;
+                while (pm.find() && linesCollected < texts.size()) {
                     String segment = pm.group(1)
                             .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
                     fullTranslation.append(segment);
+                    // Count how many lines we have so far
+                    linesCollected = fullTranslation.toString().split("\n", -1).length;
                 }
 
                 String[] translatedLines = fullTranslation.toString().split("\n");
