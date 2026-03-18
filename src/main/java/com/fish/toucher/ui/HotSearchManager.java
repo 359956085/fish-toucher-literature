@@ -6,9 +6,11 @@ import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -346,18 +348,114 @@ public class HotSearchManager {
 
     private List<HotSearchItem> parseX(String html) {
         List<HotSearchItem> newItems = new ArrayList<>();
-        // Parse trends24.in HTML: <span class="trend-name"><a href="https://twitter.com/search?q=..." class=trend-link>NAME</a></span>
         Pattern pattern = Pattern.compile("trend-name[^<]*<a\\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>");
         Matcher m = pattern.matcher(html);
-        int rank = 0;
-        while (m.find() && rank < 50) {
+        List<String> names = new ArrayList<>();
+        List<String> urls = new ArrayList<>();
+        while (m.find() && names.size() < 50) {
             String url = m.group(1);
             String name = m.group(2).trim();
             if (!name.isEmpty()) {
-                newItems.add(new HotSearchItem(rank++, name, "", url));
+                names.add(name);
+                urls.add(url);
             }
         }
+        // Translate titles based on IDEA language setting
+        List<String> translated = translateBatch(names);
+        for (int i = 0; i < translated.size(); i++) {
+            newItems.add(new HotSearchItem(i, translated.get(i), "", urls.get(i)));
+        }
         return newItems;
+    }
+
+    /**
+     * Get target language code from plugin settings for Google Translate.
+     */
+    private String getTargetLanguage() {
+        try {
+            String lang = NovelReaderSettings.getInstance().getXTranslateLanguage();
+            if (lang != null && !lang.isEmpty()) return lang;
+        } catch (Exception ignored) {}
+        return "en";
+    }
+
+    /**
+     * Batch translate a list of texts using Google Translate API.
+     * Falls back to original texts on failure.
+     */
+    private List<String> translateBatch(List<String> texts) {
+        String targetLang = getTargetLanguage();
+        if (texts.isEmpty()) return texts;
+
+        try {
+            // Join with newline for batch translation
+            String joined = String.join("\n", texts);
+            String encoded = URLEncoder.encode(joined, StandardCharsets.UTF_8);
+            String url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="
+                    + targetLang + "&dt=t&q=" + encoded;
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("User-Agent", UA)
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                // Parse response: [[["translated\n","original\n",...],["translated2\n","original2\n",...],...],...]
+                // Extract all translated segments and join them
+                String body = response.body();
+                StringBuilder fullTranslation = new StringBuilder();
+                Pattern p = Pattern.compile("\\[\"((?:[^\"\\\\]|\\\\.)*)\"");
+                Matcher pm = p.matcher(body);
+                // The response array alternates: [translated, original, ...], [translated, original, ...]
+                // We only need the first element of each sub-array (the translation)
+                int depth = 0;
+                int idx = 0;
+                while (idx < body.length()) {
+                    char c = body.charAt(idx);
+                    if (c == '[') { depth++; idx++; continue; }
+                    if (c == ']') { depth--; idx++; continue; }
+                    if (depth == 3 && c == '"') {
+                        // Read the translated string (first in each triplet)
+                        int start = idx + 1;
+                        int end = start;
+                        while (end < body.length()) {
+                            if (body.charAt(end) == '\\') { end += 2; continue; }
+                            if (body.charAt(end) == '"') break;
+                            end++;
+                        }
+                        String translatedSegment = body.substring(start, end)
+                                .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
+                        fullTranslation.append(translatedSegment);
+                        // Skip to end of this sub-array (depth 3 -> find matching ])
+                        idx = end + 1;
+                        while (idx < body.length() && body.charAt(idx) != ']') idx++;
+                        idx++; depth--;
+                        continue;
+                    }
+                    idx++;
+                }
+
+                String[] translatedLines = fullTranslation.toString().split("\n");
+                List<String> result = new ArrayList<>();
+                for (int i = 0; i < texts.size(); i++) {
+                    if (i < translatedLines.length && !translatedLines[i].trim().isEmpty()) {
+                        result.add(translatedLines[i].trim());
+                    } else {
+                        result.add(texts.get(i));
+                    }
+                }
+                return result;
+            }
+        } catch (Exception e) {
+            LOG.warn("translateBatch: translation failed: " + e.getMessage());
+        }
+        return texts;
     }
 
     private String unescapeJson(String s) {

@@ -52,7 +52,19 @@ public class NovelReaderConfigurable implements Configurable {
     private JComboBox<String> sourceComboBox;
     private JSpinner carouselIntervalSpinner;
     private JSpinner refreshIntervalSpinner;
+    private JComboBox<String> xTranslateLanguageComboBox;
     private JPanel hotSearchSettingsPanel;
+
+    private static final String[] TRANSLATE_LANG_CODES = {
+            "en", "zh", "ja", "ko", "ru", "fr", "de", "it", "es", "pt", "ar", "hi", "th", "vi", "id"
+    };
+    private static final String[] TRANSLATE_LANG_LABELS = {
+            "English", "\u4e2d\u6587", "\u65e5\u672c\u8a9e", "\ud55c\uad6d\uc5b4",
+            "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "Fran\u00e7ais", "Deutsch", "Italiano",
+            "Espa\u00f1ol", "Portugu\u00eas", "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+            "\u0939\u093f\u0928\u094d\u0926\u0940", "\u0e44\u0e17\u0e22",
+            "Ti\u1ebfng Vi\u1ec7t", "Bahasa Indonesia"
+    };
 
     // Novel-only settings panel (hidden in hot search mode)
     private JPanel novelSettingsPanel;
@@ -127,6 +139,19 @@ public class NovelReaderConfigurable implements Configurable {
         hgbc.gridx = 1; hgbc.gridy = 2;
         refreshIntervalSpinner = new JSpinner(new SpinnerNumberModel(settings.getRefreshIntervalMinutes(), 1, 120, 1));
         hotSearchSettingsPanel.add(refreshIntervalSpinner, hgbc);
+
+        hgbc.gridx = 0; hgbc.gridy = 3;
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.xTranslateLanguage")), hgbc);
+        hgbc.gridx = 1; hgbc.gridy = 3;
+        xTranslateLanguageComboBox = new JComboBox<>(TRANSLATE_LANG_LABELS);
+        String currentLang = settings.getXTranslateLanguage();
+        for (int i = 0; i < TRANSLATE_LANG_CODES.length; i++) {
+            if (TRANSLATE_LANG_CODES[i].equals(currentLang)) {
+                xTranslateLanguageComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
+        hotSearchSettingsPanel.add(xTranslateLanguageComboBox, hgbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(hotSearchSettingsPanel, gbc);
@@ -305,6 +330,12 @@ public class NovelReaderConfigurable implements Configurable {
                 ? HotSearchManager.SOURCE_VALUES[idx] : "baidu";
     }
 
+    private String getSelectedTranslateLanguage() {
+        int idx = xTranslateLanguageComboBox.getSelectedIndex();
+        return (idx >= 0 && idx < TRANSLATE_LANG_CODES.length)
+                ? TRANSLATE_LANG_CODES[idx] : "en";
+    }
+
     private void updateCurrentFileLabel() {
         if (currentFileLabel == null) return;
         String filePath = NovelReaderManager.getInstance().getCurrentFilePath();
@@ -326,6 +357,7 @@ public class NovelReaderConfigurable implements Configurable {
                 || !getSelectedSource().equals(settings.getHotSearchSource())
                 || (int) carouselIntervalSpinner.getValue() != settings.getCarouselIntervalSeconds()
                 || (int) refreshIntervalSpinner.getValue() != settings.getRefreshIntervalMinutes()
+                || !getSelectedTranslateLanguage().equals(settings.getXTranslateLanguage())
                 || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
@@ -377,6 +409,15 @@ public class NovelReaderConfigurable implements Configurable {
         if ((oldCarousel != settings.getCarouselIntervalSeconds() || oldRefresh != settings.getRefreshIntervalMinutes())
                 && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().applyTimingChanges();
+        }
+
+        // X translate language
+        String oldLang = settings.getXTranslateLanguage();
+        settings.setXTranslateLanguage(getSelectedTranslateLanguage());
+        if (!oldLang.equals(settings.getXTranslateLanguage())
+                && "x".equals(settings.getHotSearchSource())
+                && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().switchSource();
         }
 
         settings.setStealthCharsPerLine((int) stealthCharsPerLineSpinner.getValue());
@@ -448,6 +489,13 @@ public class NovelReaderConfigurable implements Configurable {
         }
         carouselIntervalSpinner.setValue(settings.getCarouselIntervalSeconds());
         refreshIntervalSpinner.setValue(settings.getRefreshIntervalMinutes());
+        String lang = settings.getXTranslateLanguage();
+        for (int i = 0; i < TRANSLATE_LANG_CODES.length; i++) {
+            if (TRANSLATE_LANG_CODES[i].equals(lang)) {
+                xTranslateLanguageComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
         updateNovelComponentsVisibility();
         stealthCharsPerLineSpinner.setValue(settings.getStealthCharsPerLine());
         showInStatusBarCheckBox.setSelected(settings.isShowInStatusBar());
