@@ -1,0 +1,154 @@
+<idea-plugin require-restart="true">
+    <id>com.fishtoucher.literature</id>
+    <name>Fish Toucher</name>
+    <version>2.2.0</version>
+    <vendor>FishToucher</vendor>
+
+    <description><![CDATA[
+    <p>A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search trends while pretending to work.</p>
+
+    <b>Novel Reading Mode</b>
+    <ul>
+        <li><b>Stealth Mode (Status Bar):</b> One line of text in the status bar — looks like a normal status message. Click to advance.</li>
+        <li><b>Normal Mode (Tool Window):</b> Multi-line display disguised as build log output, with page navigation and progress slider.</li>
+        <li>Both modes share unified reading progress</li>
+        <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
+        <li>Boss key to instantly hide all content</li>
+        <li>Customizable keyboard shortcuts and font settings</li>
+    </ul>
+
+    <b>Hot Search Carousel Mode</b>
+    <ul>
+        <li>Real-time hot search trends displayed in both tool window and status bar</li>
+        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Global Trends — switchable in settings</li>
+        <li>Click any hot search title to open in browser</li>
+        <li>Auto-refreshing data with carousel rotation</li>
+    </ul>
+
+    <b>Settings:</b> Settings → Tools → Fish Toucher
+
+    <br/><br/>
+    <hr/>
+
+    <p>一款适用于 IntelliJ IDEA 的摸鱼插件 — 在假装工作的同时看小说或浏览热搜。</p>
+
+    <b>小说阅读模式</b>
+    <ul>
+        <li><b>隐秘模式（状态栏）：</b>在状态栏显示一行文本，外观与普通状态信息无异，点击翻页</li>
+        <li><b>普通模式（工具窗口）：</b>多行显示，伪装成构建日志，支持翻页和进度滑块</li>
+        <li>两种模式共用统一阅读进度</li>
+        <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
+        <li>老板键一键隐藏所有阅读内容</li>
+        <li>可自定义快捷键和字体设置</li>
+    </ul>
+
+    <b>热搜轮播模式</b>
+    <ul>
+        <li>实时热搜榜单，同时显示在工具窗口和状态栏</li>
+        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X全球趋势，可在设置中切换</li>
+        <li>点击热搜标题直接在浏览器中打开</li>
+        <li>自动刷新数据，轮播滚动显示</li>
+    </ul>
+
+    <b>设置路径：</b> Settings → Tools → Fish Toucher
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <b>2.2.0</b>
+    <ul>
+        <li>New: Added Douyin and Kuaishou hot search sources<br/>
+            新增：抖音、快手热搜源</li>
+    </ul>
+    <b>2.1.0</b>
+    <ul>
+        <li>New: Configurable carousel interval and data refresh interval for hot search<br/>
+            新增：热搜轮播间隔和数据刷新间隔可自定义</li>
+        <li>Improved: Tool window default position changed to right side<br/>
+            优化：工具窗口默认位置改为右侧</li>
+    </ul>
+    <b>2.0.1</b>
+    <ul>
+        <li>New: Switch hot search source directly in tool window bottom bar<br/>
+            新增：工具窗口底部可直接切换热搜来源</li>
+        <li>Fixed: Hot search list not displaying in tool window<br/>
+            修复：工具窗口热搜列表不显示的问题</li>
+    </ul>
+    <b>2.0.0</b>
+    <ul>
+        <li>New: Hot Search Carousel mode — browse real-time hot search trends in the IDE<br/>
+            新增：热搜轮播模式 — 在 IDE 中浏览实时热搜榜单</li>
+        <li>New: Multiple hot search sources — Baidu, Toutiao, Zhihu, switchable in settings<br/>
+            新增：多热搜源支持 — 百度、今日头条、知乎，可在设置中切换</li>
+        <li>New: Click hot search titles to open in browser<br/>
+            新增：点击热搜标题可在浏览器中打开</li>
+        <li>New: Hot search displayed in both tool window and status bar with carousel rotation<br/>
+            新增：热搜同时显示在工具窗口和状态栏，自动轮播</li>
+        <li>Improved: New cute fish plugin icon<br/>
+            优化：全新萌鱼插件图标</li>
+    </ul>
+    <b>1.4.1</b>
+    <ul>
+        <li>Changed: Stealth mode and Normal mode now share unified reading progress<br/>
+            变更：隐秘模式与普通模式共用统一阅读进度</li>
+        <li>Improved: Existing dual-progress data automatically migrated to unified progress (keeps the further position)<br/>
+            优化：已有的双进度数据自动迁移为统一进度（保留较远的阅读位置）</li>
+    </ul>
+    <b>1.4.0</b>
+    <ul>
+        <li>New: Two independent reading modes — Stealth Mode (status bar) and Normal Mode (tool window)<br/>
+            新增：两种独立阅读模式 — 隐秘模式（状态栏）和普通模式（工具窗口）</li>
+        <li>New: Each mode has its own reading progress, chars per line, and lines per page settings<br/>
+            新增：每种模式拥有独立的阅读进度、每行字数、每页行数配置</li>
+        <li>Improved: New bright orange fish into icon for better visibility<br/>
+            优化：图标加入一条橙红色小鱼</li>
+    </ul>
+    ]]></change-notes>
+
+    <idea-version since-build="242" until-build="253.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory id="NovelReaderWidget"
+                                implementation="com.fish.toucher.ui.NovelReaderWidgetFactory"
+                                order="first"/>
+        <toolWindow id="Fish Toucher"
+                    anchor="right"
+                    secondary="true"
+                    factoryClass="com.fish.toucher.ui.NovelReaderToolWindowFactory"
+                    icon="/META-INF/book_icon.svg"/>
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.fish.toucher.settings.NovelReaderConfigurable"
+                id="com.fish.toucher.settings.NovelReaderConfigurable"
+                displayName="Fish Toucher"/>
+        <applicationService
+                serviceImplementation="com.fish.toucher.settings.NovelReaderSettings"/>
+        <postStartupActivity
+                implementation="com.fish.toucher.ShortcutInitializer"/>
+        <notificationGroup id="Fish Toucher"
+                           displayType="STICKY_BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="NovelReader.ActionGroup" text="Novel Reader" description="Novel reader actions">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="NovelReader.Open"
+                    class="com.fish.toucher.actions.OpenNovelAction"
+                    text="Open Novel File"
+                    description="Open a local novel text file"/>
+            <action id="NovelReader.NextPage"
+                    class="com.fish.toucher.actions.NextPageAction"
+                    text="Next Page"
+                    description="Go to next page"/>
+            <action id="NovelReader.PrevPage"
+                    class="com.fish.toucher.actions.PrevPageAction"
+                    text="Previous Page"
+                    description="Go to previous page"/>
+            <action id="NovelReader.Toggle"
+                    class="com.fish.toucher.actions.ToggleVisibilityAction"
+                    text="Fish Toucher"
+                    description="Show/Hide novel reader panel"/>
+        </group>
+    </actions>
+</idea-plugin>
