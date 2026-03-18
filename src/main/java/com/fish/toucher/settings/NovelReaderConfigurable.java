@@ -67,11 +67,11 @@ public class NovelReaderConfigurable implements Configurable {
             "Thailand", "Vietnam", "Saudi Arabia", "Portugal"
     };
     static final String[] GOOGLE_GEO_CODES = {
-            "US", "JP", "KR", "CN", "RU", "FR", "DE", "IT", "ES", "BR",
+            "US", "JP", "KR", "RU", "FR", "DE", "IT", "ES", "BR",
             "IN", "ID", "TH", "VN", "SA", "PT", "GB", "AU", "CA", "MX"
     };
     static final String[] GOOGLE_GEO_LABELS = {
-            "United States", "Japan", "Korea", "China", "Russia", "France",
+            "United States", "Japan", "Korea", "Russia", "France",
             "Germany", "Italy", "Spain", "Brazil", "India", "Indonesia",
             "Thailand", "Vietnam", "Saudi Arabia", "Portugal",
             "United Kingdom", "Australia", "Canada", "Mexico"
