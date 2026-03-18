@@ -52,18 +52,18 @@ public class NovelReaderConfigurable implements Configurable {
     private JComboBox<String> sourceComboBox;
     private JSpinner carouselIntervalSpinner;
     private JSpinner refreshIntervalSpinner;
-    private JComboBox<String> xTranslateLanguageComboBox;
+    private JComboBox<String> xTrendsRegionComboBox;
     private JPanel hotSearchSettingsPanel;
 
-    private static final String[] TRANSLATE_LANG_CODES = {
-            "en", "zh", "ja", "ko", "ru", "fr", "de", "it", "es", "pt", "ar", "hi", "th", "vi", "id"
+    static final String[] X_REGION_SLUGS = {
+            "", "united-states", "japan", "korea", "russia", "france",
+            "germany", "italy", "spain", "brazil", "india", "indonesia",
+            "thailand", "vietnam", "saudi-arabia", "portugal"
     };
-    private static final String[] TRANSLATE_LANG_LABELS = {
-            "English", "\u4e2d\u6587", "\u65e5\u672c\u8a9e", "\ud55c\uad6d\uc5b4",
-            "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "Fran\u00e7ais", "Deutsch", "Italiano",
-            "Espa\u00f1ol", "Portugu\u00eas", "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
-            "\u0939\u093f\u0928\u094d\u0926\u0940", "\u0e44\u0e17\u0e22",
-            "Ti\u1ebfng Vi\u1ec7t", "Bahasa Indonesia"
+    static final String[] X_REGION_LABELS = {
+            "Worldwide", "United States", "Japan", "Korea", "Russia", "France",
+            "Germany", "Italy", "Spain", "Brazil", "India", "Indonesia",
+            "Thailand", "Vietnam", "Saudi Arabia", "Portugal"
     };
 
     // Novel-only settings panel (hidden in hot search mode)
@@ -141,17 +141,17 @@ public class NovelReaderConfigurable implements Configurable {
         hotSearchSettingsPanel.add(refreshIntervalSpinner, hgbc);
 
         hgbc.gridx = 0; hgbc.gridy = 3;
-        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.xTranslateLanguage")), hgbc);
+        hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.xTrendsRegion")), hgbc);
         hgbc.gridx = 1; hgbc.gridy = 3;
-        xTranslateLanguageComboBox = new JComboBox<>(TRANSLATE_LANG_LABELS);
-        String currentLang = settings.getXTranslateLanguage();
-        for (int i = 0; i < TRANSLATE_LANG_CODES.length; i++) {
-            if (TRANSLATE_LANG_CODES[i].equals(currentLang)) {
-                xTranslateLanguageComboBox.setSelectedIndex(i);
+        xTrendsRegionComboBox = new JComboBox<>(X_REGION_LABELS);
+        String currentRegion = settings.getXTrendsRegion();
+        for (int i = 0; i < X_REGION_SLUGS.length; i++) {
+            if (X_REGION_SLUGS[i].equals(currentRegion)) {
+                xTrendsRegionComboBox.setSelectedIndex(i);
                 break;
             }
         }
-        hotSearchSettingsPanel.add(xTranslateLanguageComboBox, hgbc);
+        hotSearchSettingsPanel.add(xTrendsRegionComboBox, hgbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(hotSearchSettingsPanel, gbc);
@@ -330,10 +330,10 @@ public class NovelReaderConfigurable implements Configurable {
                 ? HotSearchManager.SOURCE_VALUES[idx] : "baidu";
     }
 
-    private String getSelectedTranslateLanguage() {
-        int idx = xTranslateLanguageComboBox.getSelectedIndex();
-        return (idx >= 0 && idx < TRANSLATE_LANG_CODES.length)
-                ? TRANSLATE_LANG_CODES[idx] : "en";
+    private String getSelectedXRegion() {
+        int idx = xTrendsRegionComboBox.getSelectedIndex();
+        return (idx >= 0 && idx < X_REGION_SLUGS.length)
+                ? X_REGION_SLUGS[idx] : "";
     }
 
     private void updateCurrentFileLabel() {
@@ -357,7 +357,7 @@ public class NovelReaderConfigurable implements Configurable {
                 || !getSelectedSource().equals(settings.getHotSearchSource())
                 || (int) carouselIntervalSpinner.getValue() != settings.getCarouselIntervalSeconds()
                 || (int) refreshIntervalSpinner.getValue() != settings.getRefreshIntervalMinutes()
-                || !getSelectedTranslateLanguage().equals(settings.getXTranslateLanguage())
+                || !getSelectedXRegion().equals(settings.getXTrendsRegion())
                 || (int) stealthCharsPerLineSpinner.getValue() != settings.getStealthCharsPerLine()
                 || showInStatusBarCheckBox.isSelected() != settings.isShowInStatusBar()
                 || (int) normalLinesPerPageSpinner.getValue() != settings.getNormalLinesPerPage()
@@ -411,10 +411,10 @@ public class NovelReaderConfigurable implements Configurable {
             HotSearchManager.getInstance().applyTimingChanges();
         }
 
-        // X translate language
-        String oldLang = settings.getXTranslateLanguage();
-        settings.setXTranslateLanguage(getSelectedTranslateLanguage());
-        if (!oldLang.equals(settings.getXTranslateLanguage())
+        // X trends region
+        String oldRegion = settings.getXTrendsRegion();
+        settings.setXTrendsRegion(getSelectedXRegion());
+        if (!oldRegion.equals(settings.getXTrendsRegion())
                 && "x".equals(settings.getHotSearchSource())
                 && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().switchSource();
@@ -489,10 +489,10 @@ public class NovelReaderConfigurable implements Configurable {
         }
         carouselIntervalSpinner.setValue(settings.getCarouselIntervalSeconds());
         refreshIntervalSpinner.setValue(settings.getRefreshIntervalMinutes());
-        String lang = settings.getXTranslateLanguage();
-        for (int i = 0; i < TRANSLATE_LANG_CODES.length; i++) {
-            if (TRANSLATE_LANG_CODES[i].equals(lang)) {
-                xTranslateLanguageComboBox.setSelectedIndex(i);
+        String region = settings.getXTrendsRegion();
+        for (int i = 0; i < X_REGION_SLUGS.length; i++) {
+            if (X_REGION_SLUGS[i].equals(region)) {
+                xTrendsRegionComboBox.setSelectedIndex(i);
                 break;
             }
         }

@@ -6,11 +6,9 @@ import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -167,7 +165,11 @@ public class HotSearchManager {
                     case "zhihu" -> reqBuilder.uri(URI.create("https://api.zhihu.com/topstory/hot-lists/total?limit=50"));
                     case "douyin" -> reqBuilder.uri(URI.create("https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
                             .header("Referer", "https://www.douyin.com/");
-                    case "x" -> reqBuilder.uri(URI.create("https://trends24.in/"));
+                    case "x" -> {
+                        String region = getXRegion();
+                        String xUrl = region.isEmpty() ? "https://trends24.in/" : "https://trends24.in/" + region + "/";
+                        reqBuilder.uri(URI.create(xUrl));
+                    }
                     default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
                 }
                 request = reqBuilder.build();
@@ -350,92 +352,27 @@ public class HotSearchManager {
         List<HotSearchItem> newItems = new ArrayList<>();
         Pattern pattern = Pattern.compile("trend-name[^<]*<a\\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>");
         Matcher m = pattern.matcher(html);
-        List<String> names = new ArrayList<>();
-        List<String> urls = new ArrayList<>();
-        while (m.find() && names.size() < 50) {
+        int rank = 0;
+        while (m.find() && rank < 50) {
             String url = m.group(1);
             String name = m.group(2).trim();
             if (!name.isEmpty()) {
-                names.add(name);
-                urls.add(url);
+                newItems.add(new HotSearchItem(rank++, name, "", url));
             }
-        }
-        // Translate titles based on IDEA language setting
-        List<String> translated = translateBatch(names);
-        for (int i = 0; i < translated.size(); i++) {
-            newItems.add(new HotSearchItem(i, translated.get(i), "", urls.get(i)));
         }
         return newItems;
     }
 
     /**
-     * Get target language code from plugin settings for Google Translate.
+     * Get X trends region slug from plugin settings.
+     * Empty string means worldwide (default).
      */
-    private String getTargetLanguage() {
+    private String getXRegion() {
         try {
-            String lang = NovelReaderSettings.getInstance().getXTranslateLanguage();
-            if (lang != null && !lang.isEmpty()) return lang;
+            String region = NovelReaderSettings.getInstance().getXTrendsRegion();
+            if (region != null && !region.isEmpty()) return region;
         } catch (Exception ignored) {}
-        return "en";
-    }
-
-    /**
-     * Batch translate a list of texts using Google Translate API.
-     * Falls back to original texts on failure.
-     */
-    private List<String> translateBatch(List<String> texts) {
-        String targetLang = getTargetLanguage();
-        if (texts.isEmpty()) return texts;
-
-        try {
-            // Join with newline for batch translation
-            String joined = String.join("\n", texts);
-            String encoded = URLEncoder.encode(joined, StandardCharsets.UTF_8);
-            String url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="
-                    + targetLang + "&dt=t&q=" + encoded;
-
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("User-Agent", UA)
-                    .timeout(Duration.ofSeconds(15))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 200) {
-                // Response: [[["translated\n...","original\n...",...],[...],...],...]
-                // Collect translated segments until we have enough lines.
-                String body = response.body();
-                StringBuilder fullTranslation = new StringBuilder();
-                Pattern p = Pattern.compile("\\[\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,\\s*\"(?:[^\"\\\\]|\\\\.)*\"");
-                Matcher pm = p.matcher(body);
-                int linesCollected = 0;
-                while (pm.find() && linesCollected < texts.size()) {
-                    String segment = pm.group(1)
-                            .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
-                    fullTranslation.append(segment);
-                    // Count how many lines we have so far
-                    linesCollected = fullTranslation.toString().split("\n", -1).length;
-                }
-
-                String[] translatedLines = fullTranslation.toString().split("\n");
-                List<String> result = new ArrayList<>();
-                for (int i = 0; i < texts.size(); i++) {
-                    if (i < translatedLines.length && !translatedLines[i].trim().isEmpty()) {
-                        result.add(translatedLines[i].trim());
-                    } else {
-                        result.add(texts.get(i));
-                    }
-                }
-                return result;
-            }
-        } catch (Exception e) {
-            LOG.warn("translateBatch: translation failed: " + e.getMessage());
-        }
-        return texts;
+        return "";
     }
 
     private String unescapeJson(String s) {
