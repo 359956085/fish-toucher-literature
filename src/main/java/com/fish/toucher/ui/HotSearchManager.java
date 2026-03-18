@@ -170,6 +170,10 @@ public class HotSearchManager {
                         String xUrl = region.isEmpty() ? "https://trends24.in/" : "https://trends24.in/" + region + "/";
                         reqBuilder.uri(URI.create(xUrl));
                     }
+                    case "google" -> {
+                        String geo = getGoogleTrendsGeo();
+                        reqBuilder.uri(URI.create("https://trends.google.com/trending/rss?geo=" + geo));
+                    }
                     default -> reqBuilder.uri(URI.create("https://top.baidu.com/api/board?platform=wise&tab=realtime"));
                 }
                 request = reqBuilder.build();
@@ -183,6 +187,7 @@ public class HotSearchManager {
                     case "douyin" -> parseDouyin(response.body());
                     case "kuaishou" -> parseKuaishou(response.body());
                     case "x" -> parseX(response.body());
+                    case "google" -> parseGoogleTrends(response.body());
                     default -> parseBaidu(response.body());
                 };
                 if (!newItems.isEmpty()) {
@@ -375,6 +380,41 @@ public class HotSearchManager {
         return "";
     }
 
+    private List<HotSearchItem> parseGoogleTrends(String xml) {
+        List<HotSearchItem> newItems = new ArrayList<>();
+        // RSS format: <item><title>...</title>...</item>
+        Pattern itemPattern = Pattern.compile("<item>([\\s\\S]*?)</item>");
+        Pattern titlePattern = Pattern.compile("<title>([^<]+)</title>");
+        Pattern trafficPattern = Pattern.compile("<ht:approx_traffic>([^<]+)</ht:approx_traffic>");
+        Matcher im = itemPattern.matcher(xml);
+        int rank = 0;
+        while (im.find() && rank < 50) {
+            String item = im.group(1);
+            Matcher tm = titlePattern.matcher(item);
+            if (tm.find()) {
+                String title = tm.group(1).replace("&amp;", "&").replace("&apos;", "'").replace("&quot;", "\"");
+                String hotTag = "";
+                Matcher hm = trafficPattern.matcher(item);
+                if (hm.find()) hotTag = hm.group(1);
+                String url = "https://www.google.com/search?q=" + title.replace(" ", "+");
+                newItems.add(new HotSearchItem(rank++, title, hotTag, url));
+            }
+        }
+        return newItems;
+    }
+
+    /**
+     * Get Google Trends geo code from plugin settings.
+     * Default is "US".
+     */
+    private String getGoogleTrendsGeo() {
+        try {
+            String geo = NovelReaderSettings.getInstance().getGoogleTrendsGeo();
+            if (geo != null && !geo.isEmpty()) return geo;
+        } catch (Exception ignored) {}
+        return "US";
+    }
+
     private String unescapeJson(String s) {
         return s.replace("\\u0026", "&")
                 .replace("\\\"", "\"")
@@ -454,7 +494,7 @@ public class HotSearchManager {
 
     // ========== Source labels ==========
 
-    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x"};
+    public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x", "google"};
 
     public static String[] getSourceLabels() {
         return new String[]{
@@ -463,7 +503,8 @@ public class HotSearchManager {
                 FishToucherBundle.message("hotSearch.source.zhihu"),
                 FishToucherBundle.message("hotSearch.source.douyin"),
                 FishToucherBundle.message("hotSearch.source.kuaishou"),
-                FishToucherBundle.message("hotSearch.source.x")
+                FishToucherBundle.message("hotSearch.source.x"),
+                FishToucherBundle.message("hotSearch.source.google")
         };
     }
 
