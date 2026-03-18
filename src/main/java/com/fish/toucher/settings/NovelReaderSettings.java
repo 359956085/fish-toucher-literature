@@ -31,8 +31,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         // --- Hot search timing (seconds/minutes) ---
         public int carouselIntervalSeconds = 10;
         public int refreshIntervalMinutes = 15;
-        // --- X translate language code (e.g. "en", "zh", "ja") ---
-        public String xTranslateLanguage = "en";
+        // --- X trends region slug (e.g. "united-states", "japan", "" for worldwide) ---
+        public String xTrendsRegion = "";
 
         // --- Shared settings ---
         public String lastFilePath = "";
@@ -153,7 +153,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public int getRefreshIntervalMinutes() { return myState.refreshIntervalMinutes; }
     public void setRefreshIntervalMinutes(int m) { myState.refreshIntervalMinutes = Math.max(1, Math.min(120, m)); }
 
-    // --- X translate language ---
-    public String getXTranslateLanguage() { return myState.xTranslateLanguage; }
-    public void setXTranslateLanguage(String lang) { myState.xTranslateLanguage = (lang != null && !lang.isEmpty()) ? lang : "en"; }
+    // --- X trends region ---
+    public String getXTrendsRegion() { return myState.xTrendsRegion; }
+    public void setXTrendsRegion(String region) { myState.xTrendsRegion = region != null ? region : ""; }
 }
