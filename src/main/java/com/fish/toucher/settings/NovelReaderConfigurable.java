@@ -106,7 +106,7 @@ public class NovelReaderConfigurable implements Configurable {
         hgbc.gridx = 0; hgbc.gridy = 0; hgbc.gridwidth = 1;
         hotSearchSettingsPanel.add(new JLabel(FishToucherBundle.message("settings.label.source")), hgbc);
         hgbc.gridx = 1; hgbc.gridy = 0;
-        sourceComboBox = new JComboBox<>(HotSearchManager.SOURCE_LABELS);
+        sourceComboBox = new JComboBox<>(HotSearchManager.getSourceLabels());
         String currentSource = settings.getHotSearchSource();
         for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
             if (HotSearchManager.SOURCE_VALUES[i].equals(currentSource)) {
