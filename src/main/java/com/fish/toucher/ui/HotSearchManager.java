@@ -406,39 +406,16 @@ public class HotSearchManager {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // Parse response: [[["translated\n","original\n",...],["translated2\n","original2\n",...],...],...]
-                // Extract all translated segments and join them
+                // Response format: [[["translated","original",...],["translated2","original2",...],...],...]
+                // Extract translated text (first string) from each ["...","...",...] pair
                 String body = response.body();
                 StringBuilder fullTranslation = new StringBuilder();
-                Pattern p = Pattern.compile("\\[\"((?:[^\"\\\\]|\\\\.)*)\"");
+                Pattern p = Pattern.compile("\\[\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,\\s*\"(?:[^\"\\\\]|\\\\.)*\"");
                 Matcher pm = p.matcher(body);
-                // The response array alternates: [translated, original, ...], [translated, original, ...]
-                // We only need the first element of each sub-array (the translation)
-                int depth = 0;
-                int idx = 0;
-                while (idx < body.length()) {
-                    char c = body.charAt(idx);
-                    if (c == '[') { depth++; idx++; continue; }
-                    if (c == ']') { depth--; idx++; continue; }
-                    if (depth == 3 && c == '"') {
-                        // Read the translated string (first in each triplet)
-                        int start = idx + 1;
-                        int end = start;
-                        while (end < body.length()) {
-                            if (body.charAt(end) == '\\') { end += 2; continue; }
-                            if (body.charAt(end) == '"') break;
-                            end++;
-                        }
-                        String translatedSegment = body.substring(start, end)
-                                .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
-                        fullTranslation.append(translatedSegment);
-                        // Skip to end of this sub-array (depth 3 -> find matching ])
-                        idx = end + 1;
-                        while (idx < body.length() && body.charAt(idx) != ']') idx++;
-                        idx++; depth--;
-                        continue;
-                    }
-                    idx++;
+                while (pm.find()) {
+                    String segment = pm.group(1)
+                            .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
+                    fullTranslation.append(segment);
                 }
 
                 String[] translatedLines = fullTranslation.toString().split("\n");
