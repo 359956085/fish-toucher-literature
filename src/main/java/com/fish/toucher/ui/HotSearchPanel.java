@@ -76,7 +76,7 @@ public class HotSearchPanel extends JPanel {
         // Left: source selector + refresh button
         JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
 
-        JComboBox<String> sourceCombo = new JComboBox<>(HotSearchManager.SOURCE_LABELS);
+        JComboBox<String> sourceCombo = new JComboBox<>(HotSearchManager.getSourceLabels());
         String currentSource = NovelReaderSettings.getInstance().getHotSearchSource();
         for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
             if (HotSearchManager.SOURCE_VALUES[i].equals(currentSource)) {

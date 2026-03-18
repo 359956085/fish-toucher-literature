@@ -422,13 +422,23 @@ public class HotSearchManager {
     // ========== Source labels ==========
 
     public static final String[] SOURCE_VALUES = {"baidu", "toutiao", "zhihu", "douyin", "kuaishou"};
-    public static final String[] SOURCE_LABELS = {"Baidu", "Toutiao", "Zhihu", "Douyin", "Kuaishou"};
+
+    public static String[] getSourceLabels() {
+        return new String[]{
+                FishToucherBundle.message("hotSearch.source.baidu"),
+                FishToucherBundle.message("hotSearch.source.toutiao"),
+                FishToucherBundle.message("hotSearch.source.zhihu"),
+                FishToucherBundle.message("hotSearch.source.douyin"),
+                FishToucherBundle.message("hotSearch.source.kuaishou")
+        };
+    }
 
     public static String getSourceLabel(String value) {
+        String[] labels = getSourceLabels();
         for (int i = 0; i < SOURCE_VALUES.length; i++) {
-            if (SOURCE_VALUES[i].equals(value)) return SOURCE_LABELS[i];
+            if (SOURCE_VALUES[i].equals(value)) return labels[i];
         }
-        return "Baidu";
+        return labels[0];
     }
 
     // ========== Data model ==========
