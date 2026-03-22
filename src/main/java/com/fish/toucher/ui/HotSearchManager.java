@@ -5,6 +5,10 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
+import com.intellij.util.net.HttpConfigurable;
+
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -137,9 +141,7 @@ public class HotSearchManager {
         String source = NovelReaderSettings.getInstance().getHotSearchSource();
         LOG.info("fetchHotSearch: fetching from source: " + source);
         try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
+            HttpClient client = buildHttpClient();
 
             HttpRequest request;
             if ("kuaishou".equals(source)) {
@@ -413,6 +415,25 @@ public class HotSearchManager {
             if (geo != null && !geo.isEmpty()) return geo;
         } catch (Exception ignored) {}
         return "US";
+    }
+
+    /**
+     * Build HttpClient using IDEA proxy settings.
+     */
+    private HttpClient buildHttpClient() {
+        HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10));
+        try {
+            HttpConfigurable httpConfig = HttpConfigurable.getInstance();
+            if (httpConfig.USE_HTTP_PROXY && httpConfig.PROXY_HOST != null && !httpConfig.PROXY_HOST.isEmpty()) {
+                InetSocketAddress proxyAddr = new InetSocketAddress(httpConfig.PROXY_HOST, httpConfig.PROXY_PORT);
+                builder.proxy(ProxySelector.of(proxyAddr));
+                LOG.info("buildHttpClient: using IDEA proxy " + httpConfig.PROXY_HOST + ":" + httpConfig.PROXY_PORT);
+            }
+        } catch (Exception e) {
+            LOG.warn("buildHttpClient: failed to read IDEA proxy settings, using direct connection", e);
+        }
+        return builder.build();
     }
 
     private String unescapeJson(String s) {
