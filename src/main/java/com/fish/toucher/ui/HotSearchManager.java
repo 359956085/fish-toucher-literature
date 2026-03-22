@@ -5,9 +5,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
-import com.intellij.util.net.HttpConfigurable;
-
-import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -418,22 +415,15 @@ public class HotSearchManager {
     }
 
     /**
-     * Build HttpClient using IDEA proxy settings.
+     * Build HttpClient using JVM default ProxySelector.
+     * IntelliJ registers its proxy settings as the JVM default ProxySelector at startup,
+     * so this automatically respects IDEA's HTTP Proxy configuration.
      */
     private HttpClient buildHttpClient() {
-        HttpClient.Builder builder = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10));
-        try {
-            HttpConfigurable httpConfig = HttpConfigurable.getInstance();
-            if (httpConfig.USE_HTTP_PROXY && httpConfig.PROXY_HOST != null && !httpConfig.PROXY_HOST.isEmpty()) {
-                InetSocketAddress proxyAddr = new InetSocketAddress(httpConfig.PROXY_HOST, httpConfig.PROXY_PORT);
-                builder.proxy(ProxySelector.of(proxyAddr));
-                LOG.info("buildHttpClient: using IDEA proxy " + httpConfig.PROXY_HOST + ":" + httpConfig.PROXY_PORT);
-            }
-        } catch (Exception e) {
-            LOG.warn("buildHttpClient: failed to read IDEA proxy settings, using direct connection", e);
-        }
-        return builder.build();
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .proxy(ProxySelector.getDefault())
+                .build();
     }
 
     private String unescapeJson(String s) {
