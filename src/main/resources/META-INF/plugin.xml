@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>2.2.0</version>
+    <version>2.3.0</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
@@ -20,7 +20,7 @@
     <b>Hot Search Carousel Mode</b>
     <ul>
         <li>Real-time hot search trends displayed in both tool window and status bar</li>
-        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Global Trends — switchable in settings</li>
+        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Trends, Google Trends — switchable in settings</li>
         <li>Click any hot search title to open in browser</li>
         <li>Auto-refreshing data with carousel rotation</li>
     </ul>
@@ -45,7 +45,7 @@
     <b>热搜轮播模式</b>
     <ul>
         <li>实时热搜榜单，同时显示在工具窗口和状态栏</li>
-        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X全球趋势，可在设置中切换</li>
+        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X趋势、Google趋势，可在设置中切换</li>
         <li>点击热搜标题直接在浏览器中打开</li>
         <li>自动刷新数据，轮播滚动显示</li>
     </ul>
@@ -54,6 +54,13 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>2.3.0</b>
+    <ul>
+        <li>New: Added Google Trends and X Trends hot search sources<br/>
+            新增：Google趋势、X趋势热搜源</li>
+        <li>Improved: HTTP requests use JVM proxy (IDEA proxy settings)<br/>
+            优化：HTTP请求使用JVM代理配置（IDEA代理设置）</li>
+    </ul>
     <b>2.2.0</b>
     <ul>
         <li>New: Added Douyin and Kuaishou hot search sources<br/>
