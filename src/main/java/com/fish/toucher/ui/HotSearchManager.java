@@ -5,9 +5,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
-import com.intellij.util.net.HttpConfigurable;
-
-import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
@@ -423,34 +420,23 @@ public class HotSearchManager {
      * IntelliJ registers its proxy settings as the JVM default ProxySelector at startup,
      * so this automatically respects IDEA's HTTP Proxy configuration.
      */
-    @SuppressWarnings("deprecation")
     private HttpClient buildHttpClient() {
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10));
         try {
-            HttpConfigurable httpConfig = HttpConfigurable.getInstance();
-            if (httpConfig.USE_HTTP_PROXY && httpConfig.PROXY_HOST != null && !httpConfig.PROXY_HOST.isEmpty()) {
-                int port = httpConfig.PROXY_PORT;
-                String host = httpConfig.PROXY_HOST;
-                LOG.info("buildHttpClient: using IDEA proxy " + host + ":" + port
-                        + " (SOCKS=" + httpConfig.PROXY_TYPE_IS_SOCKS + ")");
-                InetSocketAddress addr = new InetSocketAddress(host, port);
-                if (httpConfig.PROXY_TYPE_IS_SOCKS) {
-                    Proxy socksProxy = new Proxy(Proxy.Type.SOCKS, addr);
-                    builder.proxy(new ProxySelector() {
-                        @Override
-                        public java.util.List<Proxy> select(URI uri) { return java.util.List.of(socksProxy); }
-                        @Override
-                        public void connectFailed(URI uri, java.net.SocketAddress sa, java.io.IOException ioe) {}
-                    });
-                } else {
-                    builder.proxy(ProxySelector.of(addr));
+            ProxySelector proxySelector = ProxySelector.getDefault();
+            if (proxySelector != null) {
+                var proxies = proxySelector.select(URI.create("https://www.google.com"));
+                LOG.info("buildHttpClient: ProxySelector=" + proxySelector.getClass().getName() + ", proxies=" + proxies);
+                boolean hasDirect = proxies.size() == 1 && proxies.get(0).type() == Proxy.Type.DIRECT;
+                if (!hasDirect) {
+                    builder.proxy(proxySelector);
                 }
             } else {
-                LOG.info("buildHttpClient: IDEA proxy not configured, using direct connection");
+                LOG.info("buildHttpClient: ProxySelector is null, using direct connection");
             }
         } catch (Exception e) {
-            LOG.warn("buildHttpClient: failed to read IDEA proxy settings: " + e.getMessage());
+            LOG.warn("buildHttpClient: failed to get proxy: " + e.getMessage());
         }
         return builder.build();
     }
