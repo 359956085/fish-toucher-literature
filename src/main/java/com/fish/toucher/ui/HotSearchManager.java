@@ -434,11 +434,17 @@ public class HotSearchManager {
                 String host = httpConfig.PROXY_HOST;
                 LOG.info("buildHttpClient: using IDEA proxy " + host + ":" + port
                         + " (SOCKS=" + httpConfig.PROXY_TYPE_IS_SOCKS + ")");
+                InetSocketAddress addr = new InetSocketAddress(host, port);
                 if (httpConfig.PROXY_TYPE_IS_SOCKS) {
-                    Proxy socksProxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(host, port));
-                    builder.proxy(ProxySelector.of(new InetSocketAddress(host, port)));
+                    Proxy socksProxy = new Proxy(Proxy.Type.SOCKS, addr);
+                    builder.proxy(new ProxySelector() {
+                        @Override
+                        public java.util.List<Proxy> select(URI uri) { return java.util.List.of(socksProxy); }
+                        @Override
+                        public void connectFailed(URI uri, java.net.SocketAddress sa, java.io.IOException ioe) {}
+                    });
                 } else {
-                    builder.proxy(ProxySelector.of(new InetSocketAddress(host, port)));
+                    builder.proxy(ProxySelector.of(addr));
                 }
             } else {
                 LOG.info("buildHttpClient: IDEA proxy not configured, using direct connection");
