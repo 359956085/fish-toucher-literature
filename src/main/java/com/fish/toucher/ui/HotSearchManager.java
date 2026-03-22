@@ -420,10 +420,23 @@ public class HotSearchManager {
      * so this automatically respects IDEA's HTTP Proxy configuration.
      */
     private HttpClient buildHttpClient() {
-        return HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .proxy(ProxySelector.getDefault())
-                .build();
+        ProxySelector proxySelector = ProxySelector.getDefault();
+        if (proxySelector != null) {
+            try {
+                var proxies = proxySelector.select(URI.create("https://www.google.com"));
+                LOG.info("buildHttpClient: ProxySelector=" + proxySelector.getClass().getName() + ", proxies=" + proxies);
+            } catch (Exception e) {
+                LOG.info("buildHttpClient: ProxySelector=" + proxySelector.getClass().getName() + ", failed to query: " + e.getMessage());
+            }
+        } else {
+            LOG.info("buildHttpClient: no ProxySelector, using direct connection");
+        }
+        HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10));
+        if (proxySelector != null) {
+            builder.proxy(proxySelector);
+        }
+        return builder.build();
     }
 
     private String unescapeJson(String s) {
