@@ -26,7 +26,7 @@ dependencies {
         //   intellijIdea("253.30387.90")
         // 或者使用 maven snapshot (不走 installer):
         //   intellijIdea("253-EAP-SNAPSHOT") { useInstaller = false }
-        intellijIdea("2025.3")
+        intellijIdea("2026.1")
 
         pluginVerifier()
         zipSigner()
@@ -38,7 +38,7 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "253.*"
+            untilBuild = "261.*"
         }
     }
 
