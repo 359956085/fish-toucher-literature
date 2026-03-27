@@ -14,6 +14,7 @@ import com.intellij.util.ui.JBUI;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.ui.HotSearchManager;
 import com.fish.toucher.ui.NovelReaderManager;
+import com.fish.toucher.ui.NovelReaderToolWindowFactory;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -422,6 +423,11 @@ public class NovelReaderConfigurable implements Configurable {
             HotSearchManager.getInstance().start();
         } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().stop();
+        }
+
+        // Rebuild tool window content when mode changes
+        if (!newMode.equals(oldMode)) {
+            NovelReaderToolWindowFactory.rebuildAllToolWindows();
         }
 
         // Hot search source

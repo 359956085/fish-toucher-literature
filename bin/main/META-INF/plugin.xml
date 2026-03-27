@@ -111,7 +111,7 @@
     </ul>
     ]]></change-notes>
 
-    <idea-version since-build="242" until-build="253.*"/>
+    <idea-version since-build="242" until-build="261.*"/>
 
     <depends>com.intellij.modules.platform</depends>
 
