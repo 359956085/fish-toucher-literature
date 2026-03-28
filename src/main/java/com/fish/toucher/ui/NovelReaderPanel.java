@@ -67,6 +67,10 @@ public class NovelReaderPanel extends JPanel {
         navPanel.add(openBtn);
         navPanel.add(prevBtn);
         navPanel.add(nextBtn);
+        JButton onlineBtn = createSmallButton("📡");
+        onlineBtn.setToolTipText("Online book source");
+        onlineBtn.addActionListener(e -> new com.fish.toucher.ui.dialog.OnlineBookDialog(project).show());
+        navPanel.add(onlineBtn);
         bottomBar.add(navPanel, BorderLayout.WEST);
 
         // Center: progress slider
