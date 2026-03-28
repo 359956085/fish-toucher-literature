@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>2.3.1</version>
+    <version>2.4.0</version>
     <vendor>FishToucher</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,15 @@
         <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Trends, Google Trends — switchable in settings</li>
         <li>Click any hot search title to open in browser</li>
         <li>Auto-refreshing data with carousel rotation</li>
+    </ul>
+
+    <b>Online Book Source (New in 2.4.0)</b>
+    <ul>
+        <li>Custom book sources via JSON config — define search, chapter list, and content rules</li>
+        <li>Supports HTML (CSS selectors via Jsoup) and JSON (JSONPath) parsing</li>
+        <li>Bookshelf to save and manage books; chapter cache for faster loading</li>
+        <li>Import/export book sources as JSON; custom headers/Cookie auth support</li>
+        <li>Click the 📡 button in the novel reader toolbar to open</li>
     </ul>
 
     <b>Settings:</b> Settings → Tools → Fish Toucher
@@ -50,10 +59,30 @@
         <li>自动刷新数据，轮播滚动显示</li>
     </ul>
 
+    <b>在线书源（2.4.0 新增）</b>
+    <ul>
+        <li>通过 JSON 配置自定义书源 — 定义搜索、章节列表和正文抓取规则</li>
+        <li>支持 HTML（Jsoup CSS 选择器）和 JSON（JSONPath）解析</li>
+        <li>书架功能，保存和管理书籍；章节缓存加快加载速度</li>
+        <li>支持导入/导出书源 JSON；支持自定义请求头/Cookie 鉴权</li>
+        <li>点击小说阅读工具栏中的 📡 按钮打开</li>
+    </ul>
+
     <b>设置路径：</b> Settings → Tools → Fish Toucher
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>2.4.0</b>
+    <ul>
+        <li>New: Online book source — import custom JSON sources, search books, manage bookshelf, read chapters online<br/>
+            新增：在线书源 — 导入自定义 JSON 书源，搜索书籍，管理书架，在线阅读章节</li>
+        <li>New: HTML (CSS selector) and JSON (JSONPath) parsing engines for flexible site support<br/>
+            新增：HTML（CSS 选择器）和 JSON（JSONPath）双解析引擎，灵活适配各类网站</li>
+        <li>New: Chapter cache and bookshelf with reading progress persistence<br/>
+            新增：章节缓存与书架功能，阅读进度自动保存</li>
+        <li>New: Book source import/export as JSON; custom headers and Cookie auth support<br/>
+            新增：书源 JSON 导入/导出；支持自定义请求头与 Cookie 鉴权</li>
+    </ul>
     <b>2.3.1</b>
     <ul>
         <li>Fixed: Switching between novel and hot search mode now correctly updates tool window content without restart<br/>
