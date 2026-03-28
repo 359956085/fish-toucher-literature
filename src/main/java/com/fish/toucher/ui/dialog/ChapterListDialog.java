@@ -122,7 +122,11 @@ public class ChapterListDialog extends DialogWrapper {
                     }
 
                     int total = listModel.getSize();
-                    statusLabel.setText("Total: " + total + " chapters");
+                    if (total == 0) {
+                        statusLabel.setText("\u672a\u83b7\u53d6\u5230\u7ae0\u8282\u5217\u8868\uff0c\u8bf7\u68c0\u67e5\uff1a\u2460\u4e66\u6e90\u89c4\u5219\u662f\u5426\u6b63\u786e \u2461\u662f\u5426\u9700\u8981 Cookie \u2462\u7f51\u7edc\u662f\u5426\u6b63\u5e38");
+                    } else {
+                        statusLabel.setText("\u5171 " + total + " \u7ae0");
+                    }
 
                     // Scroll to last read chapter
                     int lastRead = book.getLastReadChapter();
