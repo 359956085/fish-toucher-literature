@@ -140,7 +140,8 @@ public class ChapterListDialog extends DialogWrapper {
                 });
             } catch (Exception e) {
                 LOG.warn("Failed to load chapters", e);
-                updateStatus("Failed to load chapters: " + e.getMessage());
+                String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                updateStatus("\u52a0\u8f7d\u5931\u8d25: " + msg);
             }
         });
     }
