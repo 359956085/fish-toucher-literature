@@ -10,6 +10,12 @@ import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.fish.toucher.model.BookSource;
+import com.fish.toucher.service.BookSourceManager;
+import com.fish.toucher.ui.dialog.BookSourceEditDialog;
+import java.io.File;
+import java.nio.file.Files;
+import java.util.List;
 import com.intellij.util.ui.JBUI;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.ui.HotSearchManager;
@@ -80,6 +86,10 @@ public class NovelReaderConfigurable implements Configurable {
 
     // Novel-only settings panel (hidden in hot search mode)
     private JPanel novelSettingsPanel;
+
+    // Online book source management
+    private JList<String> onlineSourceList;
+    private DefaultListModel<String> onlineSourceListModel;
 
     @Nls(capitalization = Nls.Capitalization.Title)
     @Override
@@ -302,6 +312,47 @@ public class NovelReaderConfigurable implements Configurable {
         shortcutToggleField = new ShortcutKeyField(settings.getShortcutToggle());
         novelSettingsPanel.add(shortcutToggleField, ngbc);
 
+        // Online book source management section
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        novelSettingsPanel.add(new JSeparator(), ngbc);
+
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        JLabel onlineSourceTitle = new JLabel("在线书源管理");
+        onlineSourceTitle.setFont(onlineSourceTitle.getFont().deriveFont(Font.BOLD, 12f));
+        novelSettingsPanel.add(onlineSourceTitle, ngbc);
+
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        JPanel sourceBtnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JButton importBtn = new JButton("导入JSON");
+        importBtn.addActionListener(e -> importBookSource());
+        JButton exportBtn = new JButton("导出JSON");
+        exportBtn.addActionListener(e -> exportBookSources());
+        JButton newSourceBtn = new JButton("新建书源");
+        newSourceBtn.addActionListener(e -> newBookSource());
+        sourceBtnPanel.add(importBtn);
+        sourceBtnPanel.add(exportBtn);
+        sourceBtnPanel.add(newSourceBtn);
+        novelSettingsPanel.add(sourceBtnPanel, ngbc);
+
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        onlineSourceListModel = new DefaultListModel<>();
+        onlineSourceList = new JList<>(onlineSourceListModel);
+        onlineSourceList.setVisibleRowCount(4);
+        refreshOnlineSourceList();
+        JScrollPane sourceScroll = new JScrollPane(onlineSourceList);
+        sourceScroll.setPreferredSize(new java.awt.Dimension(300, 90));
+        novelSettingsPanel.add(sourceScroll, ngbc);
+
+        ngbc.gridx = 0; ngbc.gridy = nrow++; ngbc.gridwidth = 2;
+        JPanel sourceActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JButton editSourceBtn = new JButton("编辑");
+        editSourceBtn.addActionListener(e -> editSelectedBookSource());
+        JButton deleteSourceBtn = new JButton("删除");
+        deleteSourceBtn.addActionListener(e -> deleteSelectedBookSource());
+        sourceActionPanel.add(editSourceBtn);
+        sourceActionPanel.add(deleteSourceBtn);
+        novelSettingsPanel.add(sourceActionPanel, ngbc);
+
         // Add novel settings panel to main panel
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(novelSettingsPanel, gbc);
@@ -519,6 +570,87 @@ public class NovelReaderConfigurable implements Configurable {
                 keymap.addShortcut(actionId, new KeyboardShortcut(newKs, null));
                 LOG.info("applyShortcutToKeymap: set " + actionId + " -> " + newKeystroke);
             }
+        }
+    }
+
+    private void refreshOnlineSourceList() {
+        if (onlineSourceListModel == null) return;
+        onlineSourceListModel.clear();
+        for (BookSource source : BookSourceManager.getInstance().getSources()) {
+            String prefix = source.isEnabled() ? "☑ " : "☐ ";
+            onlineSourceListModel.addElement(prefix + source.getName() + "  " + source.getUrl());
+        }
+    }
+
+    private void importBookSource() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON files", "json"));
+        if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                String json = Files.readString(chooser.getSelectedFile().toPath());
+                BookSourceManager.getInstance().importFromJson(json);
+                refreshOnlineSourceList();
+                Messages.showInfoMessage("书源导入成功", "Fish Toucher");
+            } catch (Exception e) {
+                Messages.showErrorDialog("导入失败: " + e.getMessage(), "Fish Toucher");
+            }
+        }
+    }
+
+    private void exportBookSources() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        chooser.setSelectedFile(new File("book_sources.json"));
+        if (chooser.showSaveDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                String json = BookSourceManager.getInstance().exportAllToJson();
+                Files.writeString(chooser.getSelectedFile().toPath(), json);
+                Messages.showInfoMessage("导出成功", "Fish Toucher");
+            } catch (Exception e) {
+                Messages.showErrorDialog("导出失败: " + e.getMessage(), "Fish Toucher");
+            }
+        }
+    }
+
+    private void newBookSource() {
+        BookSourceEditDialog dialog = new BookSourceEditDialog(null);
+        if (dialog.showAndGet()) {
+            BookSource source = dialog.getResult();
+            if (source != null) {
+                BookSourceManager.getInstance().save(source);
+                refreshOnlineSourceList();
+            }
+        }
+    }
+
+    private void editSelectedBookSource() {
+        int idx = onlineSourceList.getSelectedIndex();
+        if (idx < 0) return;
+        List<BookSource> sources = BookSourceManager.getInstance().getSources();
+        if (idx >= sources.size()) return;
+        BookSource existing = sources.get(idx);
+        BookSourceEditDialog dialog = new BookSourceEditDialog(existing);
+        if (dialog.showAndGet()) {
+            BookSource updated = dialog.getResult();
+            if (updated != null) {
+                if (!existing.getName().equals(updated.getName())) {
+                    BookSourceManager.getInstance().delete(existing);
+                }
+                BookSourceManager.getInstance().save(updated);
+                refreshOnlineSourceList();
+            }
+        }
+    }
+
+    private void deleteSelectedBookSource() {
+        int idx = onlineSourceList.getSelectedIndex();
+        if (idx < 0) return;
+        List<BookSource> sources = BookSourceManager.getInstance().getSources();
+        if (idx >= sources.size()) return;
+        BookSource source = sources.get(idx);
+        int confirm = Messages.showYesNoDialog("删除书源: " + source.getName() + "?", "Fish Toucher", Messages.getQuestionIcon());
+        if (confirm == Messages.YES) {
+            BookSourceManager.getInstance().delete(source);
+            refreshOnlineSourceList();
         }
     }
 
