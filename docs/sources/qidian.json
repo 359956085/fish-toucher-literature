@@ -1,0 +1,42 @@
+{
+  "name": "起点中文网",
+  "url": "https://m.qidian.com",
+  "enabled": true,
+  "header": {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+    "Referer": "https://m.qidian.com",
+    "Cookie": ""
+  },
+  "search": {
+    "url": "https://m.qidian.com/search/result/?kw={{keyword}}",
+    "method": "GET",
+    "type": "html",
+    "list": ".book-item",
+    "name": ".book-title@text",
+    "author": ".book-author span@text",
+    "bookUrl": "a@href",
+    "coverUrl": "img@src"
+  },
+  "chapter": {
+    "url": "{{bookUrl}}catalog",
+    "method": "GET",
+    "type": "html",
+    "list": "a[href*='/chapter/']",
+    "name": "@text",
+    "chapterUrl": "@href"
+  },
+  "content": {
+    "url": "{{chapterUrl}}",
+    "method": "GET",
+    "type": "html",
+    "content": ".chapter-content,.cha-content,.read-content,#j_chapterNew",
+    "purify": [
+      ".author-say",
+      ".chapter-end-info",
+      ".vipInfo",
+      ".limit-info",
+      "script",
+      "style"
+    ]
+  }
+}
