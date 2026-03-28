@@ -19,6 +19,10 @@ java {
 }
 
 dependencies {
+    implementation("org.jsoup:jsoup:1.18.3")
+    implementation("com.jayway.jsonpath:json-path:2.9.0")
+    implementation("com.google.code.gson:gson:2.12.1")
+
     intellijPlatform {
         // Build 253 = IDEA 2025.3
         // 如果 intellijIdea("2025.3") 报错, 可替换为下面的精确 build number:
