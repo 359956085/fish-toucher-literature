@@ -82,14 +82,17 @@ public class OnlineBookDialog extends DialogWrapper {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
         JButton readButton = new JButton("\u7ee7\u7eed\u9605\u8bfb");
+        JButton addManualButton = new JButton("\u624b\u52a8\u6dfb\u52a0");
         JButton removeButton = new JButton("\u79fb\u9664");
         JButton clearCacheButton = new JButton("\u6e05\u9664\u7f13\u5b58");
 
         readButton.addActionListener(e -> continueReading());
+        addManualButton.addActionListener(e -> addManualBook());
         removeButton.addActionListener(e -> removeFromBookshelf());
         clearCacheButton.addActionListener(e -> clearBookCache());
 
         buttonPanel.add(readButton);
+        buttonPanel.add(addManualButton);
         buttonPanel.add(removeButton);
         buttonPanel.add(clearCacheButton);
 
@@ -137,6 +140,49 @@ public class OnlineBookDialog extends DialogWrapper {
         Messages.showInfoMessage(project,
                 "\u5df2\u6e05\u9664\u300c" + selected.getName() + "\u300d\u7684\u7f13\u5b58",
                 "\u6e05\u9664\u7f13\u5b58");
+    }
+
+    private void addManualBook() {
+        List<BookSource> sources = BookSourceManager.getInstance().getSources();
+        if (sources.isEmpty()) {
+            Messages.showErrorDialog(project, "\u8bf7\u5148\u5bfc\u5165\u4e66\u6e90\u518d\u6dfb\u52a0\u4e66\u7c4d", "\u65e0\u53ef\u7528\u4e66\u6e90");
+            return;
+        }
+
+        // Build form panel
+        JPanel form = new JPanel(new GridLayout(5, 2, 6, 6));
+        JTextField nameField = new JTextField();
+        JTextField authorField = new JTextField();
+        JTextField bookUrlField = new JTextField();
+        String[] sourceNames = sources.stream().map(BookSource::getName).toArray(String[]::new);
+        JComboBox<String> sourceBox = new JComboBox<>(sourceNames);
+
+        form.add(new JLabel("\u4e66\u540d\uff1a")); form.add(nameField);
+        form.add(new JLabel("\u4f5c\u8005\uff1a")); form.add(authorField);
+        form.add(new JLabel("\u4e66\u7c4d URL\uff1a")); form.add(bookUrlField);
+        form.add(new JLabel("\u4e66\u6e90\uff1a")); form.add(sourceBox);
+        form.add(new JLabel()); form.add(new JLabel());
+
+        int result = JOptionPane.showConfirmDialog(null, form,
+                "\u624b\u52a8\u6dfb\u52a0\u4e66\u7c4d", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String name = nameField.getText().trim();
+        String bookUrl = bookUrlField.getText().trim();
+        if (name.isEmpty() || bookUrl.isEmpty()) {
+            Messages.showErrorDialog(project, "\u4e66\u540d\u548c URL \u4e0d\u80fd\u4e3a\u7a7a", "\u6dfb\u52a0\u5931\u8d25");
+            return;
+        }
+
+        BookshelfItem item = new BookshelfItem();
+        item.setName(name);
+        item.setAuthor(authorField.getText().trim());
+        item.setBookUrl(bookUrl);
+        item.setSourceName((String) sourceBox.getSelectedItem());
+        item.setLastReadTime(System.currentTimeMillis());
+
+        BookshelfManager.getInstance().addBook(item);
+        refreshBookshelf();
     }
 
     // -------------------------------------------------------------------------
