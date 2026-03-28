@@ -146,6 +146,21 @@ public class NovelReaderManager {
         return true;
     }
 
+    /**
+     * Load content from lines directly (for online sources).
+     * @param virtualPath a virtual identifier like "online://sourceName/bookName/chapter"
+     * @param lines the content lines to display
+     */
+    public void loadFromLines(String virtualPath, List<String> lines) {
+        rawLines.clear();
+        rawLines.addAll(lines);
+        currentFilePath = virtualPath;
+        currentLine = 0;
+        visible = true;
+        LOG.info("loadFromLines: loaded " + rawLines.size() + " lines from " + virtualPath);
+        fireChange();
+    }
+
     // ========== Stealth mode (status bar): 1 line at a time ==========
 
     public void stealthNextPage() {
