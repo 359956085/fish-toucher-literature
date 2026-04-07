@@ -2,7 +2,7 @@
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
     <version>2.3.1</version>
-    <vendor email="359956085@163.com">FishToucher</vendor>
+    <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
     <p>A lightweight reading and browsing plugin for IntelliJ IDEA — enjoy novels or stay updated with trending topics without leaving your IDE.</p>
@@ -53,7 +53,7 @@
     <b>设置路径：</b> Settings → Tools → Fish Toucher
 
     <br/><br/>
-    <p>By installing this plugin, you agree to the <a href="https://github.com/FishToucher/fish-toucher-literature/blob/main/EULA.md">End User License Agreement</a>.</p>
+    <p>By installing this plugin, you agree to the <a href="https://github.com/359956085/fish-toucher-literature/blob/main/EULA.md">End User License Agreement</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[

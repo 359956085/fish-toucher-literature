@@ -66,7 +66,8 @@
       "Bash(curl -s -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\" \"https://trends.google.com/trending/rss?geo=US\")",
       "Bash(find /home/fengshi/.gradle -name ideaIC-* -o -name ideaIU-*)",
       "Bash(find /home/fengshi/.gradle -name *.jar -path *intellij*)",
-      "Bash(find /home/fengshi/.gradle -name *.jar -path *idea*)"
+      "Bash(find /home/fengshi/.gradle -name *.jar -path *idea*)",
+      "Bash(ls /home/fengshi/fish-toucher-literature/*.md)"
     ]
   }
 }
