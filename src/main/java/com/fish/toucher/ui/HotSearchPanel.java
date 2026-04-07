@@ -69,16 +69,22 @@ public class HotSearchPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         add(scrollPane, BorderLayout.CENTER);
 
-        // --- Top toolbar: mode switch ---
+        // --- Top toolbar: mode selector ---
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JBColor.border()));
-        JButton switchModeBtn = new JButton("\uD83D\uDCDA \u9605\u8BFB");
-        switchModeBtn.setMargin(new Insets(1, 4, 1, 4));
-        switchModeBtn.setFont(switchModeBtn.getFont().deriveFont(12f));
-        switchModeBtn.setFocusable(false);
-        switchModeBtn.setToolTipText("Switch to Novel Reading mode");
-        switchModeBtn.addActionListener(e -> NovelReaderToolWindowFactory.switchMode("novel"));
-        topBar.add(switchModeBtn);
+        JComboBox<String> modeCombo = new JComboBox<>(new String[]{
+                FishToucherBundle.message("settings.mode.novel"),
+                FishToucherBundle.message("settings.mode.hotSearch")
+        });
+        modeCombo.setSelectedIndex(1);
+        modeCombo.setFocusable(false);
+        modeCombo.setToolTipText(FishToucherBundle.message("toolbar.mode.tooltip"));
+        modeCombo.addActionListener(e -> {
+            if (modeCombo.getSelectedIndex() == 0) {
+                NovelReaderToolWindowFactory.switchMode("novel");
+            }
+        });
+        topBar.add(modeCombo);
         add(topBar, BorderLayout.NORTH);
 
         // --- Bottom bar ---
