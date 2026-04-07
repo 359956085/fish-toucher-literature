@@ -25,6 +25,12 @@
         <li>Auto-refreshing data with carousel rotation</li>
     </ul>
 
+    <b>Mode Switching</b>
+    <ul>
+        <li>Switch between Novel Reading and Hot Search mode directly in the tool window</li>
+        <li>Mode selection is synced with plugin settings in real time</li>
+    </ul>
+
     <b>Settings:</b> Settings → Tools → Fish Toucher
 
     <br/><br/>
@@ -48,6 +54,12 @@
         <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X趋势、Google趋势，可在设置中切换</li>
         <li>点击热搜标题直接在浏览器中打开</li>
         <li>自动刷新数据，轮播滚动显示</li>
+    </ul>
+
+    <b>模式切换</b>
+    <ul>
+        <li>可直接在工具窗口底部切换小说阅读模式与热搜轮播模式</li>
+        <li>模式选择与插件设置实时同步</li>
     </ul>
 
     <b>设置路径：</b> Settings → Tools → Fish Toucher
