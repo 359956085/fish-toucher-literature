@@ -2,26 +2,26 @@
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
     <version>2.3.1</version>
-    <vendor>FishToucher</vendor>
+    <vendor email="359956085@163.com">FishToucher</vendor>
 
     <description><![CDATA[
-    <p>A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search trends while pretending to work.</p>
+    <p>A lightweight reading and browsing plugin for IntelliJ IDEA — enjoy novels or stay updated with trending topics without leaving your IDE.</p>
 
     <b>Novel Reading Mode</b>
     <ul>
-        <li><b>Stealth Mode (Status Bar):</b> One line of text in the status bar — looks like a normal status message. Click to advance.</li>
-        <li><b>Normal Mode (Tool Window):</b> Multi-line display disguised as build log output, with page navigation and progress slider.</li>
+        <li><b>Status Bar Mode:</b> Displays one line of text in the status bar for minimal distraction. Click to advance.</li>
+        <li><b>Tool Window Mode:</b> Multi-line display with page navigation and progress slider, seamlessly integrated into the IDE layout.</li>
         <li>Both modes share unified reading progress</li>
         <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
-        <li>Boss key to instantly hide all content</li>
+        <li>Quick-hide shortcut to instantly dismiss content</li>
         <li>Customizable keyboard shortcuts and font settings</li>
     </ul>
 
     <b>Hot Search Carousel Mode</b>
     <ul>
-        <li>Real-time hot search trends displayed in both tool window and status bar</li>
+        <li>Real-time trending topics displayed in both tool window and status bar</li>
         <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Trends, Google Trends — switchable in settings</li>
-        <li>Click any hot search title to open in browser</li>
+        <li>Click any topic to open in browser</li>
         <li>Auto-refreshing data with carousel rotation</li>
     </ul>
 
@@ -30,15 +30,15 @@
     <br/><br/>
     <hr/>
 
-    <p>一款适用于 IntelliJ IDEA 的摸鱼插件 — 在假装工作的同时看小说或浏览热搜。</p>
+    <p>一款轻量的阅读与资讯插件，让你在 IntelliJ IDEA 中随时阅读小说或浏览热搜动态，无需切换应用。</p>
 
     <b>小说阅读模式</b>
     <ul>
-        <li><b>隐秘模式（状态栏）：</b>在状态栏显示一行文本，外观与普通状态信息无异，点击翻页</li>
-        <li><b>普通模式（工具窗口）：</b>多行显示，伪装成构建日志，支持翻页和进度滑块</li>
+        <li><b>状态栏模式：</b>在状态栏显示一行文本，低干扰融入 IDE 界面，点击翻页</li>
+        <li><b>工具窗口模式：</b>多行显示，内嵌于 IDE 工具窗口，支持翻页和进度滑块</li>
         <li>两种模式共用统一阅读进度</li>
         <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
-        <li>老板键一键隐藏所有阅读内容</li>
+        <li>快捷键一键隐藏阅读内容</li>
         <li>可自定义快捷键和字体设置</li>
     </ul>
 
@@ -51,6 +51,9 @@
     </ul>
 
     <b>设置路径：</b> Settings → Tools → Fish Toucher
+
+    <br/><br/>
+    <p>By installing this plugin, you agree to the <a href="https://github.com/FishToucher/fish-toucher-literature/blob/main/EULA.md">End User License Agreement</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
