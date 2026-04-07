@@ -45,13 +45,22 @@ public class NovelReaderPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         add(scrollPane, BorderLayout.CENTER);
 
-        // --- Top toolbar: mode switch ---
+        // --- Top toolbar: mode selector ---
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JBColor.border()));
-        JButton switchModeBtn = createSmallButton("\uD83D\uDD25 \u70ED\u641C");
-        switchModeBtn.setToolTipText("Switch to Hot Search mode");
-        switchModeBtn.addActionListener(e -> NovelReaderToolWindowFactory.switchMode("hotsearch"));
-        topBar.add(switchModeBtn);
+        JComboBox<String> modeCombo = new JComboBox<>(new String[]{
+                com.fish.toucher.FishToucherBundle.message("settings.mode.novel"),
+                com.fish.toucher.FishToucherBundle.message("settings.mode.hotSearch")
+        });
+        modeCombo.setSelectedIndex(0);
+        modeCombo.setFocusable(false);
+        modeCombo.setToolTipText(com.fish.toucher.FishToucherBundle.message("toolbar.mode.tooltip"));
+        modeCombo.addActionListener(e -> {
+            if (modeCombo.getSelectedIndex() == 1) {
+                NovelReaderToolWindowFactory.switchMode("hotsearch");
+            }
+        });
+        topBar.add(modeCombo);
         add(topBar, BorderLayout.NORTH);
 
         // --- Bottom bar with controls ---
