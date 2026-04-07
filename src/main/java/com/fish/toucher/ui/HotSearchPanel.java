@@ -69,6 +69,18 @@ public class HotSearchPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         add(scrollPane, BorderLayout.CENTER);
 
+        // --- Top toolbar: mode switch ---
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JBColor.border()));
+        JButton switchModeBtn = new JButton("\uD83D\uDCDA \u9605\u8BFB");
+        switchModeBtn.setMargin(new Insets(1, 4, 1, 4));
+        switchModeBtn.setFont(switchModeBtn.getFont().deriveFont(12f));
+        switchModeBtn.setFocusable(false);
+        switchModeBtn.setToolTipText("Switch to Novel Reading mode");
+        switchModeBtn.addActionListener(e -> NovelReaderToolWindowFactory.switchMode("novel"));
+        topBar.add(switchModeBtn);
+        add(topBar, BorderLayout.NORTH);
+
         // --- Bottom bar ---
         JPanel bottomBar = new JPanel(new BorderLayout(5, 0));
         bottomBar.setBorder(new EmptyBorder(3, 8, 3, 8));

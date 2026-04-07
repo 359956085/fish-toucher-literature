@@ -13,6 +13,7 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
 import com.fish.toucher.settings.NovelReaderSettings;
+import com.intellij.openapi.application.ApplicationManager;
 import org.jetbrains.annotations.NotNull;
 
 public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAware {
@@ -41,6 +42,20 @@ public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAwar
             Content content = ContentFactory.getInstance().createContent(panel, "", false);
             cm.addContent(content);
         }
+    }
+
+    /**
+     * Switch plugin mode and rebuild all tool windows. Safe to call from any thread.
+     */
+    public static void switchMode(@NotNull String newMode) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        settings.setPluginMode(newMode);
+        if ("hotsearch".equals(newMode) && !HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().start();
+        } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
+            HotSearchManager.getInstance().stop();
+        }
+        ApplicationManager.getApplication().invokeLater(NovelReaderToolWindowFactory::rebuildAllToolWindows);
     }
 
     /**
