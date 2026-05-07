@@ -4,7 +4,7 @@ A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search tre
 
 一款适用于 IntelliJ IDEA 的摸鱼插件 — 在假装工作的同时看小说或浏览热搜。
 
-**Supported IDEs:** IntelliJ IDEA 2024.2+ (Build 242 ~ 253.*)
+**Supported IDEs:** IntelliJ IDEA 2024.2+ (Build 242 ~ 261.*)
 
 ## Features / 功能特性
 
@@ -32,14 +32,14 @@ A slacking-off plugin for IntelliJ IDEA — read novels or browse hot search tre
 
 | Feature | Description |
 |---------|-------------|
-| **Multiple Sources** | Baidu, Toutiao, Zhihu, Douyin, Kuaishou — switchable in settings or tool window. |
+| **Multiple Sources** | Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Trends, Google Trends — switchable in settings or tool window. |
 | **Real-time Data** | Auto-refreshing hot search trends displayed in both tool window and status bar. |
 | **Click to Open** | Click any hot search title to open it in the default browser. |
 | **Carousel** | Automatic rotation with configurable interval. |
 
 | 功能 | 说明 |
 |------|------|
-| **多热搜源** | 百度、今日头条、知乎、抖音、快手，可在设置或工具窗口中切换 |
+| **多热搜源** | 百度、今日头条、知乎、抖音、快手、X趋势、Google趋势，可在设置或工具窗口中切换 |
 | **实时数据** | 自动刷新热搜榜单，同时显示在工具窗口和状态栏 |
 | **点击打开** | 点击热搜标题直接在浏览器中打开 |
 | **轮播** | 自动轮播，间隔可自定义 |
@@ -96,7 +96,7 @@ The plugin zip will be at `build/distributions/`.
 - Keyboard shortcuts
 
 **Hot Search Settings / 热搜设置**
-- Source: Baidu / Toutiao / Zhihu / Douyin / Kuaishou
+- Source: Baidu / Toutiao / Zhihu / Douyin / Kuaishou / X Trends / Google Trends
 - Carousel interval (3–120 sec)
 - Data refresh interval (1–120 min)
 

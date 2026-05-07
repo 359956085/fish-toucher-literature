@@ -69,6 +69,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>2.4.1</b>
+    <ul>
+        <li>Fixed: some issues<br/>
+            修复：若干问题</li>
+    </ul>
     <b>2.4.0</b>
     <ul>
         <li>New: Mode switch dropdown fixed at the top of the tool window — switch between Novel Reading and Hot Search without opening settings<br/>
