@@ -1,5 +1,6 @@
 package com.fish.toucher.ui;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
@@ -18,13 +19,15 @@ import java.awt.event.MouseEvent;
  * Normal mode: tool window panel that shows novel content in multiple lines.
  * Has its own independent reading progress separate from stealth mode.
  */
-public class NovelReaderPanel extends JPanel {
+public class NovelReaderPanel extends JPanel implements Disposable {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderPanel.class);
     private final Project project;
     private final JTextArea textArea;
     private final JLabel statusLabel;
     private final JSlider progressSlider;
+    private final Runnable changeListener;
+    private boolean syncingSlider;
 
     public NovelReaderPanel(Project project) {
         LOG.info("NovelReaderPanel: initializing for project " + project.getName());
@@ -92,7 +95,7 @@ public class NovelReaderPanel extends JPanel {
         progressSlider.setPreferredSize(new Dimension(200, 20));
         progressSlider.setToolTipText("Drag to jump to position");
         progressSlider.addChangeListener(e -> {
-            if (progressSlider.getValueIsAdjusting()) return;
+            if (syncingSlider || progressSlider.getValueIsAdjusting()) return;
             NovelReaderManager manager = NovelReaderManager.getInstance();
             if (manager.hasContent()) {
                 manager.normalJumpToPercent(progressSlider.getValue());
@@ -119,7 +122,8 @@ public class NovelReaderPanel extends JPanel {
         });
 
         // Listen for changes
-        NovelReaderManager.getInstance().addChangeListener(this::refreshContent);
+        changeListener = this::refreshContent;
+        NovelReaderManager.getInstance().addChangeListener(changeListener);
 
         // Initial content
         refreshContent();
@@ -145,7 +149,7 @@ public class NovelReaderPanel extends JPanel {
         if (!manager.hasContent()) {
             textArea.setText("  [INFO] Waiting for input... Double-click or press Alt+Shift+N to load file.\n");
             statusLabel.setText("");
-            progressSlider.setValue(0);
+            setSliderValueSilently(0);
             return;
         }
 
@@ -176,7 +180,7 @@ public class NovelReaderPanel extends JPanel {
         int percent = manager.getTotalLines() > 0
                 ? (int) ((long) manager.getNormalCurrentLine() * 100 / manager.getTotalLines())
                 : 0;
-        progressSlider.setValue(percent);
+        setSliderValueSilently(percent);
     }
 
     private void openFile() {
@@ -190,5 +194,19 @@ public class NovelReaderPanel extends JPanel {
         } else {
             LOG.info("openFile: user cancelled file selection");
         }
+    }
+
+    private void setSliderValueSilently(int value) {
+        syncingSlider = true;
+        try {
+            progressSlider.setValue(value);
+        } finally {
+            syncingSlider = false;
+        }
+    }
+
+    @Override
+    public void dispose() {
+        NovelReaderManager.getInstance().removeChangeListener(changeListener);
     }
 }

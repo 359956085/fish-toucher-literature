@@ -1,5 +1,6 @@
 package com.fish.toucher.ui;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
@@ -19,7 +20,7 @@ import java.util.List;
  * Displays all Baidu hot search titles in a list format.
  * Clicking a title opens it in the default browser.
  */
-public class HotSearchPanel extends JPanel {
+public class HotSearchPanel extends JPanel implements Disposable {
 
     private static final Logger LOG = Logger.getInstance(HotSearchPanel.class);
     private final DefaultListModel<HotSearchManager.HotSearchItem> listModel;
@@ -146,6 +147,7 @@ public class HotSearchPanel extends JPanel {
         refreshContent();
     }
 
+    @Override
     public void dispose() {
         HotSearchManager.getInstance().removeChangeListener(changeListener);
     }

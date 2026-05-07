@@ -1,11 +1,9 @@
 package com.fish.toucher.ui;
 
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
@@ -35,11 +33,12 @@ public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAwar
         if (settings.isHotSearchMode()) {
             HotSearchPanel hotSearchPanel = new HotSearchPanel(project);
             Content content = ContentFactory.getInstance().createContent(hotSearchPanel, "", false);
+            content.setDisposer(hotSearchPanel);
             cm.addContent(content);
-            Disposer.register(toolWindow.getDisposable(), (Disposable) hotSearchPanel::dispose);
         } else {
             NovelReaderPanel panel = new NovelReaderPanel(project);
             Content content = ContentFactory.getInstance().createContent(panel, "", false);
+            content.setDisposer(panel);
             cm.addContent(content);
         }
     }
