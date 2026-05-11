@@ -36,6 +36,7 @@ public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAwar
             content.setDisposer(hotSearchPanel);
             cm.addContent(content);
         } else {
+            NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
             NovelReaderPanel panel = new NovelReaderPanel(project);
             Content content = ContentFactory.getInstance().createContent(panel, "", false);
             content.setDisposer(panel);
@@ -51,8 +52,11 @@ public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAwar
         settings.setPluginMode(newMode);
         if ("hotsearch".equals(newMode) && !HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().start();
-        } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().stop();
+        } else if ("novel".equals(newMode)) {
+            if (HotSearchManager.getInstance().isRunning()) {
+                HotSearchManager.getInstance().stop();
+            }
+            NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
         }
         ApplicationManager.getApplication().invokeLater(NovelReaderToolWindowFactory::rebuildAllToolWindows);
     }

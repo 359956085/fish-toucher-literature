@@ -136,6 +136,7 @@ public class NovelReaderManager {
         // Restore unified reading progress
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         settings.setLastFilePath(filePath);
+        settings.addRecentFilePath(filePath);
 
         currentLine = settings.getReadingProgress(filePath);
         if (currentLine >= rawLines.size()) currentLine = 0;
@@ -144,6 +145,26 @@ public class NovelReaderManager {
         visible = true;
         fireChange();
         return true;
+    }
+
+    public boolean loadMostRecentFileIfNeeded() {
+        if (hasContent()) {
+            LOG.debug("loadMostRecentFileIfNeeded: content already loaded");
+            return false;
+        }
+
+        List<String> recentFilePaths = NovelReaderSettings.getInstance().getRecentFilePaths();
+        if (recentFilePaths.isEmpty()) {
+            LOG.debug("loadMostRecentFileIfNeeded: no recent files");
+            return false;
+        }
+
+        String filePath = recentFilePaths.get(0);
+        boolean success = loadFile(filePath);
+        if (!success) {
+            LOG.warn("loadMostRecentFileIfNeeded: failed to load recent file: " + filePath);
+        }
+        return success;
     }
 
     // ========== Stealth mode (status bar): 1 line at a time ==========

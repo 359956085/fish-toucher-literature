@@ -15,6 +15,7 @@ import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.ui.HotSearchManager;
 import com.fish.toucher.ui.NovelReaderManager;
 import com.fish.toucher.ui.NovelReaderToolWindowFactory;
+import com.fish.toucher.ui.RecentFileSelector;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +43,7 @@ public class NovelReaderConfigurable implements Configurable {
     private JTextField fontFamilyField;
     private JCheckBox showInStatusBarCheckBox;
     private JLabel currentFileLabel;
+    private RecentFileSelector recentFileSelector;
 
     // Shortcuts
     private ShortcutKeyField shortcutOpenField;
@@ -313,7 +315,7 @@ public class NovelReaderConfigurable implements Configurable {
     }
 
     private @NotNull JPanel getJPanel() {
-        JPanel importPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JPanel importPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         JButton importFileButton = new JButton(FishToucherBundle.message("settings.button.importFile"));
         importFileButton.setToolTipText(FishToucherBundle.message("settings.tooltip.importFile"));
         importFileButton.addActionListener(e -> {
@@ -330,12 +332,16 @@ public class NovelReaderConfigurable implements Configurable {
                 if (success) {
                     Messages.showInfoMessage(FishToucherBundle.message("settings.dialog.fileLoadSuccess", files[0].getName()), "Fish Toucher");
                     updateCurrentFileLabel();
+                    recentFileSelector.refresh();
                 } else {
                     Messages.showErrorDialog(FishToucherBundle.message("settings.dialog.fileLoadFailed"), "Fish Toucher");
                 }
             }
         });
         importPanel.add(importFileButton);
+        recentFileSelector = new RecentFileSelector(null, this::updateCurrentFileLabel);
+        importPanel.add(new JLabel(FishToucherBundle.message("settings.label.recentFiles")));
+        importPanel.add(recentFileSelector);
         return importPanel;
     }
 
@@ -421,8 +427,13 @@ public class NovelReaderConfigurable implements Configurable {
         // Start/stop HotSearchManager based on mode change
         if ("hotsearch".equals(newMode) && !HotSearchManager.getInstance().isRunning()) {
             HotSearchManager.getInstance().start();
-        } else if ("novel".equals(newMode) && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().stop();
+        } else if ("novel".equals(newMode)) {
+            if (HotSearchManager.getInstance().isRunning()) {
+                HotSearchManager.getInstance().stop();
+            }
+            if (!newMode.equals(oldMode)) {
+                NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
+            }
         }
 
         // Rebuild tool window content when mode changes
@@ -560,5 +571,8 @@ public class NovelReaderConfigurable implements Configurable {
         shortcutNextPageField.setKeystrokeString(settings.getShortcutNextPage());
         shortcutPrevPageField.setKeystrokeString(settings.getShortcutPrevPage());
         shortcutToggleField.setKeystrokeString(settings.getShortcutToggle());
+        if (recentFileSelector != null) {
+            recentFileSelector.refresh();
+        }
     }
 }

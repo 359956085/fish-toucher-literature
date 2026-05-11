@@ -7,6 +7,7 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
+import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
 
 import javax.swing.*;
@@ -26,6 +27,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
     private final JTextArea textArea;
     private final JLabel statusLabel;
     private final JSlider progressSlider;
+    private final RecentFileSelector recentFileSelector;
     private final Runnable changeListener;
     private boolean syncingSlider;
 
@@ -77,6 +79,8 @@ public class NovelReaderPanel extends JPanel implements Disposable {
         openBtn.setToolTipText("Open novel file");
         openBtn.addActionListener(e -> openFile());
 
+        recentFileSelector = new RecentFileSelector(project, this::refreshContent);
+
         JButton prevBtn = createSmallButton("◀");
         prevBtn.setToolTipText("Previous page");
         prevBtn.addActionListener(e -> NovelReaderManager.getInstance().normalPrevPage());
@@ -86,6 +90,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
         nextBtn.addActionListener(e -> NovelReaderManager.getInstance().normalNextPage());
 
         navPanel.add(openBtn);
+        navPanel.add(recentFileSelector);
         navPanel.add(prevBtn);
         navPanel.add(nextBtn);
         bottomBar.add(navPanel, BorderLayout.WEST);
@@ -145,6 +150,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
     private void refreshContent() {
         LOG.debug("refreshContent: updating panel content");
         NovelReaderManager manager = NovelReaderManager.getInstance();
+        recentFileSelector.refresh();
 
         if (!manager.hasContent()) {
             textArea.setText("  [INFO] Waiting for input... Double-click or press Alt+Shift+N to load file.\n");
@@ -190,7 +196,14 @@ public class NovelReaderPanel extends JPanel implements Disposable {
                 project, null);
         if (files.length > 0) {
             LOG.info("openFile: user selected file: " + files[0].getPath());
-            NovelReaderManager.getInstance().loadFile(files[0].getPath());
+            boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
+            if (!success) {
+                JOptionPane.showMessageDialog(this,
+                        FishToucherBundle.message("settings.dialog.fileLoadFailed"),
+                        "Fish Toucher",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+            recentFileSelector.refresh();
         } else {
             LOG.info("openFile: user cancelled file selection");
         }
