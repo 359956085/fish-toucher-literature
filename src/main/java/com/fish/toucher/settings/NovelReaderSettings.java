@@ -8,13 +8,17 @@ import com.intellij.openapi.components.Storage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @State(name = "NovelReaderSettings", storages = @Storage("NovelReaderSettings.xml"))
 public class NovelReaderSettings implements PersistentStateComponent<NovelReaderSettings.State> {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderSettings.class);
+    private static final int MAX_RECENT_FILE_PATHS = 10;
 
     public static class State {
         // --- Stealth mode (status bar): fixed 1 line ---
@@ -38,6 +42,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
         // --- Shared settings ---
         public String lastFilePath = "";
+        public List<String> recentFilePaths = new ArrayList<>();
         public String fontFamily = "Microsoft YaHei";
         public int fontSize = 13;
         public boolean showInStatusBar = true;
@@ -78,6 +83,18 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
                 + ", showInStatusBar=" + state.showInStatusBar
                 + ", lastFilePath=" + state.lastFilePath);
         myState = state;
+        if (state.readingProgress == null) {
+            state.readingProgress = new HashMap<>();
+        }
+        if (state.stealthReadingProgress == null) {
+            state.stealthReadingProgress = new HashMap<>();
+        }
+        if (state.normalReadingProgress == null) {
+            state.normalReadingProgress = new HashMap<>();
+        }
+        if (state.recentFilePaths == null) {
+            state.recentFilePaths = new ArrayList<>();
+        }
         // Migrate legacy dual-progress maps into unified readingProgress
         if (!state.stealthReadingProgress.isEmpty() || !state.normalReadingProgress.isEmpty()) {
             // Merge: take the greater progress (further reading position) for each file
@@ -89,6 +106,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             }
             state.stealthReadingProgress.clear();
             state.normalReadingProgress.clear();
+        }
+        if (state.recentFilePaths.isEmpty() && state.lastFilePath != null && !state.lastFilePath.isEmpty()) {
+            addRecentFilePath(state.lastFilePath);
+        } else {
+            normalizeRecentFilePaths();
         }
     }
 
@@ -114,6 +136,45 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     // --- Shared ---
     public String getLastFilePath() { return myState.lastFilePath; }
     public void setLastFilePath(String path) { myState.lastFilePath = path; }
+
+    public List<String> getRecentFilePaths() {
+        normalizeRecentFilePaths();
+        return Collections.unmodifiableList(new ArrayList<>(myState.recentFilePaths));
+    }
+
+    public void addRecentFilePath(String path) {
+        if (path == null || path.isEmpty()) return;
+        normalizeRecentFilePaths();
+        myState.recentFilePaths.remove(path);
+        myState.recentFilePaths.add(0, path);
+        trimRecentFilePaths();
+    }
+
+    public void removeRecentFilePath(String path) {
+        if (path == null || path.isEmpty() || myState.recentFilePaths == null) return;
+        myState.recentFilePaths.remove(path);
+    }
+
+    private void normalizeRecentFilePaths() {
+        if (myState.recentFilePaths == null) {
+            myState.recentFilePaths = new ArrayList<>();
+            return;
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String path : myState.recentFilePaths) {
+            if (path != null && !path.isEmpty() && !normalized.contains(path)) {
+                normalized.add(path);
+            }
+        }
+        myState.recentFilePaths = normalized;
+        trimRecentFilePaths();
+    }
+
+    private void trimRecentFilePaths() {
+        while (myState.recentFilePaths.size() > MAX_RECENT_FILE_PATHS) {
+            myState.recentFilePaths.remove(myState.recentFilePaths.size() - 1);
+        }
+    }
 
     public String getFontFamily() { return myState.fontFamily; }
     public void setFontFamily(String fontFamily) { myState.fontFamily = fontFamily; }
