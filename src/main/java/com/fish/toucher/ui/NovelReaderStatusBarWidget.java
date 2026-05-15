@@ -26,6 +26,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     private final Runnable changeListener;
 
     private final Runnable hotSearchChangeListener;
+    private final Runnable cultivationChangeListener;
 
     public NovelReaderStatusBarWidget(@NotNull Project project) {
         LOG.info("NovelReaderStatusBarWidget: creating for project " + project.getName());
@@ -40,8 +41,14 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
                 statusBar.updateWidget(ID());
             }
         };
+        this.cultivationChangeListener = () -> {
+            if (statusBar != null) {
+                statusBar.updateWidget(ID());
+            }
+        };
         NovelReaderManager.getInstance().addChangeListener(changeListener);
         HotSearchManager.getInstance().addChangeListener(hotSearchChangeListener);
+        IdleCultivationManager.getInstance().addChangeListener(cultivationChangeListener);
     }
 
     @Override
@@ -62,6 +69,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         LOG.info("dispose: status bar widget disposed");
         NovelReaderManager.getInstance().removeChangeListener(changeListener);
         HotSearchManager.getInstance().removeChangeListener(hotSearchChangeListener);
+        IdleCultivationManager.getInstance().removeChangeListener(cultivationChangeListener);
     }
 
     @Override
@@ -79,6 +87,10 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
             String title = manager.getCurrentTitle();
             String status = manager.getCurrentStatusText();
             return "\uD83D\uDD25 " + title + "  " + status;
+        }
+
+        if (settings.isCultivationMode()) {
+            return "\u262F " + IdleCultivationManager.getInstance().getStatusLine();
         }
 
         if (!settings.isShowInStatusBar()) return "";
@@ -101,6 +113,9 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         if (NovelReaderSettings.getInstance().isHotSearchMode()) {
             return "Hot search carousel | Click to details | Fish Toucher";
         }
+        if (NovelReaderSettings.getInstance().isCultivationMode()) {
+            return "Idle cultivation | Click to meditate | Fish Toucher";
+        }
         return "Stealth mode | Click to next line | Fish Toucher";
     }
 
@@ -116,6 +131,10 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
                         LOG.warn("getClickConsumer: failed to open URL: " + e.getMessage());
                     }
                 }
+                return;
+            }
+            if (NovelReaderSettings.getInstance().isCultivationMode()) {
+                IdleCultivationManager.getInstance().meditateOnce();
                 return;
             }
             NovelReaderManager manager = NovelReaderManager.getInstance();

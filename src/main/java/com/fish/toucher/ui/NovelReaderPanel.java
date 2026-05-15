@@ -53,19 +53,22 @@ public class NovelReaderPanel extends JPanel implements Disposable {
         // --- Top toolbar: mode selector ---
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, JBColor.border()));
-        JComboBox<String> modeCombo = new JComboBox<>(new String[]{
-                com.fish.toucher.FishToucherBundle.message("settings.mode.novel"),
-                com.fish.toucher.FishToucherBundle.message("settings.mode.hotSearch")
-        });
-        modeCombo.setSelectedIndex(0);
-        modeCombo.setFocusable(false);
-        modeCombo.setToolTipText(com.fish.toucher.FishToucherBundle.message("toolbar.mode.tooltip"));
+        JComboBox<String> modeCombo = PluginModeSelector.createCombo(NovelReaderSettings.MODE_NOVEL);
         modeCombo.addActionListener(e -> {
-            if (modeCombo.getSelectedIndex() == 1) {
-                NovelReaderToolWindowFactory.switchMode("hotsearch");
+            String selectedMode = PluginModeSelector.getSelectedMode(modeCombo);
+            if (!NovelReaderSettings.MODE_NOVEL.equals(selectedMode)) {
+                NovelReaderToolWindowFactory.switchMode(selectedMode);
             }
         });
         topBar.add(modeCombo);
+        JComboBox<String> languageCombo = LanguageSelector.createCombo(NovelReaderSettings.getInstance().getUiLanguage());
+        languageCombo.addActionListener(e -> {
+            String selectedLanguage = LanguageSelector.getSelectedLanguage(languageCombo);
+            if (!selectedLanguage.equals(NovelReaderSettings.getInstance().getUiLanguage())) {
+                NovelReaderToolWindowFactory.switchLanguage(selectedLanguage);
+            }
+        });
+        topBar.add(languageCombo);
         add(topBar, BorderLayout.NORTH);
 
         // --- Bottom bar with controls ---

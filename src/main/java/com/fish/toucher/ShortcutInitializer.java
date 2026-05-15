@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.fish.toucher.settings.NovelReaderSettings;
 import com.fish.toucher.ui.HotSearchManager;
+import com.fish.toucher.ui.IdleCultivationManager;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -46,6 +47,8 @@ public class ShortcutInitializer implements ProjectActivity {
         // Auto-start HotSearchManager if in hot search mode
         if (settings.isHotSearchMode()) {
             HotSearchManager.getInstance().start();
+        } else if (settings.isCultivationMode()) {
+            IdleCultivationManager.getInstance().start();
         }
 
         return Unit.INSTANCE;

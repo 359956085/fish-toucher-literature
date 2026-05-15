@@ -13,8 +13,11 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.ui.HotSearchManager;
+import com.fish.toucher.ui.IdleCultivationManager;
+import com.fish.toucher.ui.LanguageSelector;
 import com.fish.toucher.ui.NovelReaderManager;
 import com.fish.toucher.ui.NovelReaderToolWindowFactory;
+import com.fish.toucher.ui.PluginModeSelector;
 import com.fish.toucher.ui.RecentFileSelector;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +32,7 @@ public class NovelReaderConfigurable implements Configurable {
 
     // Mode selector
     private JComboBox<String> modeComboBox;
-    private static final String[] MODE_VALUES = {"novel", "hotsearch"};
+    private JComboBox<String> languageComboBox;
 
     // Stealth mode
     private JSpinner stealthCharsPerLineSpinner;
@@ -58,6 +61,7 @@ public class NovelReaderConfigurable implements Configurable {
     private JComboBox<String> xTrendsRegionComboBox;
     private JComboBox<String> googleTrendsGeoComboBox;
     private JPanel hotSearchSettingsPanel;
+    private JPanel cultivationSettingsPanel;
 
     static final String[] X_REGION_SLUGS = {
             "", "united-states", "japan", "korea", "russia", "france",
@@ -110,12 +114,16 @@ public class NovelReaderConfigurable implements Configurable {
         gbc.gridx = 0; gbc.gridy = row;
         mainPanel.add(new JLabel(FishToucherBundle.message("settings.label.mode")), gbc);
         gbc.gridx = 1; gbc.gridy = row++;
-        String[] modeLabels = {FishToucherBundle.message("settings.mode.novel"), FishToucherBundle.message("settings.mode.hotSearch")};
-        modeComboBox = new JComboBox<>(modeLabels);
-        int modeIdx = "hotsearch".equals(settings.getPluginMode()) ? 1 : 0;
-        modeComboBox.setSelectedIndex(modeIdx);
+        modeComboBox = new JComboBox<>(PluginModeSelector.getModeLabels());
+        modeComboBox.setSelectedIndex(PluginModeSelector.getModeIndex(settings.getPluginMode()));
         modeComboBox.addActionListener(e -> updateNovelComponentsVisibility());
         mainPanel.add(modeComboBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = row;
+        mainPanel.add(new JLabel(FishToucherBundle.message("settings.label.language")), gbc);
+        gbc.gridx = 1; gbc.gridy = row++;
+        languageComboBox = LanguageSelector.createCombo(settings.getUiLanguage());
+        mainPanel.add(languageComboBox, gbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         JLabel modeHint = new JLabel(FishToucherBundle.message("settings.hint.modeChange"));
@@ -182,6 +190,26 @@ public class NovelReaderConfigurable implements Configurable {
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         mainPanel.add(hotSearchSettingsPanel, gbc);
+
+        // ========== Idle Cultivation Settings (visible only in cultivation mode) ==========
+        cultivationSettingsPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints cgbc = new GridBagConstraints();
+        cgbc.insets = JBUI.insets(5);
+        cgbc.anchor = GridBagConstraints.WEST;
+        cgbc.fill = GridBagConstraints.HORIZONTAL;
+
+        cgbc.gridx = 0; cgbc.gridy = 0; cgbc.gridwidth = 2;
+        JLabel cultivationTitle = new JLabel(FishToucherBundle.message("settings.section.cultivationMode"));
+        cultivationTitle.setFont(cultivationTitle.getFont().deriveFont(Font.BOLD, 12f));
+        cultivationSettingsPanel.add(cultivationTitle, cgbc);
+
+        cgbc.gridy = 1;
+        JLabel cultivationHint = new JLabel(FishToucherBundle.message("settings.label.cultivationHint"));
+        cultivationHint.setForeground(com.intellij.ui.JBColor.GRAY);
+        cultivationSettingsPanel.add(cultivationHint, cgbc);
+
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        mainPanel.add(cultivationSettingsPanel, gbc);
 
         // ========== Separator ==========
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
@@ -346,13 +374,20 @@ public class NovelReaderConfigurable implements Configurable {
     }
 
     private void updateNovelComponentsVisibility() {
-        boolean isNovel = modeComboBox.getSelectedIndex() == 0;
+        String mode = getSelectedMode();
+        boolean isNovel = NovelReaderSettings.MODE_NOVEL.equals(mode);
+        boolean isHotSearch = NovelReaderSettings.MODE_HOT_SEARCH.equals(mode);
         novelSettingsPanel.setVisible(isNovel);
-        hotSearchSettingsPanel.setVisible(!isNovel);
+        hotSearchSettingsPanel.setVisible(isHotSearch);
+        cultivationSettingsPanel.setVisible(NovelReaderSettings.MODE_CULTIVATION.equals(mode));
     }
 
     private String getSelectedMode() {
-        return MODE_VALUES[modeComboBox.getSelectedIndex()];
+        return PluginModeSelector.getSelectedMode(modeComboBox);
+    }
+
+    private String getSelectedLanguage() {
+        return LanguageSelector.getSelectedLanguage(languageComboBox);
     }
 
     private String getSelectedSource() {
@@ -391,6 +426,7 @@ public class NovelReaderConfigurable implements Configurable {
     public boolean isModified() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         return !getSelectedMode().equals(settings.getPluginMode())
+                || !getSelectedLanguage().equals(settings.getUiLanguage())
                 || !getSelectedSource().equals(settings.getHotSearchSource())
                 || (int) carouselIntervalSpinner.getValue() != settings.getCarouselIntervalSeconds()
                 || (int) refreshIntervalSpinner.getValue() != settings.getRefreshIntervalMinutes()
@@ -412,8 +448,10 @@ public class NovelReaderConfigurable implements Configurable {
     public void apply() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         String newMode = getSelectedMode();
+        String newLanguage = getSelectedLanguage();
         LOG.info("apply: saving settings"
                 + " pluginMode=" + newMode
+                + ", uiLanguage=" + newLanguage
                 + ", stealthCharsPerLine=" + stealthCharsPerLineSpinner.getValue()
                 + ", normalLinesPerPage=" + normalLinesPerPageSpinner.getValue()
                 + ", normalCharsPerLine=" + normalCharsPerLineSpinner.getValue()
@@ -422,23 +460,37 @@ public class NovelReaderConfigurable implements Configurable {
                 + ", showInStatusBar=" + showInStatusBarCheckBox.isSelected());
 
         String oldMode = settings.getPluginMode();
+        String oldLanguage = settings.getUiLanguage();
         settings.setPluginMode(newMode);
+        settings.setUiLanguage(newLanguage);
 
-        // Start/stop HotSearchManager based on mode change
-        if ("hotsearch".equals(newMode) && !HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().start();
-        } else if ("novel".equals(newMode)) {
+        // Start/stop mode managers based on mode change
+        if (NovelReaderSettings.MODE_HOT_SEARCH.equals(newMode)) {
+            IdleCultivationManager.getInstance().stop();
+            if (!HotSearchManager.getInstance().isRunning()) {
+                HotSearchManager.getInstance().start();
+            }
+        } else if (NovelReaderSettings.MODE_CULTIVATION.equals(newMode)) {
             if (HotSearchManager.getInstance().isRunning()) {
                 HotSearchManager.getInstance().stop();
             }
+            IdleCultivationManager.getInstance().start();
+        } else {
+            if (HotSearchManager.getInstance().isRunning()) {
+                HotSearchManager.getInstance().stop();
+            }
+            IdleCultivationManager.getInstance().stop();
             if (!newMode.equals(oldMode)) {
                 NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
             }
         }
 
-        // Rebuild tool window content when mode changes
-        if (!newMode.equals(oldMode)) {
+        // Rebuild tool window content when mode or language changes
+        if (!newMode.equals(oldMode) || !newLanguage.equals(oldLanguage)) {
             NovelReaderToolWindowFactory.rebuildAllToolWindows();
+        }
+        if (!newLanguage.equals(oldLanguage)) {
+            NovelReaderToolWindowFactory.refreshAllStatusBarWidgets();
         }
 
         // Hot search source
@@ -536,7 +588,8 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public void reset() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        modeComboBox.setSelectedIndex("hotsearch".equals(settings.getPluginMode()) ? 1 : 0);
+        modeComboBox.setSelectedIndex(PluginModeSelector.getModeIndex(settings.getPluginMode()));
+        languageComboBox.setSelectedIndex(LanguageSelector.getLanguageIndex(settings.getUiLanguage()));
         String source = settings.getHotSearchSource();
         for (int i = 0; i < HotSearchManager.SOURCE_VALUES.length; i++) {
             if (HotSearchManager.SOURCE_VALUES[i].equals(source)) {

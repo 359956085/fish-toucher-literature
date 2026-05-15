@@ -1,74 +1,54 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>2.5.0</version>
+    <version>3.0.0</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
-    <p>A lightweight reading and browsing plugin for IntelliJ IDEA — enjoy novels or stay updated with trending topics without leaving your IDE.</p>
+    <p>Fish Toucher is a lightweight IntelliJ IDEA plugin for reading novels, browsing hot searches, and playing idle cultivation inside the IDE.<br/>
+    Fish Toucher 是一款轻量 IntelliJ IDEA 插件，可在 IDE 内阅读小说、浏览热搜和放置修仙。</p>
 
-    <b>Novel Reading Mode</b>
     <ul>
-        <li><b>Status Bar Mode:</b> Displays one line of text in the status bar for minimal distraction. Click to advance.</li>
-        <li><b>Tool Window Mode:</b> Multi-line display with page navigation and progress slider, seamlessly integrated into the IDE layout.</li>
-        <li>Both modes share unified reading progress</li>
-        <li>Auto charset detection (UTF-8 / GBK / UTF-16)</li>
-        <li>Quick-hide shortcut to instantly dismiss content</li>
-        <li>Customizable keyboard shortcuts and font settings</li>
+        <li><b>Novel Reading / 小说阅读：</b>Read text files in the status bar or tool window, with shared progress, charset detection, and configurable shortcuts.<br/>
+            可在状态栏或工具窗口阅读文本文件，支持统一进度、编码识别和快捷键配置。</li>
+        <li><b>Hot Search / 热搜浏览：</b>Browse trending topics from multiple sources, with auto refresh and one-click browser opening.<br/>
+            浏览多来源热搜内容，支持自动刷新和点击打开浏览器。</li>
+        <li><b>Idle Cultivation / 放置修仙：</b>Play a compact idle cultivation module with training, travel, abode, pills, techniques, breakthrough, and rebirth progression.<br/>
+            体验轻量放置修仙模块，包含修炼、游历、洞府、丹药、功法、突破与转世成长。</li>
+        <li><b>Mode and Language / 模式与语言：</b>Switch modes and plugin language from the tool window or settings. The language follows IDEA by default.<br/>
+            可在工具窗口或设置中切换模式和插件语言，语言默认跟随 IDEA。</li>
     </ul>
 
-    <b>Hot Search Carousel Mode</b>
-    <ul>
-        <li>Real-time trending topics displayed in both tool window and status bar</li>
-        <li>Multiple sources: Baidu, Toutiao, Zhihu, Douyin, Kuaishou, X Trends, Google Trends — switchable in settings</li>
-        <li>Click any topic to open in browser</li>
-        <li>Auto-refreshing data with carousel rotation</li>
-    </ul>
+    <p><b>Settings / 设置路径：</b> Settings → Tools → Fish Toucher</p>
 
-    <b>Mode Switching</b>
-    <ul>
-        <li>Switch between Novel Reading and Hot Search mode directly in the tool window</li>
-        <li>Mode selection is synced with plugin settings in real time</li>
-    </ul>
-
-    <b>Settings:</b> Settings → Tools → Fish Toucher
-
-    <br/><br/>
-    <hr/>
-
-    <p>一款轻量的阅读与资讯插件，让你在 IntelliJ IDEA 中随时阅读小说或浏览热搜动态，无需切换应用。</p>
-
-    <b>小说阅读模式</b>
-    <ul>
-        <li><b>状态栏模式：</b>在状态栏显示一行文本，低干扰融入 IDE 界面，点击翻页</li>
-        <li><b>工具窗口模式：</b>多行显示，内嵌于 IDE 工具窗口，支持翻页和进度滑块</li>
-        <li>两种模式共用统一阅读进度</li>
-        <li>自动识别文件编码（UTF-8 / GBK / UTF-16）</li>
-        <li>快捷键一键隐藏阅读内容</li>
-        <li>可自定义快捷键和字体设置</li>
-    </ul>
-
-    <b>热搜轮播模式</b>
-    <ul>
-        <li>实时热搜榜单，同时显示在工具窗口和状态栏</li>
-        <li>多热搜源支持：百度、今日头条、知乎、抖音、快手、X趋势、Google趋势，可在设置中切换</li>
-        <li>点击热搜标题直接在浏览器中打开</li>
-        <li>自动刷新数据，轮播滚动显示</li>
-    </ul>
-
-    <b>模式切换</b>
-    <ul>
-        <li>可直接在工具窗口底部切换小说阅读模式与热搜轮播模式</li>
-        <li>模式选择与插件设置实时同步</li>
-    </ul>
-
-    <b>设置路径：</b> Settings → Tools → Fish Toucher
-
-    <br/><br/>
     <p>By installing this plugin, you agree to the <a href="https://github.com/359956085/fish-toucher-literature/blob/main/EULA.md">End User License Agreement</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.0.0</b>
+    <ul>
+        <li>New: Added Idle Cultivation module with training, travel, abode, pills, techniques, breakthrough, and rebirth progression.<br/>
+            新增：放置修仙模块，包含修炼、游历、洞府、丹药、功法、突破与转世成长。</li>
+        <li>New: Added plugin language setting. The UI follows IDEA by default and can also be switched manually in settings or the tool window.<br/>
+            新增：插件语言设置，默认跟随 IDEA，也可在配置页或工具窗口手动切换。</li>
+    </ul>
+    <b>2.8.0</b>
+    <ul>
+        <li>New: Added abode building for Idle Cultivation, including spirit-stone upgrades, timed stone and pill production, and new status bar claim reminders<br/>
+            新增：放置修仙加入洞府建设，支持灵石升级、定时灵石和丹药产出，以及状态栏可领取提示</li>
+        <li>Changed: Closed-door cultivation and meditation now focus on qi; spirit stones are centered on travel rewards and abode production<br/>
+            调整：闭关与吐纳专注修为收益，灵石经济转向游历奖励与洞府产出</li>
+    </ul>
+    <b>2.7.0</b>
+    <ul>
+        <li>New: Expanded Idle Cultivation with techniques, pills, timed travel, and a tabbed tool window<br/>
+            新增：丰富放置修仙玩法，加入功法、丹药、倒计时游历与标签页工具窗口</li>
+    </ul>
+    <b>2.6.0</b>
+    <ul>
+        <li>New: Idle Cultivation mode with tool window panel, status bar progress, offline gains, meditation, and breakthrough attempts<br/>
+            新增：放置修仙模式，支持工具窗口、状态栏进度、离线收益、吐纳与突破</li>
+    </ul>
     <b>2.5.0</b>
     <ul>
         <li>Improved: Added recent reading history management<br/>
