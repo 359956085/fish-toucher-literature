@@ -35,15 +35,18 @@ public class IdleCultivationManager {
 
     private static final int OFFLINE_CAP_HOURS = 8;
     public static final int MAX_ABODE_LEVEL = 5;
+    private static final int[] SPIRIT_GATHERING_BONUS_PERCENT = {0, 10, 22, 36, 52, 70};
+    private static final long[] SPIRIT_GATHERING_UPGRADE_COST = {160L, 420L, 900L, 1_650L, 2_700L};
     private static final long OFFLINE_CAP_MILLIS = TimeUnit.HOURS.toMillis(OFFLINE_CAP_HOURS);
     private static final long TICK_SECONDS = 10;
+    private static final long SECLUSION_ONLINE_WINDOW_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long MEDITATION_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final int REBIRTH_QI_BONUS_PERCENT = 25;
     private static final int REBIRTH_BREAKTHROUGH_BONUS_PERCENT = 15;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
     private static final long[] REQUIRED_QI = {
-            20_000L, 45_000L, 90_000L, 165_000L, 285_000L, 455_000L, 710_000L, 1_050_000L
+            8_000L, 18_000L, 34_000L, 58_000L, 90_000L, 130_000L, 180_000L, 245_000L
     };
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
@@ -63,10 +66,10 @@ public class IdleCultivationManager {
     private static final Map<String, PillDefinition> PILL_BY_ID = indexPills();
 
     private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
-            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 60, 0, 900, 25, 45, 4),
-            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 120, 0, 2_400, 60, 70, 6),
-            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 240, 1, 7_000, 260, 40, 8),
-            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 480, 2, 18_000, 600, 65, 15)
+            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 60, 0, 3_000, 45, 45, 4),
+            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 120, 0, 8_400, 120, 70, 6),
+            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 240, 1, 28_000, 420, 40, 8),
+            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 480, 2, 64_000, 900, 65, 15)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
 
@@ -165,6 +168,15 @@ public class IdleCultivationManager {
         fireChange();
     }
 
+    public synchronized void receiveKoiBlessing() {
+        settleProgress(false);
+        long qiGain = 1L;
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        settings.setCultivationQi(settings.getCultivationQi() + qiGain);
+        lastMessage = FishToucherBundle.message("cultivation.status.koiBlessing", qiGain);
+        fireChange();
+    }
+
     public synchronized void tryBreakthrough() {
         settleProgress(false);
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
@@ -229,7 +241,12 @@ public class IdleCultivationManager {
         long creditedMillis = Math.min(elapsedMillis, OFFLINE_CAP_MILLIS);
         long elapsedSeconds = creditedMillis / 1_000L;
         int realmIndex = settings.getCultivationRealmIndex();
-        long qiUnits = settings.getCultivationQiRemainderSeconds() + elapsedSeconds * getQiPerMinute(realmIndex);
+        boolean activeTravel = hasActiveTravel();
+        boolean offlineCatchUp = showOfflineMessage || elapsedMillis > SECLUSION_ONLINE_WINDOW_MILLIS;
+        boolean seclusionActive = !offlineCatchUp && !activeTravel;
+        long qiPerMinute = getPassiveQiPerMinute(realmIndex)
+                + (seclusionActive ? getSeclusionQiPerMinute(realmIndex) : 0L);
+        long qiUnits = settings.getCultivationQiRemainderSeconds() + elapsedSeconds * qiPerMinute;
         long qiGain = qiUnits / 60L;
         settings.setCultivationQiRemainderSeconds(qiUnits % 60L);
         settings.setCultivationSpiritStoneRemainderSeconds(0L);
@@ -281,7 +298,7 @@ public class IdleCultivationManager {
         switch (pillId) {
             case QI_PILL_ID -> {
                 if (!settings.consumePill(pillId)) return false;
-                long gain = applyQiBonus(Math.max(1_200L, getRequiredQi(realmIndex) / 25L));
+                long gain = applyQiBonus(Math.max(300L, getRequiredQi(realmIndex) / 45L));
                 settings.setCultivationQi(settings.getCultivationQi() + gain);
                 lastMessage = FishToucherBundle.message("cultivation.status.usedQiPill", gain);
             }
@@ -366,8 +383,8 @@ public class IdleCultivationManager {
 
         int realmIndex = settings.getCultivationRealmIndex();
         ThreadLocalRandom random = ThreadLocalRandom.current();
-        long qiGain = applyQiBonus(Math.round(location.baseQiReward() * (1.0 + realmIndex * 0.18)));
-        long stoneGain = applyStoneBonus(Math.round(location.baseStoneReward() * (1.0 + realmIndex * 0.22)));
+        long qiGain = applyQiBonus(Math.round(location.baseQiReward() * (1.0 + realmIndex * 0.04)));
+        long stoneGain = applyStoneBonus(Math.round(location.baseStoneReward() * (1.0 + realmIndex * 0.08)));
         String pillId = "";
         int pillCount = 0;
         if (random.nextInt(100) < location.pillChance()) {
@@ -550,6 +567,9 @@ public class IdleCultivationManager {
             );
         }
         List<String> notices = new ArrayList<>();
+        notices.add(FishToucherBundle.message(hasActiveTravel()
+                ? "cultivation.status.traveling"
+                : "cultivation.status.seclusionActive"));
         if (isTravelReady()) {
             notices.add(FishToucherBundle.message("cultivation.status.travelClaimReady"));
         }
@@ -566,7 +586,18 @@ public class IdleCultivationManager {
         int realmIndex = NovelReaderSettings.getInstance().getCultivationRealmIndex();
         return FishToucherBundle.message(
                 "cultivation.status.rate",
-                getQiPerMinute(realmIndex)
+                getPassiveQiPerMinute(realmIndex)
+        );
+    }
+
+    public synchronized String getSeclusionRateText() {
+        int realmIndex = NovelReaderSettings.getInstance().getCultivationRealmIndex();
+        return FishToucherBundle.message(
+                "cultivation.status.seclusionRate",
+                getSeclusionQiPerMinute(realmIndex),
+                FishToucherBundle.message(hasActiveTravel()
+                        ? "cultivation.status.seclusionPaused"
+                        : "cultivation.status.seclusionActive")
         );
     }
 
@@ -718,6 +749,9 @@ public class IdleCultivationManager {
         if (currentLevel >= MAX_ABODE_LEVEL) {
             return 0L;
         }
+        if (SPIRIT_GATHERING_ARRAY_ID.equals(facilityId)) {
+            return SPIRIT_GATHERING_UPGRADE_COST[currentLevel];
+        }
         long targetLevel = currentLevel + 1L;
         return facility.baseCost() * targetLevel * targetLevel;
     }
@@ -779,7 +813,7 @@ public class IdleCultivationManager {
     public synchronized String getAbodeFacilityEffectText(String facilityId) {
         int level = getAbodeFacilityLevel(facilityId);
         return switch (facilityId) {
-            case SPIRIT_GATHERING_ARRAY_ID -> FishToucherBundle.message("cultivation.abode.effect.spiritGathering", level * 4);
+            case SPIRIT_GATHERING_ARRAY_ID -> FishToucherBundle.message("cultivation.abode.effect.spiritGathering", getSpiritGatheringBonusPercent(level));
             case SPIRIT_VEIN_ID -> FishToucherBundle.message("cultivation.abode.effect.spiritVein", applyStoneBonus(10L * level));
             case ALCHEMY_ROOM_ID -> FishToucherBundle.message("cultivation.abode.effect.alchemyRoom", getAlchemyRarePillChance(level));
             case INSIGHT_ROOM_ID -> FishToucherBundle.message("cultivation.abode.effect.insightRoom", level * 3);
@@ -908,9 +942,14 @@ public class IdleCultivationManager {
         return (int) Math.min(96L, rebirthChance);
     }
 
-    private long getQiPerMinute(int realmIndex) {
-        long base = 8L + Math.max(0, realmIndex) * 4L;
+    private long getPassiveQiPerMinute(int realmIndex) {
+        long base = 4L + Math.max(0, realmIndex) * 2L;
         return applyQiBonus(base);
+    }
+
+    private long getSeclusionQiPerMinute(int realmIndex) {
+        long base = 24L + Math.max(0, realmIndex) * 10L;
+        return applySeclusionQiBonus(base);
     }
 
     private long getManualQiGain(int realmIndex) {
@@ -919,8 +958,19 @@ public class IdleCultivationManager {
     }
 
     private long applyQiBonus(long value) {
-        int bonusPercent = getEquippedTechnique().qiBonusPercent() + getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID) * 4;
+        int bonusPercent = getEquippedTechnique().qiBonusPercent();
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
+    }
+
+    private long applySeclusionQiBonus(long value) {
+        int bonusPercent = getEquippedTechnique().qiBonusPercent()
+                + getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID));
+        return applyRebirthQiBonus(applyPercent(value, bonusPercent));
+    }
+
+    private int getSpiritGatheringBonusPercent(int level) {
+        int clampedLevel = Math.max(0, Math.min(MAX_ABODE_LEVEL, level));
+        return SPIRIT_GATHERING_BONUS_PERCENT[clampedLevel];
     }
 
     private long applyStoneBonus(long value) {
