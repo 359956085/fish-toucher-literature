@@ -1,5 +1,6 @@
 # Project exclude paths
 /.gradle/
+/.gradle-local/
 /.intellijPlatform/
 /build/
 /build/classes/java/main/
