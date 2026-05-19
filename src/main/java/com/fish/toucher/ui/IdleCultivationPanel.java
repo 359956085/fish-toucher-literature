@@ -102,6 +102,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         tabs.addTab(FishToucherBundle.message("cultivation.tab.bag"), createBagTab());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.travel"), createTravelTab());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.abode"), createAbodeTab());
+        tabs.addTab(FishToucherBundle.message("cultivation.tab.guide"), createGuideTab());
         add(tabs, BorderLayout.CENTER);
 
         changeListener = this::refreshContent;
@@ -307,6 +308,32 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         return panel;
     }
 
+    private JPanel createGuideTab() {
+        JPanel contentPanel = createFormPanel();
+        GridBagConstraints gbc = createConstraints();
+        int row = 0;
+
+        row = addGuideSection(contentPanel, gbc, row, "loop");
+        row = addGuideSection(contentPanel, gbc, row, "gains");
+        row = addGuideSection(contentPanel, gbc, row, "realms");
+        row = addRealmDescriptionRows(contentPanel, gbc, row);
+        row = addGuideSection(contentPanel, gbc, row, "travel");
+        row = addGuideSection(contentPanel, gbc, row, "abode");
+        row = addGuideSection(contentPanel, gbc, row, "bag");
+        row = addGuideSection(contentPanel, gbc, row, "breakthrough");
+
+        addBottomGlue(contentPanel, gbc, row);
+
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
     private JPanel createFormPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -331,6 +358,40 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         JLabel label = new JLabel(text);
         label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
         return label;
+    }
+
+    private int addGuideSection(JPanel panel, GridBagConstraints gbc, int row, String sectionId) {
+        JLabel title = createSectionLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".title"));
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
+        panel.add(title, gbc);
+
+        JTextArea text = createGuideTextArea(FishToucherBundle.message("cultivation.guide." + sectionId + ".desc"));
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        panel.add(text, gbc);
+        return row;
+    }
+
+    private int addRealmDescriptionRows(JPanel panel, GridBagConstraints gbc, int row) {
+        for (int i = 0; i <= 8; i++) {
+            String label = FishToucherBundle.message("cultivation.realm." + i) + ":";
+            JTextArea description = createGuideTextArea(FishToucherBundle.message("cultivation.realm." + i + ".desc"));
+            addLabelRow(panel, gbc, row++, label, description);
+        }
+        return row;
+    }
+
+    private JTextArea createGuideTextArea(String text) {
+        JTextArea textArea = new JTextArea(text);
+        textArea.setColumns(32);
+        textArea.setEditable(false);
+        textArea.setFocusable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setOpaque(false);
+        textArea.setForeground(JBColor.GRAY);
+        textArea.setFont(UIManager.getFont("Label.font"));
+        textArea.setBorder(BorderFactory.createEmptyBorder());
+        return textArea;
     }
 
     private void addLabelRow(JPanel panel, GridBagConstraints gbc, int row, String label, JComponent value) {
