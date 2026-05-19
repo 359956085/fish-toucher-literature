@@ -85,7 +85,7 @@ public class IdleCultivationManager {
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
     private boolean running;
-    private String lastMessage = FishToucherBundle.message("cultivation.status.idle");
+    private String lastMessage;
 
     public static IdleCultivationManager getInstance() {
         return INSTANCE;
@@ -540,7 +540,7 @@ public class IdleCultivationManager {
     }
 
     public synchronized String getLastMessage() {
-        return lastMessage;
+        return lastMessage != null ? lastMessage : FishToucherBundle.message("cultivation.status.idle");
     }
 
     public synchronized String getStatusLine() {
