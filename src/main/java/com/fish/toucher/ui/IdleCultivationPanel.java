@@ -9,6 +9,8 @@ import com.intellij.ui.JBColor;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 public class IdleCultivationPanel extends JPanel implements Disposable {
@@ -20,6 +22,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final JLabel qiValue;
     private final JLabel stonesValue;
     private final JLabel rateValue;
+    private final JLabel seclusionRateValue;
     private final JLabel chanceValue;
     private final JLabel effectsValue;
     private final JLabel rebirthLabel;
@@ -27,6 +30,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final JLabel messageLabel;
     private final JProgressBar progressBar;
     private final JButton meditateButton;
+    private final JButton koiBlessingButton;
     private final JButton breakthroughButton;
     private final JButton rebirthButton;
 
@@ -61,6 +65,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         qiValue = new JLabel();
         stonesValue = new JLabel();
         rateValue = new JLabel();
+        seclusionRateValue = new JLabel();
         chanceValue = new JLabel();
         effectsValue = new JLabel();
         rebirthLabel = new JLabel(FishToucherBundle.message("cultivation.label.rebirth"));
@@ -71,6 +76,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
         meditateButton = new JButton(FishToucherBundle.message("cultivation.button.meditate"));
+        koiBlessingButton = new JButton(FishToucherBundle.message("cultivation.button.koiBlessing"));
         breakthroughButton = new JButton(FishToucherBundle.message("cultivation.button.breakthrough"));
         rebirthButton = new JButton(FishToucherBundle.message("cultivation.button.rebirth"));
 
@@ -143,6 +149,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         gbc.gridwidth = 1; gbc.weightx = 0;
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.spiritStones"), stonesValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.rate"), rateValue);
+        addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.seclusionRate"), seclusionRateValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.chance"), chanceValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.effects"), effectsValue);
 
@@ -162,6 +169,16 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         meditateButton.setFocusable(false);
         meditateButton.addActionListener(e -> IdleCultivationManager.getInstance().meditateOnce());
         actions.add(meditateButton);
+
+        koiBlessingButton.setToolTipText(FishToucherBundle.message("cultivation.tooltip.koiBlessing"));
+        koiBlessingButton.setFocusable(false);
+        koiBlessingButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                IdleCultivationManager.getInstance().receiveKoiBlessing();
+            }
+        });
+        actions.add(koiBlessingButton);
 
         breakthroughButton.setToolTipText(FishToucherBundle.message("cultivation.tooltip.breakthrough"));
         breakthroughButton.setFocusable(false);
@@ -347,6 +364,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             qiValue.setText(requiredQi > 0L ? currentQi + " / " + requiredQi : String.valueOf(currentQi));
             stonesValue.setText(String.valueOf(manager.getSpiritStones()));
             rateValue.setText(manager.getRateText());
+            seclusionRateValue.setText(manager.getSeclusionRateText());
             chanceValue.setText(manager.getChanceText());
             effectsValue.setText(manager.getActiveEffectsText());
             messageLabel.setText(manager.getLastMessage());

@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.0.0</version>
+    <version>3.1.0</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.1.0</b>
+    <ul>
+        <li>New: Added automatic closed-door cultivation state and rebalanced Idle Cultivation progression values.<br/>
+            新增：闭关状态，并重新设计放置修仙数值。</li>
+    </ul>
     <b>3.0.0</b>
     <ul>
         <li>New: Added Idle Cultivation module with training, travel, abode, pills, techniques, breakthrough, and rebirth progression.<br/>

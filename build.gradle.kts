@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.novelreader"
-version = "3.0.0"
+version = "3.1.0"
 
 repositories {
     mavenCentral()
@@ -26,7 +26,7 @@ dependencies {
         //   intellijIdea("253.30387.90")
         // 或者使用 maven snapshot (不走 installer):
         //   intellijIdea("253-EAP-SNAPSHOT") { useInstaller = false }
-        intellijIdea("2026.1")
+        intellijIdea("2026.1.1")
 
         pluginVerifier()
         zipSigner()
