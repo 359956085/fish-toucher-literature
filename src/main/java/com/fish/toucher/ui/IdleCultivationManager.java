@@ -162,9 +162,9 @@ public class IdleCultivationManager {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
         long qiGain = getManualQiGain(realmIndex);
-        settings.setCultivationQi(settings.getCultivationQi() + qiGain);
+        long actualGain = addCultivationQi(settings, qiGain);
         settings.setCultivationLastMeditationMillis(now);
-        lastMessage = FishToucherBundle.message("cultivation.status.meditate", qiGain);
+        lastMessage = FishToucherBundle.message("cultivation.status.meditate", actualGain);
         fireChange();
     }
 
@@ -172,8 +172,8 @@ public class IdleCultivationManager {
         settleProgress(false);
         long qiGain = 1L;
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        settings.setCultivationQi(settings.getCultivationQi() + qiGain);
-        lastMessage = FishToucherBundle.message("cultivation.status.koiBlessing", qiGain);
+        long actualGain = addCultivationQi(settings, qiGain);
+        lastMessage = FishToucherBundle.message("cultivation.status.koiBlessing", actualGain);
         fireChange();
     }
 
@@ -239,29 +239,29 @@ public class IdleCultivationManager {
         }
 
         long creditedMillis = Math.min(elapsedMillis, OFFLINE_CAP_MILLIS);
-        long elapsedSeconds = creditedMillis / 1_000L;
         int realmIndex = settings.getCultivationRealmIndex();
-        boolean activeTravel = hasActiveTravel();
         boolean offlineCatchUp = showOfflineMessage || elapsedMillis > SECLUSION_ONLINE_WINDOW_MILLIS;
-        boolean seclusionActive = !offlineCatchUp && !activeTravel;
-        long qiPerMinute = getPassiveQiPerMinute(realmIndex)
-                + (seclusionActive ? getSeclusionQiPerMinute(realmIndex) : 0L);
-        long qiUnits = settings.getCultivationQiRemainderSeconds() + elapsedSeconds * qiPerMinute;
+        long passiveSeconds = creditedMillis / 1_000L;
+        long seclusionSeconds = offlineCatchUp ? 0L : getSeclusionEligibleMillis(settings, creditedMillis) / 1_000L;
+        long qiUnits = settings.getCultivationQiRemainderSeconds()
+                + passiveSeconds * getPassiveQiPerMinute(realmIndex)
+                + seclusionSeconds * getSeclusionQiPerMinute(realmIndex);
         long qiGain = qiUnits / 60L;
         settings.setCultivationQiRemainderSeconds(qiUnits % 60L);
         settings.setCultivationSpiritStoneRemainderSeconds(0L);
         boolean travelProgressed = advanceActiveTravel(settings, creditedMillis);
 
+        long actualQiGain = 0L;
         if (qiGain > 0L) {
-            settings.setCultivationQi(settings.getCultivationQi() + qiGain);
+            actualQiGain = addCultivationQi(settings, qiGain);
         }
         settings.setCultivationLastUpdateMillis(now);
 
-        if (qiGain > 0L || travelProgressed) {
+        if (actualQiGain > 0L || travelProgressed) {
             if (showOfflineMessage && elapsedMillis > TICK_SECONDS * 1_000L) {
                 lastMessage = FishToucherBundle.message(
                         "cultivation.status.offline",
-                        qiGain,
+                        actualQiGain,
                         formatDuration(creditedMillis)
                 );
             }
@@ -297,10 +297,18 @@ public class IdleCultivationManager {
         int realmIndex = settings.getCultivationRealmIndex();
         switch (pillId) {
             case QI_PILL_ID -> {
-                if (!settings.consumePill(pillId)) return false;
                 long gain = applyQiBonus(Math.max(300L, getRequiredQi(realmIndex) / 45L));
-                settings.setCultivationQi(settings.getCultivationQi() + gain);
-                lastMessage = FishToucherBundle.message("cultivation.status.usedQiPill", gain);
+                long availableGain = getAvailableCultivationQiGain(settings, gain);
+                if (availableGain <= 0L) {
+                    lastMessage = FishToucherBundle.message(isMaxRealm(realmIndex)
+                            ? "cultivation.status.maxRealm"
+                            : "cultivation.status.ready");
+                    fireChange();
+                    return false;
+                }
+                if (!settings.consumePill(pillId)) return false;
+                long actualGain = addCultivationQi(settings, gain);
+                lastMessage = FishToucherBundle.message("cultivation.status.usedQiPill", actualGain);
             }
             case SPIRIT_PILL_ID -> {
                 if (!settings.consumePill(pillId)) return false;
@@ -406,7 +414,7 @@ public class IdleCultivationManager {
             }
         }
 
-        settings.setCultivationQi(settings.getCultivationQi() + qiGain);
+        qiGain = addCultivationQi(settings, qiGain);
         settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stoneGain);
         settings.clearTravel();
         TravelReward reward = new TravelReward(qiGain, stoneGain, pillId, pillCount, techniqueId, duplicateTechnique);
@@ -473,7 +481,7 @@ public class IdleCultivationManager {
     }
 
     public synchronized long getCurrentQi() {
-        return NovelReaderSettings.getInstance().getCultivationQi();
+        return clampCultivationQi(NovelReaderSettings.getInstance());
     }
 
     public synchronized long getRequiredQi() {
@@ -494,6 +502,7 @@ public class IdleCultivationManager {
     public synchronized int getProgressPercent() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
+        long currentQi = clampCultivationQi(settings);
         if (isMaxRealm(realmIndex)) {
             return 100;
         }
@@ -501,13 +510,13 @@ public class IdleCultivationManager {
         if (requiredQi <= 0L) {
             return 0;
         }
-        return (int) Math.min(100L, settings.getCultivationQi() * 100L / requiredQi);
+        return (int) Math.min(100L, currentQi * 100L / requiredQi);
     }
 
     public synchronized boolean canBreakthrough() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
-        return !isMaxRealm(realmIndex) && settings.getCultivationQi() >= getRequiredQi(realmIndex);
+        return !isMaxRealm(realmIndex) && clampCultivationQi(settings) >= getRequiredQi(realmIndex);
     }
 
     public synchronized boolean canMeditate() {
@@ -546,12 +555,13 @@ public class IdleCultivationManager {
     public synchronized String getStatusLine() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
+        long currentQi = clampCultivationQi(settings);
         String baseStatus;
         if (isMaxRealm(realmIndex)) {
             baseStatus = FishToucherBundle.message(
                     "cultivation.status.format",
                     getRealmName(realmIndex),
-                    settings.getCultivationQi(),
+                    currentQi,
                     FishToucherBundle.message("cultivation.status.max"),
                     100,
                     settings.getCultivationSpiritStones()
@@ -560,14 +570,14 @@ public class IdleCultivationManager {
             baseStatus = FishToucherBundle.message(
                     "cultivation.status.format",
                     getRealmName(realmIndex),
-                    settings.getCultivationQi(),
+                    currentQi,
                     getRequiredQi(realmIndex),
                     getProgressPercent(),
                     settings.getCultivationSpiritStones()
             );
         }
         List<String> notices = new ArrayList<>();
-        notices.add(FishToucherBundle.message(hasActiveTravel()
+        notices.add(FishToucherBundle.message(isTravelInProgress(settings)
                 ? "cultivation.status.traveling"
                 : "cultivation.status.seclusionActive"));
         if (isTravelReady()) {
@@ -591,11 +601,12 @@ public class IdleCultivationManager {
     }
 
     public synchronized String getSeclusionRateText() {
-        int realmIndex = NovelReaderSettings.getInstance().getCultivationRealmIndex();
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        int realmIndex = settings.getCultivationRealmIndex();
         return FishToucherBundle.message(
                 "cultivation.status.seclusionRate",
                 getSeclusionQiPerMinute(realmIndex),
-                FishToucherBundle.message(hasActiveTravel()
+                FishToucherBundle.message(isTravelInProgress(settings)
                         ? "cultivation.status.seclusionPaused"
                         : "cultivation.status.seclusionActive")
         );
@@ -692,7 +703,7 @@ public class IdleCultivationManager {
         if (location == null) {
             return 0L;
         }
-        return Math.max(0L, getTravelDurationMillis(location) - settings.getActiveTravelElapsedMillis());
+        return getTravelRemainingMillis(settings, location);
     }
 
     public synchronized String getTravelRemainingText() {
@@ -880,6 +891,7 @@ public class IdleCultivationManager {
                 settings.setAbodeFacilityLevel(facility.id(), level);
             }
         }
+        clampCultivationQi(settings);
     }
 
     private boolean canMeditate(long now) {
@@ -919,8 +931,35 @@ public class IdleCultivationManager {
         return true;
     }
 
+    private long getSeclusionEligibleMillis(NovelReaderSettings settings, long creditedMillis) {
+        if (creditedMillis <= 0L) {
+            return 0L;
+        }
+        TravelLocationDefinition location = getTravelLocation(settings.getActiveTravelLocationId());
+        if (location == null) {
+            return creditedMillis;
+        }
+        long remainingMillis = getTravelRemainingMillis(settings, location);
+        if (remainingMillis <= 0L) {
+            return creditedMillis;
+        }
+        return Math.max(0L, creditedMillis - remainingMillis);
+    }
+
     private long getTravelDurationMillis(TravelLocationDefinition location) {
         return TimeUnit.MINUTES.toMillis(location.durationMinutes());
+    }
+
+    private long getTravelRemainingMillis(NovelReaderSettings settings, TravelLocationDefinition location) {
+        if (location == null) {
+            return 0L;
+        }
+        return Math.max(0L, getTravelDurationMillis(location) - settings.getActiveTravelElapsedMillis());
+    }
+
+    private boolean isTravelInProgress(NovelReaderSettings settings) {
+        TravelLocationDefinition location = getTravelLocation(settings.getActiveTravelLocationId());
+        return location != null && getTravelRemainingMillis(settings, location) > 0L;
     }
 
     private boolean isMaxRealm(int realmIndex) {
@@ -929,6 +968,44 @@ public class IdleCultivationManager {
 
     private int getRealmCount() {
         return REQUIRED_QI.length + 1;
+    }
+
+    private long getCultivationQiLimit(int realmIndex) {
+        return isMaxRealm(realmIndex) ? 0L : getRequiredQi(realmIndex);
+    }
+
+    private long clampCultivationQi(NovelReaderSettings settings) {
+        int realmIndex = settings.getCultivationRealmIndex();
+        long currentQi = settings.getCultivationQi();
+        long limit = getCultivationQiLimit(realmIndex);
+        long clampedQi = limit <= 0L ? 0L : Math.min(currentQi, limit);
+        if (currentQi != clampedQi) {
+            settings.setCultivationQi(clampedQi);
+        }
+        return clampedQi;
+    }
+
+    private long getAvailableCultivationQiGain(NovelReaderSettings settings, long gain) {
+        if (gain <= 0L) {
+            clampCultivationQi(settings);
+            return 0L;
+        }
+        int realmIndex = settings.getCultivationRealmIndex();
+        long limit = getCultivationQiLimit(realmIndex);
+        if (limit <= 0L) {
+            clampCultivationQi(settings);
+            return 0L;
+        }
+        long currentQi = clampCultivationQi(settings);
+        return Math.min(gain, Math.max(0L, limit - currentQi));
+    }
+
+    private long addCultivationQi(NovelReaderSettings settings, long gain) {
+        long actualGain = getAvailableCultivationQiGain(settings, gain);
+        if (actualGain > 0L) {
+            settings.setCultivationQi(settings.getCultivationQi() + actualGain);
+        }
+        return actualGain;
     }
 
     private int getBreakthroughChance(int realmIndex, int failures) {
