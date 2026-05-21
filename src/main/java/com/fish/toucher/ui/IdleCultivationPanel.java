@@ -627,7 +627,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         if (option == null) return;
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
         String suffix = option.unlocked
-                ? FishToucherBundle.message("cultivation.travel.duration", option.location.durationMinutes())
+                ? manager.getTravelDurationText(option.location)
                 : FishToucherBundle.message("cultivation.travel.locked", manager.getRealmName(option.location.minRealmIndex()));
         travelDescriptionLabel.setText(option.location.description() + "  " + suffix);
         startTravelButton.setEnabled(option.unlocked && !manager.hasActiveTravel());

@@ -43,6 +43,7 @@ public class IdleCultivationManager {
     private static final long MEDITATION_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final int REBIRTH_QI_BONUS_PERCENT = 25;
     private static final int REBIRTH_BREAKTHROUGH_BONUS_PERCENT = 15;
+    private static final int MAX_TRAVEL_DURATION_REDUCTION_PERCENT = 50;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
     private static final long[] REQUIRED_QI = {
@@ -66,10 +67,10 @@ public class IdleCultivationManager {
     private static final Map<String, PillDefinition> PILL_BY_ID = indexPills();
 
     private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
-            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 60, 0, 3_000, 45, 45, 4),
-            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 120, 0, 8_400, 120, 70, 6),
-            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 240, 1, 28_000, 420, 40, 8),
-            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 480, 2, 64_000, 900, 65, 15)
+            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 60, 0, 3_000, 45, 45, 8),
+            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 120, 0, 8_400, 120, 70, 12),
+            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 240, 1, 28_000, 420, 40, 16),
+            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 480, 2, 64_000, 900, 65, 30)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
 
@@ -369,7 +370,7 @@ public class IdleCultivationManager {
         settings.setTravelStartMillis(now);
         settings.setTravelEndMillis(0L);
         settings.setActiveTravelElapsedMillis(0L);
-        lastMessage = FishToucherBundle.message("cultivation.status.travelStarted", location.name(), location.durationMinutes());
+        lastMessage = FishToucherBundle.message("cultivation.status.travelStarted", location.name(), getTravelDurationMinutes(location));
         fireChange();
         return true;
     }
@@ -730,6 +731,23 @@ public class IdleCultivationManager {
         return (int) Math.min(100L, done * 100L / total);
     }
 
+    public synchronized String getTravelDurationText(TravelLocationDefinition location) {
+        long durationMinutes = getTravelDurationMinutes(location);
+        int reductionPercent = getTravelDurationReductionPercent();
+        if (reductionPercent > 0) {
+            return FishToucherBundle.message("cultivation.travel.durationReduced", durationMinutes, reductionPercent);
+        }
+        return FishToucherBundle.message("cultivation.travel.duration", durationMinutes);
+    }
+
+    public synchronized long getTravelDurationMinutes(TravelLocationDefinition location) {
+        return getTravelDurationMinutes(location, NovelReaderSettings.getInstance().getCultivationRealmIndex());
+    }
+
+    public synchronized int getTravelDurationReductionPercent() {
+        return getTravelDurationReductionPercent(NovelReaderSettings.getInstance().getCultivationRealmIndex());
+    }
+
     public synchronized boolean isTravelUnlocked(TravelLocationDefinition location) {
         return NovelReaderSettings.getInstance().getCultivationRealmIndex() >= location.minRealmIndex();
     }
@@ -947,7 +965,25 @@ public class IdleCultivationManager {
     }
 
     private long getTravelDurationMillis(TravelLocationDefinition location) {
-        return TimeUnit.MINUTES.toMillis(location.durationMinutes());
+        return TimeUnit.MINUTES.toMillis(getTravelDurationMinutes(location));
+    }
+
+    private long getTravelDurationMinutes(TravelLocationDefinition location, int realmIndex) {
+        if (location == null) {
+            return 0L;
+        }
+        int reductionPercent = getTravelDurationReductionPercent(realmIndex);
+        long reducedMinutes = Math.round(location.durationMinutes() * (100.0 - reductionPercent) / 100.0);
+        return Math.max(1L, reducedMinutes);
+    }
+
+    private int getTravelDurationReductionPercent(int realmIndex) {
+        int highestRealmIndex = Math.max(1, getRealmCount() - 1);
+        int clampedRealmIndex = Math.max(0, Math.min(highestRealmIndex, realmIndex));
+        return Math.min(
+                MAX_TRAVEL_DURATION_REDUCTION_PERCENT,
+                (int) Math.round(clampedRealmIndex * MAX_TRAVEL_DURATION_REDUCTION_PERCENT / (double) highestRealmIndex)
+        );
     }
 
     private long getTravelRemainingMillis(NovelReaderSettings settings, TravelLocationDefinition location) {
