@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.3.0</version>
+    <version>3.4.0</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,15 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.4.0</b>
+    <ul>
+        <li>Changed: Higher cultivation realms now reduce travel duration by up to 50%.<br/>
+            调整：境界越高，游历耗时越短，最高可减免 50%。</li>
+        <li>Improved: Technique drop rates from travel have been increased, making technique unlocks more reliable.<br/>
+            优化：提高游历获得功法的概率，功法解锁更加稳定。</li>
+        <li>Improved: Travel location descriptions now show the effective duration and realm duration discount.<br/>
+            优化：游历地点说明会显示实际耗时与境界减免比例。</li>
+    </ul>
     <b>3.3.0</b>
     <ul>
         <li>Changed: Qi gains from travel, pills, meditation, koi blessing, passive training, and closed-door cultivation now stop at the current realm cap.<br/>

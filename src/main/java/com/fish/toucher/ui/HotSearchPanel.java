@@ -1,5 +1,6 @@
 package com.fish.toucher.ui;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -118,7 +119,7 @@ public class HotSearchPanel extends JPanel implements Disposable {
         });
         navPanel.add(sourceCombo);
 
-        JButton refreshBtn = new JButton("\uD83D\uDD04");
+        JButton refreshBtn = new JButton(AllIcons.Actions.Refresh);
         refreshBtn.setMargin(new Insets(1, 4, 1, 4));
         refreshBtn.setFont(refreshBtn.getFont().deriveFont(12f));
         refreshBtn.setFocusable(false);
