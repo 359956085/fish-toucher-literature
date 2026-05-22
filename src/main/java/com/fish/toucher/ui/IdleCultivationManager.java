@@ -43,6 +43,8 @@ public class IdleCultivationManager {
     private static final long MEDITATION_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final int REBIRTH_QI_BONUS_PERCENT = 25;
     private static final int REBIRTH_BREAKTHROUGH_BONUS_PERCENT = 15;
+    // 悟道室只影响突破概率，翻倍后每级提供 6% 加成。
+    private static final int INSIGHT_ROOM_BREAKTHROUGH_BONUS_PER_LEVEL = 6;
     private static final int MAX_TRAVEL_DURATION_REDUCTION_PERCENT = 50;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
@@ -845,7 +847,10 @@ public class IdleCultivationManager {
             case SPIRIT_GATHERING_ARRAY_ID -> FishToucherBundle.message("cultivation.abode.effect.spiritGathering", getSpiritGatheringBonusPercent(level));
             case SPIRIT_VEIN_ID -> FishToucherBundle.message("cultivation.abode.effect.spiritVein", applyStoneBonus(10L * level));
             case ALCHEMY_ROOM_ID -> FishToucherBundle.message("cultivation.abode.effect.alchemyRoom", getAlchemyRarePillChance(level));
-            case INSIGHT_ROOM_ID -> FishToucherBundle.message("cultivation.abode.effect.insightRoom", level * 3);
+            case INSIGHT_ROOM_ID -> FishToucherBundle.message(
+                    "cultivation.abode.effect.insightRoom",
+                    getInsightRoomBreakthroughBonusPercent(level)
+            );
             default -> "";
         };
     }
@@ -1049,10 +1054,14 @@ public class IdleCultivationManager {
         int baseChance = Math.max(42, 72 - realmIndex * 4);
         int techniqueBonus = getEquippedTechnique().breakthroughBonus();
         int pillBonus = settings.isBreakthroughPillActive() ? 18 : 0;
-        int abodeBonus = getAbodeFacilityLevel(INSIGHT_ROOM_ID) * 3;
+        int abodeBonus = getInsightRoomBreakthroughBonusPercent(getAbodeFacilityLevel(INSIGHT_ROOM_ID));
         int additiveChance = baseChance + failures * 16 + techniqueBonus + pillBonus + abodeBonus;
         long rebirthChance = additiveChance * (100L + settings.getCultivationRebirthCount() * REBIRTH_BREAKTHROUGH_BONUS_PERCENT) / 100L;
         return (int) Math.min(96L, rebirthChance);
+    }
+
+    private int getInsightRoomBreakthroughBonusPercent(int level) {
+        return Math.max(0, level) * INSIGHT_ROOM_BREAKTHROUGH_BONUS_PER_LEVEL;
     }
 
     private long getPassiveQiPerMinute(int realmIndex) {
