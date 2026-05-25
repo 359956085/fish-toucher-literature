@@ -69,10 +69,10 @@ public class IdleCultivationManager {
     private static final Map<String, PillDefinition> PILL_BY_ID = indexPills();
 
     private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
-            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 60, 0, 3_000, 45, 45, 8),
-            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 120, 0, 8_400, 120, 70, 12),
-            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 240, 1, 28_000, 420, 40, 16),
-            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 480, 2, 64_000, 900, 65, 30)
+            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 30, 0, 1_500, 45, 45, 8),
+            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 60, 0, 4_200, 120, 70, 12),
+            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 120, 1, 14_000, 420, 40, 16),
+            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 240, 2, 32_000, 900, 65, 30)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
 
