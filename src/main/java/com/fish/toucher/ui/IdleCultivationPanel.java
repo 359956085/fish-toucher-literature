@@ -50,8 +50,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final JButton usePillButton;
     private final JLabel pillDescriptionLabel;
     private final List<JComboBox<SpellOption>> spellSlotComboBoxes;
+    private final List<JLabel> spellDescriptionLabels;
     private final JButton saveSpellSetupButton;
-    private final JLabel spellDescriptionLabel;
     private final List<JComboBox<ArtifactOption>> artifactSlotComboBoxes;
     private final JButton saveArtifactSetupButton;
     private final JLabel artifactDescriptionLabel;
@@ -118,8 +118,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         usePillButton = new JButton(FishToucherBundle.message("cultivation.button.usePill"));
         pillDescriptionLabel = createHintLabel();
         spellSlotComboBoxes = new ArrayList<>();
+        spellDescriptionLabels = new ArrayList<>();
         saveSpellSetupButton = new JButton(FishToucherBundle.message("cultivation.button.saveSpellSetup"));
-        spellDescriptionLabel = createHintLabel();
         artifactSlotComboBoxes = new ArrayList<>();
         saveArtifactSetupButton = new JButton(FishToucherBundle.message("cultivation.button.saveArtifactSetup"));
         artifactDescriptionLabel = createHintLabel();
@@ -309,9 +309,12 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             spellComboBox.addActionListener(e -> updateSpellDescription());
             spellSlotComboBoxes.add(spellComboBox);
             addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.spellSlot", i + 1), spellComboBox);
+
+            JLabel spellDescription = createHintLabel();
+            spellDescriptionLabels.add(spellDescription);
+            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+            panel.add(spellDescription, gbc);
         }
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(spellDescriptionLabel, gbc);
 
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         saveSpellSetupButton.setFocusable(false);
@@ -696,7 +699,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         rebirthLabel.setVisible(hasRebirth);
         rebirthValue.setVisible(hasRebirth);
         if (hasRebirth) {
-            rebirthValue.setText(String.valueOf(manager.getRebirthCount()));
+            rebirthValue.setText(manager.getRebirthTrainingStatusText());
         }
 
         boolean canRebirth = manager.canRebirth();
@@ -919,16 +922,16 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
     private void updateSpellDescription() {
         if (refreshing) return;
-        List<String> names = new ArrayList<>();
-        for (JComboBox<SpellOption> comboBox : spellSlotComboBoxes) {
+        for (int i = 0; i < spellSlotComboBoxes.size(); i++) {
+            JComboBox<SpellOption> comboBox = spellSlotComboBoxes.get(i);
+            JLabel descriptionLabel = spellDescriptionLabels.get(i);
             SpellOption option = (SpellOption) comboBox.getSelectedItem();
             if (option != null && !option.empty && option.spell != null) {
-                names.add(option.spell.name() + " - " + option.spell.description());
+                descriptionLabel.setText(option.spell.name() + " - " + option.spell.description());
+            } else {
+                descriptionLabel.setText("");
             }
         }
-        spellDescriptionLabel.setText(names.isEmpty()
-                ? FishToucherBundle.message("cultivation.status.noSpellEquipped")
-                : String.join("  |  ", names));
     }
 
     private void updateArtifactDescription() {
