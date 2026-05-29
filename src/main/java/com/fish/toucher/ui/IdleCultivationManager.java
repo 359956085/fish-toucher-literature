@@ -866,6 +866,17 @@ public class IdleCultivationManager {
         return FishToucherBundle.message("cultivation.status.rebirthCount", getRebirthCount());
     }
 
+    public synchronized String getRebirthTrainingStatusText() {
+        int rebirthCount = getRebirthCount();
+        return FishToucherBundle.message(
+                "cultivation.status.rebirthTraining",
+                rebirthCount,
+                getRebirthBattleMultiplierText(rebirthCount, REBIRTH_ATTACK_BONUS_PERCENT),
+                getRebirthBattleMultiplierText(rebirthCount, REBIRTH_DEFENSE_BONUS_PERCENT),
+                getRebirthBattleMultiplierText(rebirthCount, REBIRTH_MANA_BONUS_PERCENT)
+        );
+    }
+
     public synchronized String getRebirthEffectText() {
         return FishToucherBundle.message("cultivation.effect.rebirthQi", getRebirthMultiplierText());
     }
@@ -1679,6 +1690,11 @@ public class IdleCultivationManager {
 
     private String getRebirthBreakthroughMultiplierText() {
         double multiplier = 1.0 + NovelReaderSettings.getInstance().getCultivationRebirthCount() * REBIRTH_BREAKTHROUGH_BONUS_PERCENT / 100.0;
+        return String.format(Locale.ROOT, "%.2f", multiplier);
+    }
+
+    private String getRebirthBattleMultiplierText(int rebirthCount, int bonusPercent) {
+        double multiplier = 1.0 + rebirthCount * bonusPercent / 100.0;
         return String.format(Locale.ROOT, "%.2f", multiplier);
     }
 
