@@ -29,6 +29,21 @@ public class IdleCultivationManager {
     private static final String SPIRIT_VEIN_ID = "spirit_vein";
     private static final String ALCHEMY_ROOM_ID = "alchemy_room";
     private static final String INSIGHT_ROOM_ID = "insight_room";
+    private static final String EVERGREEN_TECHNIQUE_ID = "evergreen_method";
+    private static final String STONE_GATHERING_TECHNIQUE_ID = "stone_gathering";
+    private static final String MYSTIC_ORTHODOX_TECHNIQUE_ID = "mystic_orthodox";
+    private static final String SWORD_HEART_TECHNIQUE_ID = "sword_heart";
+    private static final String GOLDEN_BODY_TECHNIQUE_ID = "golden_body";
+    private static final String FIRE_SWORD_SPELL_ID = "fire_sword";
+    private static final String PALM_THUNDER_SPELL_ID = "palm_thunder";
+    private static final String FROST_BIND_SPELL_ID = "frost_bind";
+    private static final String GREENWOOD_HEAL_SPELL_ID = "greenwood_heal";
+    private static final String GOLDEN_LIGHT_SPELL_ID = "golden_light";
+    private static final String GREEN_SWORD_ARTIFACT_ID = "green_sword";
+    private static final String TURTLE_SHIELD_ARTIFACT_ID = "turtle_shield";
+    private static final String SPIRIT_JADE_ARTIFACT_ID = "spirit_jade";
+    private static final String WIND_THUNDER_BOOTS_ARTIFACT_ID = "wind_thunder_boots";
+    private static final String TAIXU_CAULDRON_ARTIFACT_ID = "taixu_cauldron";
 
     private static final Logger LOG = Logger.getInstance(IdleCultivationManager.class);
     private static final IdleCultivationManager INSTANCE = new IdleCultivationManager();
@@ -43,9 +58,18 @@ public class IdleCultivationManager {
     private static final long MEDITATION_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final int REBIRTH_QI_BONUS_PERCENT = 25;
     private static final int REBIRTH_BREAKTHROUGH_BONUS_PERCENT = 15;
+    private static final int REBIRTH_ATTACK_BONUS_PERCENT = 18;
+    private static final int REBIRTH_DEFENSE_BONUS_PERCENT = 16;
+    private static final int REBIRTH_MANA_BONUS_PERCENT = 20;
     // 悟道室只影响突破概率，翻倍后每级提供 6% 加成。
     private static final int INSIGHT_ROOM_BREAKTHROUGH_BONUS_PER_LEVEL = 6;
     private static final int MAX_TRAVEL_DURATION_REDUCTION_PERCENT = 50;
+    private static final int MAX_EQUIPPED_SPELL_COUNT = 3;
+    private static final int MAX_EQUIPPED_ARTIFACT_COUNT = 2;
+    private static final int BATTLE_LOG_LIMIT = 80;
+    private static final long BATTLE_TICK_SECONDS = 1;
+    private static final int BATTLE_HEALTH_RECOVERY_DIVISOR = 250;
+    private static final int BATTLE_MANA_RECOVERY_DIVISOR = 180;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
     private static final long[] REQUIRED_QI = {
@@ -53,10 +77,12 @@ public class IdleCultivationManager {
     };
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
-            new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0),
-            new TechniqueDefinition("evergreen_method", "cultivation.technique.evergreen.name", "cultivation.technique.evergreen.desc", 18, 0, 0),
-            new TechniqueDefinition("stone_gathering", "cultivation.technique.stone.name", "cultivation.technique.stone.desc", 0, 25, 0),
-            new TechniqueDefinition("mystic_orthodox", "cultivation.technique.mystic.name", "cultivation.technique.mystic.desc", 12, 12, 6)
+            new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
+            new TechniqueDefinition(EVERGREEN_TECHNIQUE_ID, "cultivation.technique.evergreen.name", "cultivation.technique.evergreen.desc", 18, 0, 0, 0, 0, 0),
+            new TechniqueDefinition(STONE_GATHERING_TECHNIQUE_ID, "cultivation.technique.stone.name", "cultivation.technique.stone.desc", 0, 25, 0, 0, 0, 0),
+            new TechniqueDefinition(MYSTIC_ORTHODOX_TECHNIQUE_ID, "cultivation.technique.mystic.name", "cultivation.technique.mystic.desc", 12, 12, 6, 0, 0, 0),
+            new TechniqueDefinition(SWORD_HEART_TECHNIQUE_ID, "cultivation.technique.swordHeart.name", "cultivation.technique.swordHeart.desc", 8, 0, 0, 16, 0, 8),
+            new TechniqueDefinition(GOLDEN_BODY_TECHNIQUE_ID, "cultivation.technique.goldenBody.name", "cultivation.technique.goldenBody.desc", 0, 0, 4, 0, 18, 12)
     );
     private static final Map<String, TechniqueDefinition> TECHNIQUE_BY_ID = indexTechniques();
 
@@ -68,6 +94,24 @@ public class IdleCultivationManager {
     );
     private static final Map<String, PillDefinition> PILL_BY_ID = indexPills();
 
+    private static final List<SpellDefinition> SPELLS = List.of(
+            new SpellDefinition(FIRE_SWORD_SPELL_ID, "cultivation.spell.fireSword.name", "cultivation.spell.fireSword.desc", 90, 6, BattleSpellType.DAMAGE, 100),
+            new SpellDefinition(PALM_THUNDER_SPELL_ID, "cultivation.spell.palmThunder.name", "cultivation.spell.palmThunder.desc", 140, 10, BattleSpellType.DAMAGE, 160),
+            new SpellDefinition(FROST_BIND_SPELL_ID, "cultivation.spell.frostBind.name", "cultivation.spell.frostBind.desc", 120, 12, BattleSpellType.FROST, 70),
+            new SpellDefinition(GREENWOOD_HEAL_SPELL_ID, "cultivation.spell.greenwoodHeal.name", "cultivation.spell.greenwoodHeal.desc", 110, 14, BattleSpellType.HEAL, 16),
+            new SpellDefinition(GOLDEN_LIGHT_SPELL_ID, "cultivation.spell.goldenLight.name", "cultivation.spell.goldenLight.desc", 100, 16, BattleSpellType.SHIELD, 45)
+    );
+    private static final Map<String, SpellDefinition> SPELL_BY_ID = indexSpells();
+
+    private static final List<ArtifactDefinition> ARTIFACTS = List.of(
+            new ArtifactDefinition(GREEN_SWORD_ARTIFACT_ID, "cultivation.artifact.greenSword.name", "cultivation.artifact.greenSword.desc", 14, 0, 0, 0),
+            new ArtifactDefinition(TURTLE_SHIELD_ARTIFACT_ID, "cultivation.artifact.turtleShield.name", "cultivation.artifact.turtleShield.desc", 0, 14, 0, 0),
+            new ArtifactDefinition(SPIRIT_JADE_ARTIFACT_ID, "cultivation.artifact.spiritJade.name", "cultivation.artifact.spiritJade.desc", 0, 0, 16, 6),
+            new ArtifactDefinition(WIND_THUNDER_BOOTS_ARTIFACT_ID, "cultivation.artifact.windThunderBoots.name", "cultivation.artifact.windThunderBoots.desc", 6, 6, 0, 4),
+            new ArtifactDefinition(TAIXU_CAULDRON_ARTIFACT_ID, "cultivation.artifact.taixuCauldron.name", "cultivation.artifact.taixuCauldron.desc", 8, 8, 8, 10)
+    );
+    private static final Map<String, ArtifactDefinition> ARTIFACT_BY_ID = indexArtifacts();
+
     private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
             new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 30, 0, 1_500, 45, 45, 8),
             new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 60, 0, 4_200, 120, 70, 12),
@@ -75,6 +119,20 @@ public class IdleCultivationManager {
             new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 240, 2, 32_000, 900, 65, 30)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
+
+    private static final List<CultivatorDefinition> CULTIVATORS = List.of(
+            new CultivatorDefinition("outer_sword_lin", "cultivation.cultivator.outerSwordLin.name", 1_000L, 100L, 70L, 100L, 600L, FIRE_SWORD_SPELL_ID, "", ""),
+            new CultivatorDefinition("herbalist_chen", "cultivation.cultivator.herbalistChen.name", 1_700L, 170L, 120L, 160L, 900L, "", "", GREEN_SWORD_ARTIFACT_ID),
+            new CultivatorDefinition("talisman_zhao", "cultivation.cultivator.talismanZhao.name", 2_600L, 260L, 190L, 250L, 1_200L, PALM_THUNDER_SPELL_ID, EVERGREEN_TECHNIQUE_ID, ""),
+            new CultivatorDefinition("cold_shen", "cultivation.cultivator.coldShen.name", 4_200L, 390L, 300L, 380L, 1_600L, "", "", TURTLE_SHIELD_ARTIFACT_ID),
+            new CultivatorDefinition("golden_core_han", "cultivation.cultivator.goldenCoreHan.name", 6_500L, 550L, 420L, 600L, 2_100L, FROST_BIND_SPELL_ID, STONE_GATHERING_TECHNIQUE_ID, ""),
+            new CultivatorDefinition("armor_bai", "cultivation.cultivator.armorBai.name", 15_000L, 1_350L, 1_000L, 850L, 2_700L, "", "", SPIRIT_JADE_ARTIFACT_ID),
+            new CultivatorDefinition("thunder_luo", "cultivation.cultivator.thunderLuo.name", 18_000L, 1_550L, 1_200L, 1_100L, 3_400L, GREENWOOD_HEAL_SPELL_ID, MYSTIC_ORTHODOX_TECHNIQUE_ID, ""),
+            new CultivatorDefinition("illusion_su", "cultivation.cultivator.illusionSu.name", 22_000L, 1_800L, 1_450L, 1_350L, 4_200L, "", SWORD_HEART_TECHNIQUE_ID, WIND_THUNDER_BOOTS_ARTIFACT_ID),
+            new CultivatorDefinition("mahayana_gu", "cultivation.cultivator.mahayanaGu.name", 28_000L, 2_200L, 1_750L, 1_600L, 5_100L, GOLDEN_LIGHT_SPELL_ID, GOLDEN_BODY_TECHNIQUE_ID, ""),
+            new CultivatorDefinition("taixu_xuanheng", "cultivation.cultivator.taixuXuanheng.name", 35_000L, 2_700L, 2_150L, 1_900L, 6_200L, "", "", TAIXU_CAULDRON_ARTIFACT_ID)
+    );
+    private static final Map<String, CultivatorDefinition> CULTIVATOR_BY_ID = indexCultivators();
 
     private static final List<AbodeFacilityDefinition> ABODE_FACILITIES = List.of(
             new AbodeFacilityDefinition(SPIRIT_GATHERING_ARRAY_ID, "cultivation.abode.spiritGathering.name", "cultivation.abode.spiritGathering.desc", 180),
@@ -87,8 +145,10 @@ public class IdleCultivationManager {
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
+    private ScheduledFuture<?> battleTask;
     private boolean running;
     private String lastMessage;
+    private BattleState battleState;
 
     public static IdleCultivationManager getInstance() {
         return INSTANCE;
@@ -143,10 +203,15 @@ public class IdleCultivationManager {
         if (tickTask != null) {
             tickTask.cancel(false);
         }
+        if (battleTask != null) {
+            battleTask.cancel(false);
+        }
         if (scheduler != null) {
             scheduler.shutdownNow();
         }
         tickTask = null;
+        battleTask = null;
+        battleState = null;
         scheduler = null;
     }
 
@@ -245,7 +310,7 @@ public class IdleCultivationManager {
         int realmIndex = settings.getCultivationRealmIndex();
         boolean offlineCatchUp = showOfflineMessage || elapsedMillis > SECLUSION_ONLINE_WINDOW_MILLIS;
         long passiveSeconds = creditedMillis / 1_000L;
-        long seclusionSeconds = offlineCatchUp ? 0L : getSeclusionEligibleMillis(settings, creditedMillis) / 1_000L;
+        long seclusionSeconds = offlineCatchUp || isSeclusionPaused(settings) ? 0L : creditedMillis / 1_000L;
         long qiUnits = settings.getCultivationQiRemainderSeconds()
                 + passiveSeconds * getPassiveQiPerMinute(realmIndex)
                 + seclusionSeconds * getSeclusionQiPerMinute(realmIndex);
@@ -356,6 +421,11 @@ public class IdleCultivationManager {
             fireChange();
             return false;
         }
+        if (hasActiveBattle()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.travelBlockedByChallenge");
+            fireChange();
+            return false;
+        }
         if (hasActiveTravel()) {
             lastMessage = FishToucherBundle.message("cultivation.status.travelBusy");
             fireChange();
@@ -417,10 +487,23 @@ public class IdleCultivationManager {
             }
         }
 
+        String spellId = "";
+        boolean duplicateSpell = false;
+        if (random.nextInt(100) < getTravelSpellChance(location.id())) {
+            spellId = chooseSpellForTravel();
+            if (!spellId.isEmpty()) {
+                boolean unlocked = settings.unlockSpell(spellId);
+                duplicateSpell = !unlocked;
+                if (duplicateSpell) {
+                    stoneGain += applyStoneBonus(160L + realmIndex * 50L);
+                }
+            }
+        }
+
         qiGain = addCultivationQi(settings, qiGain);
         settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stoneGain);
         settings.clearTravel();
-        TravelReward reward = new TravelReward(qiGain, stoneGain, pillId, pillCount, techniqueId, duplicateTechnique);
+        TravelReward reward = new TravelReward(qiGain, stoneGain, pillId, pillCount, techniqueId, duplicateTechnique, spellId, duplicateSpell);
         lastMessage = reward.summary();
         fireChange();
         return reward;
@@ -472,6 +555,251 @@ public class IdleCultivationManager {
         );
         fireChange();
         return true;
+    }
+
+    public synchronized CombatStats getCombatStats() {
+        return calculateCombatStats();
+    }
+
+    public synchronized long getHealthRecoveryPerSecond() {
+        CombatStats stats = hasActiveBattle() ? battleState.playerStats : calculateCombatStats();
+        return calculateBattleHealthRecovery(stats);
+    }
+
+    public synchronized long getManaRecoveryPerSecond() {
+        CombatStats stats = hasActiveBattle() ? battleState.playerStats : calculateCombatStats();
+        return calculateBattleManaRecovery(stats);
+    }
+
+    public List<SpellDefinition> getSpellDefinitions() {
+        return SPELLS;
+    }
+
+    public SpellDefinition getSpell(String id) {
+        return SPELL_BY_ID.get(id);
+    }
+
+    public synchronized List<SpellDefinition> getEquippedSpellDefinitions() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return settings.getEquippedSpellIds().stream()
+                .map(this::getSpell)
+                .filter(spell -> spell != null)
+                .toList();
+    }
+
+    public synchronized boolean equipSpells(List<String> spellIds) {
+        ensureCultivationDefaults();
+        List<String> validSpellIds = new ArrayList<>();
+        if (spellIds != null) {
+            NovelReaderSettings settings = NovelReaderSettings.getInstance();
+            for (String spellId : spellIds) {
+                if (spellId != null
+                        && SPELL_BY_ID.containsKey(spellId)
+                        && settings.isSpellUnlocked(spellId)
+                        && !validSpellIds.contains(spellId)
+                        && validSpellIds.size() < MAX_EQUIPPED_SPELL_COUNT) {
+                    validSpellIds.add(spellId);
+                }
+            }
+        }
+        NovelReaderSettings.getInstance().setEquippedSpellIds(validSpellIds);
+        lastMessage = FishToucherBundle.message("cultivation.status.spellsEquipped", validSpellIds.size(), MAX_EQUIPPED_SPELL_COUNT);
+        fireChange();
+        return true;
+    }
+
+    public List<ArtifactDefinition> getArtifactDefinitions() {
+        return ARTIFACTS;
+    }
+
+    public ArtifactDefinition getArtifact(String id) {
+        return ARTIFACT_BY_ID.get(id);
+    }
+
+    public synchronized List<ArtifactDefinition> getEquippedArtifactDefinitions() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return settings.getEquippedArtifactIds().stream()
+                .map(this::getArtifact)
+                .filter(artifact -> artifact != null)
+                .toList();
+    }
+
+    public synchronized boolean equipArtifacts(List<String> artifactIds) {
+        ensureCultivationDefaults();
+        List<String> validArtifactIds = new ArrayList<>();
+        if (artifactIds != null) {
+            NovelReaderSettings settings = NovelReaderSettings.getInstance();
+            for (String artifactId : artifactIds) {
+                if (artifactId != null
+                        && ARTIFACT_BY_ID.containsKey(artifactId)
+                        && settings.isArtifactUnlocked(artifactId)
+                        && !validArtifactIds.contains(artifactId)
+                        && validArtifactIds.size() < MAX_EQUIPPED_ARTIFACT_COUNT) {
+                    validArtifactIds.add(artifactId);
+                }
+            }
+        }
+        NovelReaderSettings.getInstance().setEquippedArtifactIds(validArtifactIds);
+        lastMessage = FishToucherBundle.message("cultivation.status.artifactsEquipped", validArtifactIds.size(), MAX_EQUIPPED_ARTIFACT_COUNT);
+        fireChange();
+        return true;
+    }
+
+    public List<CultivatorDefinition> getCultivatorDefinitions() {
+        return CULTIVATORS;
+    }
+
+    public CultivatorDefinition getCultivator(String id) {
+        return CULTIVATOR_BY_ID.get(id);
+    }
+
+    public synchronized boolean isCultivatorDefeated(CultivatorDefinition cultivator) {
+        return cultivator != null && NovelReaderSettings.getInstance().isCultivatorDefeated(cultivator.id());
+    }
+
+    public synchronized boolean isCultivatorUnlocked(CultivatorDefinition cultivator) {
+        if (cultivator == null) {
+            return false;
+        }
+        int index = CULTIVATORS.indexOf(cultivator);
+        if (index <= 0) {
+            return true;
+        }
+        return NovelReaderSettings.getInstance().isCultivatorDefeated(CULTIVATORS.get(index - 1).id());
+    }
+
+    public synchronized String getCultivatorStatusText(CultivatorDefinition cultivator) {
+        if (isCultivatorDefeated(cultivator)) {
+            return FishToucherBundle.message("cultivation.status.challengeDefeated");
+        }
+        if (!isCultivatorUnlocked(cultivator)) {
+            return FishToucherBundle.message("cultivation.status.challengeLocked");
+        }
+        return FishToucherBundle.message("cultivation.status.challengeAvailable");
+    }
+
+    public synchronized String getCultivatorRewardText(CultivatorDefinition cultivator) {
+        if (cultivator == null) {
+            return "";
+        }
+        List<String> parts = new ArrayList<>();
+        parts.add(FishToucherBundle.message("cultivation.reward.stones", applyStoneBonus(cultivator.stoneReward())));
+        if (!cultivator.spellRewardId().isEmpty()) {
+            SpellDefinition spell = getSpell(cultivator.spellRewardId());
+            if (spell != null) {
+                parts.add(FishToucherBundle.message("cultivation.reward.spell", spell.name()));
+            }
+        }
+        if (!cultivator.techniqueRewardId().isEmpty()) {
+            TechniqueDefinition technique = getTechnique(cultivator.techniqueRewardId());
+            if (technique != null) {
+                parts.add(FishToucherBundle.message("cultivation.reward.technique", technique.name()));
+            }
+        }
+        if (!cultivator.artifactRewardId().isEmpty()) {
+            ArtifactDefinition artifact = getArtifact(cultivator.artifactRewardId());
+            if (artifact != null) {
+                parts.add(FishToucherBundle.message("cultivation.reward.artifact", artifact.name()));
+            }
+        }
+        return String.join(", ", parts);
+    }
+
+    public synchronized boolean startChallenge(String cultivatorId) {
+        settleProgress(false);
+        if (!running) {
+            start();
+        }
+        CultivatorDefinition cultivator = getCultivator(cultivatorId);
+        if (cultivator == null) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeUnknown");
+            fireChange();
+            return false;
+        }
+        if (hasActiveBattle()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeBusy");
+            fireChange();
+            return false;
+        }
+        if (hasActiveTravel()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeBlockedByTravel");
+            fireChange();
+            return false;
+        }
+        if (isCultivatorDefeated(cultivator)) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeAlreadyDefeated", cultivator.name());
+            fireChange();
+            return false;
+        }
+        if (!isCultivatorUnlocked(cultivator)) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeLocked");
+            fireChange();
+            return false;
+        }
+
+        battleState = new BattleState(cultivator, calculateCombatStats(), getEquippedSpellDefinitions());
+        addBattleLog(battleState, FishToucherBundle.message("cultivation.battle.log.started", cultivator.name()));
+        lastMessage = FishToucherBundle.message("cultivation.status.challengeStarted", cultivator.name());
+        if (battleTask != null) {
+            battleTask.cancel(false);
+        }
+        if (scheduler != null) {
+            battleTask = scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    advanceBattle();
+                } catch (Exception e) {
+                    LOG.warn("battle: failed to advance challenge: " + e.getMessage());
+                }
+            }, BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
+        }
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean endChallenge() {
+        if (!hasActiveBattle()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeNone");
+            fireChange();
+            return false;
+        }
+        settleProgress(false);
+        battleState.finished = true;
+        battleState.victory = false;
+        addBattleLog(battleState, FishToucherBundle.message("cultivation.battle.log.forfeit"));
+        cancelBattleTask();
+        lastMessage = FishToucherBundle.message("cultivation.status.challengeForfeited");
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean hasActiveBattle() {
+        return battleState != null && !battleState.finished;
+    }
+
+    public synchronized boolean isActivityBusy() {
+        return hasActiveTravel() || hasActiveBattle();
+    }
+
+    public synchronized boolean isSeclusionPaused() {
+        return isSeclusionPaused(NovelReaderSettings.getInstance());
+    }
+
+    public synchronized BattleSnapshot getBattleSnapshot() {
+        if (battleState == null) {
+            return null;
+        }
+        return new BattleSnapshot(
+                battleState.cultivator,
+                battleState.playerStats,
+                battleState.playerHealth,
+                battleState.playerMana,
+                battleState.enemyHealth,
+                battleState.cultivator.maxHealth(),
+                battleState.finished,
+                battleState.victory,
+                battleState.statusText(),
+                List.copyOf(battleState.logs)
+        );
     }
 
     public synchronized String getRealmName() {
@@ -580,14 +908,15 @@ public class IdleCultivationManager {
             );
         }
         List<String> notices = new ArrayList<>();
-        notices.add(FishToucherBundle.message(isTravelInProgress(settings)
-                ? "cultivation.status.traveling"
-                : "cultivation.status.seclusionActive"));
+        notices.add(FishToucherBundle.message(getSeclusionStatusKey(settings)));
         if (isTravelReady()) {
             notices.add(FishToucherBundle.message("cultivation.status.travelClaimReady"));
         }
         if (hasClaimableAbodeReward()) {
             notices.add(FishToucherBundle.message("cultivation.status.abodeClaimReady"));
+        }
+        if (hasActiveBattle()) {
+            notices.add(FishToucherBundle.message("cultivation.status.battleRunning"));
         }
         if (settings.getCultivationRebirthCount() > 0) {
             notices.add(getRebirthStatusText());
@@ -609,9 +938,7 @@ public class IdleCultivationManager {
         return FishToucherBundle.message(
                 "cultivation.status.seclusionRate",
                 getSeclusionQiPerMinute(realmIndex),
-                FishToucherBundle.message(isTravelInProgress(settings)
-                        ? "cultivation.status.seclusionPaused"
-                        : "cultivation.status.seclusionActive")
+                FishToucherBundle.message(getSeclusionStatusKey(settings))
         );
     }
 
@@ -689,6 +1016,10 @@ public class IdleCultivationManager {
 
     public synchronized boolean hasActiveTravel() {
         return getActiveTravelLocation() != null;
+    }
+
+    private boolean hasActiveTravel(NovelReaderSettings settings) {
+        return getTravelLocation(settings.getActiveTravelLocationId()) != null;
     }
 
     public synchronized boolean isTravelReady() {
@@ -896,6 +1227,225 @@ public class IdleCultivationManager {
         return reward;
     }
 
+    private void advanceBattle() {
+        BattleState state;
+        synchronized (this) {
+            state = battleState;
+            if (state == null || state.finished) {
+                cancelBattleTask();
+                return;
+            }
+
+            state.elapsedSeconds++;
+            state.spellCooldowns.replaceAll((id, cooldown) -> Math.max(0, cooldown - 1));
+            state.playerAttackCooldown = Math.max(0, state.playerAttackCooldown - 1);
+            state.enemyAttackCooldown = Math.max(0, state.enemyAttackCooldown - 1);
+            recoverBattleResources(state);
+
+            castReadySpell(state);
+            if (state.enemyHealth <= 0L) {
+                finishBattle(state, true);
+                fireChange();
+                return;
+            }
+
+            if (state.playerAttackCooldown <= 0) {
+                long damage = calculateBattleDamage(state.playerStats.attack(), state.cultivator.defense(), 65, 25);
+                state.enemyHealth = Math.max(0L, state.enemyHealth - damage);
+                state.playerAttackCooldown = 2;
+                addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.playerAttack", damage));
+            }
+            if (state.enemyHealth <= 0L) {
+                finishBattle(state, true);
+                fireChange();
+                return;
+            }
+
+            if (state.enemyAttackCooldown <= 0) {
+                if (state.skipEnemyAttacks > 0) {
+                    state.skipEnemyAttacks--;
+                    addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.enemySkipped"));
+                } else {
+                    long damage = calculateBattleDamage(state.cultivator.attack(), state.playerStats.defense(), 65, 25);
+                    if (state.shieldHits > 0) {
+                        damage = Math.max(1L, damage * (100L - 45L) / 100L);
+                        state.shieldHits--;
+                        addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.shieldReduced", damage));
+                    } else {
+                        addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.enemyAttack", damage));
+                    }
+                    state.playerHealth = Math.max(0L, state.playerHealth - damage);
+                }
+                state.enemyAttackCooldown = 2;
+            }
+            if (state.playerHealth <= 0L) {
+                finishBattle(state, false);
+            }
+            fireChange();
+        }
+    }
+
+    private void castReadySpell(BattleState state) {
+        for (SpellDefinition spell : state.spells) {
+            if (state.spellCooldowns.getOrDefault(spell.id(), 0) > 0 || state.playerMana < spell.manaCost()) {
+                continue;
+            }
+            state.playerMana -= spell.manaCost();
+            state.spellCooldowns.put(spell.id(), spell.cooldownSeconds());
+            switch (spell.type()) {
+                case DAMAGE -> {
+                    long damage = calculateBattleDamage(state.playerStats.attack(), state.cultivator.defense(), spell.powerPercent(), 15);
+                    state.enemyHealth = Math.max(0L, state.enemyHealth - damage);
+                    addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.spellDamage", spell.name(), damage));
+                }
+                case FROST -> {
+                    long damage = calculateBattleDamage(state.playerStats.attack(), state.cultivator.defense(), spell.powerPercent(), 15);
+                    state.enemyHealth = Math.max(0L, state.enemyHealth - damage);
+                    state.skipEnemyAttacks++;
+                    addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.spellFrost", spell.name(), damage));
+                }
+                case HEAL -> {
+                    long heal = Math.max(1L, state.playerStats.health() * spell.powerPercent() / 100L);
+                    long actualHeal = Math.min(heal, state.playerStats.health() - state.playerHealth);
+                    state.playerHealth += actualHeal;
+                    addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.spellHeal", spell.name(), actualHeal));
+                }
+                case SHIELD -> {
+                    state.shieldHits += 2;
+                    addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.spellShield", spell.name()));
+                }
+            }
+            return;
+        }
+    }
+
+    private void recoverBattleResources(BattleState state) {
+        if (state.playerHealth > 0L && state.playerHealth < state.playerStats.health()) {
+            long healthRecovery = calculateBattleHealthRecovery(state.playerStats);
+            state.playerHealth = Math.min(state.playerStats.health(), state.playerHealth + healthRecovery);
+        }
+        if (state.playerMana < state.playerStats.mana()) {
+            long manaRecovery = calculateBattleManaRecovery(state.playerStats);
+            state.playerMana = Math.min(state.playerStats.mana(), state.playerMana + manaRecovery);
+        }
+    }
+
+    private long calculateBattleHealthRecovery(CombatStats stats) {
+        return Math.max(1L, stats.health() / BATTLE_HEALTH_RECOVERY_DIVISOR);
+    }
+
+    private long calculateBattleManaRecovery(CombatStats stats) {
+        return Math.max(1L, stats.mana() / BATTLE_MANA_RECOVERY_DIVISOR);
+    }
+
+    private void finishBattle(BattleState state, boolean victory) {
+        settleProgress(false);
+        state.finished = true;
+        state.victory = victory;
+        cancelBattleTask();
+        if (victory) {
+            ChallengeReward reward = grantChallengeReward(state.cultivator);
+            addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.victory", reward.summary()));
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeVictory", state.cultivator.name(), reward.summary());
+        } else {
+            addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.defeat"));
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeDefeat", state.cultivator.name());
+        }
+    }
+
+    private ChallengeReward grantChallengeReward(CultivatorDefinition cultivator) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        long stones = applyStoneBonus(cultivator.stoneReward());
+        List<String> rewardParts = new ArrayList<>();
+        settings.markCultivatorDefeated(cultivator.id());
+        rewardParts.add(FishToucherBundle.message("cultivation.reward.stones", stones));
+
+        if (!cultivator.spellRewardId().isEmpty()) {
+            SpellDefinition spell = getSpell(cultivator.spellRewardId());
+            if (spell != null) {
+                if (settings.unlockSpell(spell.id())) {
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.spell", spell.name()));
+                } else {
+                    long compensation = applyStoneBonus(260L + getCultivatorOrder(cultivator) * 90L);
+                    stones += compensation;
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.duplicateSpell", spell.name(), compensation));
+                }
+            }
+        }
+        if (!cultivator.techniqueRewardId().isEmpty()) {
+            TechniqueDefinition technique = getTechnique(cultivator.techniqueRewardId());
+            if (technique != null) {
+                if (settings.unlockTechnique(technique.id())) {
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.technique", technique.name()));
+                } else {
+                    long compensation = applyStoneBonus(320L + getCultivatorOrder(cultivator) * 110L);
+                    stones += compensation;
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.duplicateTechniqueWithStones", technique.name(), compensation));
+                }
+            }
+        }
+        if (!cultivator.artifactRewardId().isEmpty()) {
+            ArtifactDefinition artifact = getArtifact(cultivator.artifactRewardId());
+            if (artifact != null) {
+                if (settings.unlockArtifact(artifact.id())) {
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.artifact", artifact.name()));
+                } else {
+                    long compensation = applyStoneBonus(420L + getCultivatorOrder(cultivator) * 130L);
+                    stones += compensation;
+                    rewardParts.add(FishToucherBundle.message("cultivation.reward.duplicateArtifact", artifact.name(), compensation));
+                }
+            }
+        }
+        settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stones);
+        return new ChallengeReward(stones, rewardParts);
+    }
+
+    private int getCultivatorOrder(CultivatorDefinition cultivator) {
+        int index = CULTIVATORS.indexOf(cultivator);
+        return index < 0 ? 1 : index + 1;
+    }
+
+    private long calculateBattleDamage(long attack, long defense, int attackPercent, int defensePercent) {
+        long rawDamage = attack * attackPercent / 100L - defense * defensePercent / 100L;
+        return Math.max(1L, rawDamage);
+    }
+
+    private void addBattleLog(BattleState state, String message) {
+        if (state == null || message == null || message.isEmpty()) {
+            return;
+        }
+        String line = FishToucherBundle.message("cultivation.battle.log.line", state.elapsedSeconds, message);
+        state.logs.add(line);
+        while (state.logs.size() > BATTLE_LOG_LIMIT) {
+            state.logs.remove(0);
+        }
+    }
+
+    private void cancelBattleTask() {
+        if (battleTask != null) {
+            battleTask.cancel(false);
+            battleTask = null;
+        }
+    }
+
+    private CombatStats calculateCombatStats() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        int realmIndex = settings.getCultivationRealmIndex();
+        TechniqueDefinition technique = getEquippedTechnique();
+        int rebirthCount = settings.getCultivationRebirthCount();
+        long attack = 120L + Math.max(0, realmIndex) * 80L;
+        long defense = 95L + Math.max(0, realmIndex) * 65L;
+        long mana = 180L + Math.max(0, realmIndex) * 90L;
+        attack = applyPercent(attack, technique.attackBonusPercent() + getArtifactAttackBonusPercent());
+        defense = applyPercent(defense, technique.defenseBonusPercent() + getArtifactDefenseBonusPercent());
+        mana = applyPercent(mana, technique.manaBonusPercent() + getArtifactManaBonusPercent());
+        attack = applyPercent(attack, rebirthCount * REBIRTH_ATTACK_BONUS_PERCENT);
+        defense = applyPercent(defense, rebirthCount * REBIRTH_DEFENSE_BONUS_PERCENT);
+        mana = applyPercent(mana, rebirthCount * REBIRTH_MANA_BONUS_PERCENT);
+        long health = defense * 12L + mana * 3L;
+        return new CombatStats(attack, defense, mana, health);
+    }
+
     private void ensureCultivationDefaults() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (!settings.isTechniqueUnlocked(BASIC_TECHNIQUE_ID)) {
@@ -954,21 +1504,6 @@ public class IdleCultivationManager {
         return true;
     }
 
-    private long getSeclusionEligibleMillis(NovelReaderSettings settings, long creditedMillis) {
-        if (creditedMillis <= 0L) {
-            return 0L;
-        }
-        TravelLocationDefinition location = getTravelLocation(settings.getActiveTravelLocationId());
-        if (location == null) {
-            return creditedMillis;
-        }
-        long remainingMillis = getTravelRemainingMillis(settings, location);
-        if (remainingMillis <= 0L) {
-            return creditedMillis;
-        }
-        return Math.max(0L, creditedMillis - remainingMillis);
-    }
-
     private long getTravelDurationMillis(TravelLocationDefinition location) {
         return TimeUnit.MINUTES.toMillis(getTravelDurationMinutes(location));
     }
@@ -998,9 +1533,18 @@ public class IdleCultivationManager {
         return Math.max(0L, getTravelDurationMillis(location) - settings.getActiveTravelElapsedMillis());
     }
 
-    private boolean isTravelInProgress(NovelReaderSettings settings) {
-        TravelLocationDefinition location = getTravelLocation(settings.getActiveTravelLocationId());
-        return location != null && getTravelRemainingMillis(settings, location) > 0L;
+    private boolean isSeclusionPaused(NovelReaderSettings settings) {
+        return hasActiveTravel(settings) || hasActiveBattle();
+    }
+
+    private String getSeclusionStatusKey(NovelReaderSettings settings) {
+        if (hasActiveBattle()) {
+            return "cultivation.status.seclusionPausedByChallenge";
+        }
+        if (hasActiveTravel(settings)) {
+            return "cultivation.status.seclusionPaused";
+        }
+        return "cultivation.status.seclusionActive";
     }
 
     private boolean isMaxRealm(int realmIndex) {
@@ -1080,14 +1624,39 @@ public class IdleCultivationManager {
     }
 
     private long applyQiBonus(long value) {
-        int bonusPercent = getEquippedTechnique().qiBonusPercent();
+        int bonusPercent = getEquippedTechnique().qiBonusPercent() + getArtifactQiBonusPercent();
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
 
     private long applySeclusionQiBonus(long value) {
         int bonusPercent = getEquippedTechnique().qiBonusPercent()
+                + getArtifactQiBonusPercent()
                 + getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID));
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
+    }
+
+    private int getArtifactAttackBonusPercent() {
+        return getEquippedArtifacts().stream().mapToInt(ArtifactDefinition::attackBonusPercent).sum();
+    }
+
+    private int getArtifactDefenseBonusPercent() {
+        return getEquippedArtifacts().stream().mapToInt(ArtifactDefinition::defenseBonusPercent).sum();
+    }
+
+    private int getArtifactManaBonusPercent() {
+        return getEquippedArtifacts().stream().mapToInt(ArtifactDefinition::manaBonusPercent).sum();
+    }
+
+    private int getArtifactQiBonusPercent() {
+        return getEquippedArtifacts().stream().mapToInt(ArtifactDefinition::qiBonusPercent).sum();
+    }
+
+    private List<ArtifactDefinition> getEquippedArtifacts() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return settings.getEquippedArtifactIds().stream()
+                .map(this::getArtifact)
+                .filter(artifact -> artifact != null)
+                .toList();
     }
 
     private int getSpiritGatheringBonusPercent(int level) {
@@ -1246,12 +1815,30 @@ public class IdleCultivationManager {
 
     private String chooseTechniqueForTravel() {
         List<TechniqueDefinition> candidates = TECHNIQUES.stream()
-                .filter(technique -> !BASIC_TECHNIQUE_ID.equals(technique.id()))
+                .filter(technique -> EVERGREEN_TECHNIQUE_ID.equals(technique.id())
+                        || STONE_GATHERING_TECHNIQUE_ID.equals(technique.id())
+                        || MYSTIC_ORTHODOX_TECHNIQUE_ID.equals(technique.id()))
                 .toList();
         if (candidates.isEmpty()) {
             return "";
         }
         return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())).id();
+    }
+
+    private int getTravelSpellChance(String locationId) {
+        return switch (locationId) {
+            case "abandoned_alchemy_room" -> 10;
+            case "spirit_mine" -> 14;
+            case "cloud_dream_secret" -> 20;
+            default -> 6;
+        };
+    }
+
+    private String chooseSpellForTravel() {
+        if (SPELLS.isEmpty()) {
+            return "";
+        }
+        return SPELLS.get(ThreadLocalRandom.current().nextInt(SPELLS.size())).id();
     }
 
     private String formatDuration(long millis) {
@@ -1290,10 +1877,34 @@ public class IdleCultivationManager {
         return Collections.unmodifiableMap(result);
     }
 
+    private static Map<String, SpellDefinition> indexSpells() {
+        Map<String, SpellDefinition> result = new LinkedHashMap<>();
+        for (SpellDefinition spell : SPELLS) {
+            result.put(spell.id(), spell);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static Map<String, ArtifactDefinition> indexArtifacts() {
+        Map<String, ArtifactDefinition> result = new LinkedHashMap<>();
+        for (ArtifactDefinition artifact : ARTIFACTS) {
+            result.put(artifact.id(), artifact);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
     private static Map<String, TravelLocationDefinition> indexTravelLocations() {
         Map<String, TravelLocationDefinition> result = new LinkedHashMap<>();
         for (TravelLocationDefinition location : TRAVEL_LOCATIONS) {
             result.put(location.id(), location);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static Map<String, CultivatorDefinition> indexCultivators() {
+        Map<String, CultivatorDefinition> result = new LinkedHashMap<>();
+        for (CultivatorDefinition cultivator : CULTIVATORS) {
+            result.put(cultivator.id(), cultivator);
         }
         return Collections.unmodifiableMap(result);
     }
@@ -1306,8 +1917,40 @@ public class IdleCultivationManager {
         return Collections.unmodifiableMap(result);
     }
 
+    public enum BattleSpellType {
+        DAMAGE,
+        FROST,
+        HEAL,
+        SHIELD
+    }
+
     public record TechniqueDefinition(String id, String nameKey, String descriptionKey,
-                                      int qiBonusPercent, int stoneBonusPercent, int breakthroughBonus) {
+                                      int qiBonusPercent, int stoneBonusPercent, int breakthroughBonus,
+                                      int attackBonusPercent, int defenseBonusPercent, int manaBonusPercent) {
+        public String name() {
+            return FishToucherBundle.message(nameKey);
+        }
+
+        public String description() {
+            return FishToucherBundle.message(descriptionKey);
+        }
+    }
+
+    public record SpellDefinition(String id, String nameKey, String descriptionKey,
+                                  int manaCost, int cooldownSeconds,
+                                  BattleSpellType type, int powerPercent) {
+        public String name() {
+            return FishToucherBundle.message(nameKey);
+        }
+
+        public String description() {
+            return FishToucherBundle.message(descriptionKey);
+        }
+    }
+
+    public record ArtifactDefinition(String id, String nameKey, String descriptionKey,
+                                     int attackBonusPercent, int defenseBonusPercent,
+                                     int manaBonusPercent, int qiBonusPercent) {
         public String name() {
             return FishToucherBundle.message(nameKey);
         }
@@ -1339,6 +1982,23 @@ public class IdleCultivationManager {
             return FishToucherBundle.message(descriptionKey);
         }
     }
+
+    public record CultivatorDefinition(String id, String nameKey,
+                                       long maxHealth, long attack, long defense, long mana,
+                                       long stoneReward, String spellRewardId,
+                                       String techniqueRewardId, String artifactRewardId) {
+        public String name() {
+            return FishToucherBundle.message(nameKey);
+        }
+    }
+
+    public record CombatStats(long attack, long defense, long mana, long health) {}
+
+    public record BattleSnapshot(CultivatorDefinition cultivator, CombatStats playerStats,
+                                 long playerHealth, long playerMana,
+                                 long enemyHealth, long enemyMaxHealth,
+                                 boolean finished, boolean victory,
+                                 String statusText, List<String> logs) {}
 
     public record AbodeFacilityDefinition(String id, String nameKey, String descriptionKey, long baseCost) {
         public String name() {
@@ -1377,9 +2037,10 @@ public class IdleCultivationManager {
     }
 
     public record TravelReward(long qi, long stones, String pillId, int pillCount,
-                               String techniqueId, boolean duplicateTechnique) {
+                               String techniqueId, boolean duplicateTechnique,
+                               String spellId, boolean duplicateSpell) {
         public static TravelReward empty() {
-            return new TravelReward(0L, 0L, "", 0, "", false);
+            return new TravelReward(0L, 0L, "", 0, "", false, "", false);
         }
 
         public String summary() {
@@ -1400,7 +2061,57 @@ public class IdleCultivationManager {
                             : FishToucherBundle.message("cultivation.reward.technique", technique.name()));
                 }
             }
+            if (spellId != null && !spellId.isEmpty()) {
+                SpellDefinition spell = SPELL_BY_ID.get(spellId);
+                if (spell != null) {
+                    parts.add(duplicateSpell
+                            ? FishToucherBundle.message("cultivation.reward.duplicateSpellTravel", spell.name())
+                            : FishToucherBundle.message("cultivation.reward.spell", spell.name()));
+                }
+            }
             return FishToucherBundle.message("cultivation.status.travelClaimed", String.join(", ", parts));
+        }
+    }
+
+    private record ChallengeReward(long stones, List<String> parts) {
+        public String summary() {
+            return String.join(", ", parts);
+        }
+    }
+
+    private static class BattleState {
+        private final CultivatorDefinition cultivator;
+        private final CombatStats playerStats;
+        private final List<SpellDefinition> spells;
+        private final Map<String, Integer> spellCooldowns = new LinkedHashMap<>();
+        private final List<String> logs = new ArrayList<>();
+        private long playerHealth;
+        private long playerMana;
+        private long enemyHealth;
+        private int elapsedSeconds;
+        private int playerAttackCooldown;
+        private int enemyAttackCooldown;
+        private int skipEnemyAttacks;
+        private int shieldHits;
+        private boolean finished;
+        private boolean victory;
+
+        private BattleState(CultivatorDefinition cultivator, CombatStats playerStats, List<SpellDefinition> spells) {
+            this.cultivator = cultivator;
+            this.playerStats = playerStats;
+            this.spells = List.copyOf(spells);
+            this.playerHealth = playerStats.health();
+            this.playerMana = playerStats.mana();
+            this.enemyHealth = cultivator.maxHealth();
+        }
+
+        private String statusText() {
+            if (finished) {
+                return FishToucherBundle.message(victory
+                        ? "cultivation.status.battleVictory"
+                        : "cultivation.status.battleDefeat");
+            }
+            return FishToucherBundle.message("cultivation.status.battleRunning");
         }
     }
 }
