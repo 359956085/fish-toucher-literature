@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -87,6 +88,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public long activeTravelElapsedMillis = 0L;
         public Map<String, Integer> abodeFacilityLevels = new HashMap<>();
         public Map<String, Long> abodeLastClaimMillis = new HashMap<>();
+        public List<String> unlockedSpellIds = new ArrayList<>();
+        public List<String> equippedSpellIds = new ArrayList<>();
+        public List<String> unlockedArtifactIds = new ArrayList<>();
+        public List<String> equippedArtifactIds = new ArrayList<>();
+        public List<String> defeatedCultivatorIds = new ArrayList<>();
     }
 
     private State myState = new State();
@@ -325,6 +331,32 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             }
         }
         state.abodeLastClaimMillis = normalizedClaimMillis;
+        state.unlockedSpellIds = normalizeStringList(state.unlockedSpellIds);
+        state.equippedSpellIds = normalizeStringList(state.equippedSpellIds);
+        state.equippedSpellIds.removeIf(spellId -> !state.unlockedSpellIds.contains(spellId));
+        while (state.equippedSpellIds.size() > 3) {
+            state.equippedSpellIds.remove(state.equippedSpellIds.size() - 1);
+        }
+        state.unlockedArtifactIds = normalizeStringList(state.unlockedArtifactIds);
+        state.equippedArtifactIds = normalizeStringList(state.equippedArtifactIds);
+        state.equippedArtifactIds.removeIf(artifactId -> !state.unlockedArtifactIds.contains(artifactId));
+        while (state.equippedArtifactIds.size() > 2) {
+            state.equippedArtifactIds.remove(state.equippedArtifactIds.size() - 1);
+        }
+        state.defeatedCultivatorIds = normalizeStringList(state.defeatedCultivatorIds);
+    }
+
+    private static List<String> normalizeStringList(List<String> values) {
+        if (values == null) {
+            return new ArrayList<>();
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String value : values) {
+            if (value != null && !value.isEmpty()) {
+                normalized.add(value);
+            }
+        }
+        return new ArrayList<>(normalized);
     }
 
     // --- Hot search source ---
@@ -516,5 +548,107 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         } else {
             myState.abodeLastClaimMillis.put(facilityId, millis);
         }
+    }
+
+    public List<String> getUnlockedSpellIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.unlockedSpellIds));
+    }
+
+    public boolean isSpellUnlocked(String spellId) {
+        normalizeCultivationState(myState);
+        return spellId != null && myState.unlockedSpellIds.contains(spellId);
+    }
+
+    public boolean unlockSpell(String spellId) {
+        normalizeCultivationState(myState);
+        if (spellId == null || spellId.isEmpty() || myState.unlockedSpellIds.contains(spellId)) {
+            return false;
+        }
+        myState.unlockedSpellIds.add(spellId);
+        return true;
+    }
+
+    public List<String> getEquippedSpellIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.equippedSpellIds));
+    }
+
+    public void setEquippedSpellIds(List<String> spellIds) {
+        normalizeCultivationState(myState);
+        List<String> nextSpellIds = new ArrayList<>();
+        if (spellIds != null) {
+            for (String spellId : spellIds) {
+                if (spellId != null
+                        && myState.unlockedSpellIds.contains(spellId)
+                        && !nextSpellIds.contains(spellId)
+                        && nextSpellIds.size() < 3) {
+                    nextSpellIds.add(spellId);
+                }
+            }
+        }
+        myState.equippedSpellIds = nextSpellIds;
+    }
+
+    public List<String> getUnlockedArtifactIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.unlockedArtifactIds));
+    }
+
+    public boolean isArtifactUnlocked(String artifactId) {
+        normalizeCultivationState(myState);
+        return artifactId != null && myState.unlockedArtifactIds.contains(artifactId);
+    }
+
+    public boolean unlockArtifact(String artifactId) {
+        normalizeCultivationState(myState);
+        if (artifactId == null || artifactId.isEmpty() || myState.unlockedArtifactIds.contains(artifactId)) {
+            return false;
+        }
+        myState.unlockedArtifactIds.add(artifactId);
+        if (myState.equippedArtifactIds.size() < 2) {
+            myState.equippedArtifactIds.add(artifactId);
+        }
+        return true;
+    }
+
+    public List<String> getEquippedArtifactIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.equippedArtifactIds));
+    }
+
+    public void setEquippedArtifactIds(List<String> artifactIds) {
+        normalizeCultivationState(myState);
+        List<String> nextArtifactIds = new ArrayList<>();
+        if (artifactIds != null) {
+            for (String artifactId : artifactIds) {
+                if (artifactId != null
+                        && myState.unlockedArtifactIds.contains(artifactId)
+                        && !nextArtifactIds.contains(artifactId)
+                        && nextArtifactIds.size() < 2) {
+                    nextArtifactIds.add(artifactId);
+                }
+            }
+        }
+        myState.equippedArtifactIds = nextArtifactIds;
+    }
+
+    public List<String> getDefeatedCultivatorIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.defeatedCultivatorIds));
+    }
+
+    public boolean isCultivatorDefeated(String cultivatorId) {
+        normalizeCultivationState(myState);
+        return cultivatorId != null && myState.defeatedCultivatorIds.contains(cultivatorId);
+    }
+
+    public boolean markCultivatorDefeated(String cultivatorId) {
+        normalizeCultivationState(myState);
+        if (cultivatorId == null || cultivatorId.isEmpty() || myState.defeatedCultivatorIds.contains(cultivatorId)) {
+            return false;
+        }
+        myState.defeatedCultivatorIds.add(cultivatorId);
+        return true;
     }
 }
