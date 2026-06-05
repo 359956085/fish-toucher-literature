@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.6.1</version>
+    <version>3.6.2</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.6.2</b>
+    <ul>
+        <li>优化：调整挑战修士名称，避免与修炼境界名称产生歧义。</li>
+    </ul>
     <b>3.6.1</b>
     <ul>
         <li>优化：修炼页转世状态显示战斗增益，背包页法术描述按槽位展示。</li>
