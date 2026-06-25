@@ -66,6 +66,23 @@ final class IdleCultivationUiSupport {
         return gbc;
     }
 
+    static int addFullWidthRow(JPanel panel, GridBagConstraints gbc, int row, JComponent component) {
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weightx = 1.0; gbc.weighty = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        allowHorizontalShrink(component);
+        panel.add(component, gbc);
+        return row + 1;
+    }
+
+    static int addSeparatorRow(JPanel panel, GridBagConstraints gbc, int row) {
+        return addFullWidthRow(panel, gbc, row, new JSeparator());
+    }
+
+    static int addActionRow(JPanel panel, GridBagConstraints gbc, int row, JComponent actions) {
+        return addFullWidthRow(panel, gbc, row, actions);
+    }
+
     static JTextArea createHintTextArea() {
         return createGuideTextArea("");
     }
@@ -90,7 +107,6 @@ final class IdleCultivationUiSupport {
     static JLabel createSectionLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
-        allowHorizontalShrink(label);
         return label;
     }
 
@@ -117,7 +133,6 @@ final class IdleCultivationUiSupport {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         JLabel labelComponent = new JLabel(label);
         labelComponent.setForeground(JBColor.GRAY);
-        allowHorizontalShrink(labelComponent);
         panel.add(labelComponent, gbc);
 
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0; gbc.weighty = 0;
@@ -135,18 +150,8 @@ final class IdleCultivationUiSupport {
     }
 
     static int addGuideSection(JPanel panel, GridBagConstraints gbc, int row, String sectionId) {
-        JLabel title = createSectionLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".title"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0; gbc.weighty = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        panel.add(title, gbc);
-
-        JLabel text = createGuideHtmlLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".desc"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0; gbc.weighty = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        panel.add(text, gbc);
-        return row;
+        row = addFullWidthRow(panel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".title")));
+        return addFullWidthRow(panel, gbc, row, createGuideHtmlLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".desc")));
     }
 
     static int addRealmDescriptionRows(JPanel panel, GridBagConstraints gbc, int row) {
@@ -223,6 +228,32 @@ final class IdleCultivationUiSupport {
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private static int resolvePreferredWidth(Component component) {
+        int width = component.getWidth();
+        if (width >= MIN_EFFECTIVE_WRAP_WIDTH) {
+            return width;
+        }
+
+        int availableWidth = resolveAvailableWidth(component);
+        if (availableWidth >= MIN_EFFECTIVE_WRAP_WIDTH) {
+            return availableWidth;
+        }
+        return CULTIVATION_MIN_WIDTH;
+    }
+
+    private static int resolveAvailableWidth(Component component) {
+        Container parent = component.getParent();
+        while (parent != null) {
+            int parentWidth = parent.getWidth();
+            if (parentWidth > 0) {
+                Insets insets = parent.getInsets();
+                return Math.max(1, parentWidth - Math.max(0, component.getX()) - insets.right);
+            }
+            parent = parent.getParent();
+        }
+        return 0;
     }
 
     private static String toGuideHtml(String text) {
@@ -303,7 +334,7 @@ final class IdleCultivationUiSupport {
 
         @Override
         public Dimension getPreferredSize() {
-            int width = resolvePreferredWidth();
+            int width = IdleCultivationUiSupport.resolvePreferredWidth(this);
             View view = (View) getClientProperty(BasicHTML.propertyKey);
             if (view == null) {
                 Dimension preferredSize = super.getPreferredSize();
@@ -327,27 +358,6 @@ final class IdleCultivationUiSupport {
                 revalidate();
             }
         }
-
-        private int resolvePreferredWidth() {
-            int width = getWidth();
-            if (width >= MIN_EFFECTIVE_WRAP_WIDTH) {
-                return width;
-            }
-
-            Container parent = getParent();
-            while (parent != null) {
-                int parentWidth = parent.getWidth();
-                if (parentWidth > 0) {
-                    Insets insets = parent.getInsets();
-                    int availableWidth = parentWidth - Math.max(0, getX()) - insets.right;
-                    if (availableWidth >= MIN_EFFECTIVE_WRAP_WIDTH) {
-                        return availableWidth;
-                    }
-                }
-                parent = parent.getParent();
-            }
-            return CULTIVATION_MIN_WIDTH;
-        }
     }
 
     private static class WrappingTextArea extends JTextArea {
@@ -366,7 +376,7 @@ final class IdleCultivationUiSupport {
 
         @Override
         public Dimension getPreferredSize() {
-            int width = resolvePreferredWidth();
+            int width = IdleCultivationUiSupport.resolvePreferredWidth(this);
             if (!getLineWrap()) {
                 Dimension preferredSize = super.getPreferredSize();
                 return new Dimension(width, preferredSize.height);
@@ -427,34 +437,6 @@ final class IdleCultivationUiSupport {
             if (oldWidth != width) {
                 revalidate();
             }
-        }
-
-        private int resolvePreferredWidth() {
-            int width = getWidth();
-            if (width >= MIN_EFFECTIVE_WRAP_WIDTH) {
-                return width;
-            }
-
-            int availableWidth = resolveAvailableWidth();
-            if (availableWidth >= MIN_EFFECTIVE_WRAP_WIDTH) {
-                return availableWidth;
-            }
-
-            return CULTIVATION_MIN_WIDTH;
-        }
-
-        private int resolveAvailableWidth() {
-            Container parent = getParent();
-            while (parent != null) {
-                int parentWidth = parent.getWidth();
-                if (parentWidth > 0) {
-                    Insets insets = parent.getInsets();
-                    int availableWidth = parentWidth - Math.max(0, getX()) - insets.right;
-                    return Math.max(1, availableWidth);
-                }
-                parent = parent.getParent();
-            }
-            return 0;
         }
     }
 }

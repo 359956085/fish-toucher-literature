@@ -101,7 +101,6 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         effectsValue = createHintTextArea();
         rebirthLabel = new JLabel(FishToucherBundle.message("cultivation.label.rebirth"));
         rebirthLabel.setForeground(JBColor.GRAY);
-        allowHorizontalShrink(rebirthLabel);
         rebirthValue = createHintTextArea();
         messageLabel = createHintTextArea();
         progressBar = new JProgressBar(0, 100);
@@ -132,7 +131,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         startTravelButton = new JButton(FishToucherBundle.message("cultivation.button.startTravel"));
         claimTravelButton = new JButton(FishToucherBundle.message("cultivation.button.claimTravel"));
         abodeStonesValue = new JLabel();
-        abodeFacilitiesPanel = new JPanel(new GridBagLayout());
+        abodeFacilitiesPanel = createFormPanel();
         cultivatorComboBox = new JComboBox<>();
         cultivatorDescriptionLabel = createChallengeInfoTextArea(true, 4);
         battleStatsLabel = createChallengeInfoTextArea(false, 2);
@@ -197,11 +196,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.technique"), techniqueValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.cultivation"), qiValue);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        panel.add(progressBar, gbc);
-        row++;
+        row = addFullWidthRow(panel, gbc, row, progressBar);
 
-        gbc.gridwidth = 1; gbc.weightx = 0;
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.attack"), attackValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.defense"), defenseValue);
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.health"), healthValue);
@@ -219,9 +215,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         gbc.weightx = 0;
         row++;
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        panel.add(messageLabel, gbc);
-        row++;
+        row = addFullWidthRow(panel, gbc, row, messageLabel);
 
         JPanel actions = createActionPanel();
         meditateButton.setToolTipText(FishToucherBundle.message("cultivation.tooltip.meditate"));
@@ -248,9 +242,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         rebirthButton.addActionListener(e -> showRebirthDialog());
         actions.add(rebirthButton);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        panel.add(actions, gbc);
-        addBottomGlue(panel, gbc, row + 1);
+        row = addActionRow(panel, gbc, row, actions);
+        addBottomGlue(panel, gbc, row);
         return createScrollableTab(panel);
     }
 
@@ -260,14 +253,11 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         int row = 0;
 
         JLabel techniqueTitle = createSectionLabel(FishToucherBundle.message("cultivation.section.techniques"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(techniqueTitle, gbc);
+        row = addFullWidthRow(panel, gbc, row, techniqueTitle);
 
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.technique"), techniqueComboBox);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(techniqueDescriptionLabel, gbc);
+        row = addFullWidthRow(panel, gbc, row, techniqueDescriptionLabel);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         equipTechniqueButton.setFocusable(false);
         equipTechniqueButton.addActionListener(e -> {
             TechniqueOption option = (TechniqueOption) techniqueComboBox.getSelectedItem();
@@ -275,20 +265,16 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
                 IdleCultivationManager.getInstance().equipTechnique(option.technique.id());
             }
         });
-        panel.add(equipTechniqueButton, gbc);
+        row = addActionRow(panel, gbc, row, equipTechniqueButton);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(new JSeparator(), gbc);
+        row = addSeparatorRow(panel, gbc, row);
 
         JLabel pillTitle = createSectionLabel(FishToucherBundle.message("cultivation.section.pills"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(pillTitle, gbc);
+        row = addFullWidthRow(panel, gbc, row, pillTitle);
 
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.pill"), pillComboBox);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(pillDescriptionLabel, gbc);
+        row = addFullWidthRow(panel, gbc, row, pillDescriptionLabel);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         usePillButton.setFocusable(false);
         usePillButton.addActionListener(e -> {
             PillOption option = (PillOption) pillComboBox.getSelectedItem();
@@ -296,14 +282,12 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
                 IdleCultivationManager.getInstance().usePill(option.pill.id());
             }
         });
-        panel.add(usePillButton, gbc);
+        row = addActionRow(panel, gbc, row, usePillButton);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(new JSeparator(), gbc);
+        row = addSeparatorRow(panel, gbc, row);
 
         JLabel spellTitle = createSectionLabel(FishToucherBundle.message("cultivation.section.spells"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(spellTitle, gbc);
+        row = addFullWidthRow(panel, gbc, row, spellTitle);
 
         for (int i = 0; i < 3; i++) {
             JComboBox<SpellOption> spellComboBox = new JComboBox<>();
@@ -313,21 +297,17 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
             JTextArea spellDescription = createGuideTextArea("");
             spellDescriptionLabels.add(spellDescription);
-            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-            panel.add(spellDescription, gbc);
+            row = addFullWidthRow(panel, gbc, row, spellDescription);
         }
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         saveSpellSetupButton.setFocusable(false);
         saveSpellSetupButton.addActionListener(e -> saveSpellSetup());
-        panel.add(saveSpellSetupButton, gbc);
+        row = addActionRow(panel, gbc, row, saveSpellSetupButton);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(new JSeparator(), gbc);
+        row = addSeparatorRow(panel, gbc, row);
 
         JLabel artifactTitle = createSectionLabel(FishToucherBundle.message("cultivation.section.artifacts"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(artifactTitle, gbc);
+        row = addFullWidthRow(panel, gbc, row, artifactTitle);
 
         for (int i = 0; i < 2; i++) {
             JComboBox<ArtifactOption> artifactComboBox = new JComboBox<>();
@@ -335,13 +315,11 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             artifactSlotComboBoxes.add(artifactComboBox);
             addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.artifactSlot", i + 1), artifactComboBox);
         }
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(artifactDescriptionLabel, gbc);
+        row = addFullWidthRow(panel, gbc, row, artifactDescriptionLabel);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         saveArtifactSetupButton.setFocusable(false);
         saveArtifactSetupButton.addActionListener(e -> saveArtifactSetup());
-        panel.add(saveArtifactSetupButton, gbc);
+        row = addActionRow(panel, gbc, row, saveArtifactSetupButton);
 
         techniqueComboBox.addActionListener(e -> updateTechniqueDescription());
         pillComboBox.addActionListener(e -> updatePillDescription());
@@ -355,14 +333,11 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         int row = 0;
 
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.location"), travelComboBox);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(travelDescriptionLabel, gbc);
+        row = addFullWidthRow(panel, gbc, row, travelDescriptionLabel);
 
         addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.activeTravel"), activeTravelLabel);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        panel.add(travelProgressBar, gbc);
-        gbc.weightx = 0;
+        row = addFullWidthRow(panel, gbc, row, travelProgressBar);
 
         JPanel actions = createActionPanel();
         startTravelButton.setFocusable(false);
@@ -378,37 +353,20 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         claimTravelButton.addActionListener(e -> IdleCultivationManager.getInstance().claimTravelReward());
         actions.add(claimTravelButton);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        panel.add(actions, gbc);
+        row = addActionRow(panel, gbc, row, actions);
 
         travelComboBox.addActionListener(e -> updateTravelDescription());
-        addBottomGlue(panel, gbc, row + 1);
+        addBottomGlue(panel, gbc, row);
         return createScrollableTab(panel);
     }
 
     private JPanel createAbodeTab() {
-        JPanel contentPanel = createFormPanel();
-        GridBagConstraints gbc = createConstraints();
-        int row = 0;
-
-        addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.label.spiritStones"), abodeStonesValue);
-
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        contentPanel.add(new JSeparator(), gbc);
-
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        contentPanel.add(abodeFacilitiesPanel, gbc);
-
-        addBottomGlue(contentPanel, gbc, row);
-        return createScrollableTab(contentPanel);
+        return createScrollableTab(abodeFacilitiesPanel);
     }
 
     private JPanel createChallengeTab() {
         JPanel contentPanel = createFormPanel();
-        allowHorizontalShrink(battleStatsLabel);
         allowHorizontalShrink(cultivatorComboBox);
-        allowHorizontalShrink(cultivatorDescriptionLabel);
-        allowHorizontalShrink(battleStatusLabel);
         allowHorizontalShrink(playerHealthBar);
         allowHorizontalShrink(enemyHealthBar);
         allowHorizontalShrink(battleManaBar);
@@ -416,24 +374,18 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         int row = 0;
 
         JLabel battleStatsTitle = createSectionLabel(FishToucherBundle.message("cultivation.label.combatStats"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        contentPanel.add(battleStatsTitle, gbc);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(battleStatsLabel, gbc);
+        row = addFullWidthRow(contentPanel, gbc, row, battleStatsTitle);
+        row = addFullWidthRow(contentPanel, gbc, row, battleStatsLabel);
 
         addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.label.cultivator"), cultivatorComboBox);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(cultivatorDescriptionLabel, gbc);
+        row = addFullWidthRow(contentPanel, gbc, row, cultivatorDescriptionLabel);
 
         addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.label.battleStatus"), battleStatusLabel);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        contentPanel.add(playerHealthBar, gbc);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(enemyHealthBar, gbc);
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(battleManaBar, gbc);
+        row = addFullWidthRow(contentPanel, gbc, row, playerHealthBar);
+        row = addFullWidthRow(contentPanel, gbc, row, enemyHealthBar);
+        row = addFullWidthRow(contentPanel, gbc, row, battleManaBar);
         gbc.weightx = 0;
 
         JPanel actions = createActionPanel();
@@ -450,12 +402,10 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         endChallengeButton.addActionListener(e -> IdleCultivationManager.getInstance().endChallenge());
         actions.add(endChallengeButton);
 
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(actions, gbc);
+        row = addActionRow(contentPanel, gbc, row, actions);
 
         JLabel logTitle = createSectionLabel(FishToucherBundle.message("cultivation.section.battleLog"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        contentPanel.add(logTitle, gbc);
+        row = addFullWidthRow(contentPanel, gbc, row, logTitle);
 
         JScrollPane logScrollPane = new JScrollPane(battleLogArea);
         logScrollPane.setBorder(BorderFactory.createLineBorder(JBColor.border()));
@@ -501,49 +451,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
             NovelReaderSettings settings = NovelReaderSettings.getInstance();
-            long currentQi = manager.getCurrentQi();
-            long requiredQi = manager.getRequiredQi();
-            int percent = manager.getProgressPercent();
-
-            realmValue.setText(manager.getRealmName());
-            techniqueValue.setText(manager.getEquippedTechnique().name());
-            qiValue.setText(requiredQi > 0L ? currentQi + " / " + requiredQi : String.valueOf(currentQi));
-            IdleCultivationManager.CombatStats combatStats = manager.getCombatStats();
-            IdleCultivationManager.BattleSnapshot battleSnapshot = manager.getBattleSnapshot();
-            boolean activeBattle = battleSnapshot != null && !battleSnapshot.finished();
-            long currentHealth = activeBattle ? battleSnapshot.playerHealth() : combatStats.health();
-            long currentMana = activeBattle ? battleSnapshot.playerMana() : combatStats.mana();
-            attackValue.setText(String.valueOf(combatStats.attack()));
-            defenseValue.setText(String.valueOf(combatStats.defense()));
-            healthValue.setText(FishToucherBundle.message(
-                    "cultivation.status.resourceWithRecovery",
-                    currentHealth,
-                    activeBattle ? battleSnapshot.playerStats().health() : combatStats.health(),
-                    manager.getHealthRecoveryPerSecond()
-            ));
-            manaValue.setText(FishToucherBundle.message(
-                    "cultivation.status.resourceWithRecovery",
-                    currentMana,
-                    activeBattle ? battleSnapshot.playerStats().mana() : combatStats.mana(),
-                    manager.getManaRecoveryPerSecond()
-            ));
-            stonesValue.setText(String.valueOf(manager.getSpiritStones()));
-            rateValue.setText(manager.getRateText());
-            seclusionRateValue.setText(manager.getSeclusionRateText());
-            chanceValue.setText(manager.getChanceText());
-            setWrappingText(effectsValue, manager.getActiveEffectsText());
-            setWrappingText(messageLabel, manager.getLastMessage());
-
-            progressBar.setValue(percent);
-            progressBar.setString(requiredQi > 0L ? percent + "%" : FishToucherBundle.message("cultivation.status.max"));
-            updateMeditationButton(manager);
-            updateRebirthControls(manager);
-            breakthroughButton.setEnabled(manager.canBreakthrough());
-
-            reloadTechniqueOptions(manager, settings);
-            reloadPillOptions(manager, settings);
-            reloadSpellOptions(manager, settings);
-            reloadArtifactOptions(manager, settings);
+            updateTrainingState(manager);
+            reloadBagOptions(manager, settings);
             reloadTravelOptions(manager);
             updateActiveTravel(manager);
             reloadAbodeFacilities(manager);
@@ -552,6 +461,58 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         } finally {
             refreshing = false;
         }
+        updateSelectionDescriptions();
+    }
+
+    private void updateTrainingState(IdleCultivationManager manager) {
+        long currentQi = manager.getCurrentQi();
+        long requiredQi = manager.getRequiredQi();
+        int percent = manager.getProgressPercent();
+
+        realmValue.setText(manager.getRealmName());
+        techniqueValue.setText(manager.getEquippedTechnique().name());
+        qiValue.setText(requiredQi > 0L ? currentQi + " / " + requiredQi : String.valueOf(currentQi));
+        IdleCultivationManager.CombatStats combatStats = manager.getCombatStats();
+        IdleCultivationManager.BattleSnapshot battleSnapshot = manager.getBattleSnapshot();
+        boolean activeBattle = battleSnapshot != null && !battleSnapshot.finished();
+        long currentHealth = activeBattle ? battleSnapshot.playerHealth() : combatStats.health();
+        long currentMana = activeBattle ? battleSnapshot.playerMana() : combatStats.mana();
+        attackValue.setText(String.valueOf(combatStats.attack()));
+        defenseValue.setText(String.valueOf(combatStats.defense()));
+        healthValue.setText(FishToucherBundle.message(
+                "cultivation.status.resourceWithRecovery",
+                currentHealth,
+                activeBattle ? battleSnapshot.playerStats().health() : combatStats.health(),
+                manager.getHealthRecoveryPerSecond()
+        ));
+        manaValue.setText(FishToucherBundle.message(
+                "cultivation.status.resourceWithRecovery",
+                currentMana,
+                activeBattle ? battleSnapshot.playerStats().mana() : combatStats.mana(),
+                manager.getManaRecoveryPerSecond()
+        ));
+        stonesValue.setText(String.valueOf(manager.getSpiritStones()));
+        rateValue.setText(manager.getRateText());
+        seclusionRateValue.setText(manager.getSeclusionRateText());
+        chanceValue.setText(manager.getChanceText());
+        setWrappingText(effectsValue, manager.getActiveEffectsText());
+        setWrappingText(messageLabel, manager.getLastMessage());
+
+        progressBar.setValue(percent);
+        progressBar.setString(requiredQi > 0L ? percent + "%" : FishToucherBundle.message("cultivation.status.max"));
+        updateMeditationButton(manager);
+        updateRebirthControls(manager);
+        breakthroughButton.setEnabled(manager.canBreakthrough());
+    }
+
+    private void reloadBagOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
+        reloadTechniqueOptions(manager, settings);
+        reloadPillOptions(manager, settings);
+        reloadSpellOptions(manager, settings);
+        reloadArtifactOptions(manager, settings);
+    }
+
+    private void updateSelectionDescriptions() {
         updateTechniqueDescription();
         updatePillDescription();
         updateSpellDescription();
@@ -738,14 +699,16 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         abodeFacilitiesPanel.removeAll();
         GridBagConstraints gbc = createConstraints();
         int row = 0;
+
+        addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.spiritStones"), abodeStonesValue);
+        row = addSeparatorRow(abodeFacilitiesPanel, gbc, row);
+
         for (IdleCultivationManager.AbodeFacilityDefinition facility : manager.getAbodeFacilityDefinitions()) {
             JTextArea title = createSectionTextArea(facility.name() + "  " + manager.getAbodeFacilityLevelText(facility.id()));
-            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-            abodeFacilitiesPanel.add(title, gbc);
+            row = addFullWidthRow(abodeFacilitiesPanel, gbc, row, title);
 
             JTextArea description = createHintTextArea(facility.description());
-            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-            abodeFacilitiesPanel.add(description, gbc);
+            row = addFullWidthRow(abodeFacilitiesPanel, gbc, row, description);
 
             addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.effect"), createHintTextArea(manager.getAbodeFacilityEffectText(facility.id())));
             addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.upgradeCost"), createHintTextArea(manager.getAbodeUpgradeCostText(facility.id())));
@@ -770,12 +733,11 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
                 actions.add(claimButton);
             }
 
-            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-            abodeFacilitiesPanel.add(actions, gbc);
+            row = addActionRow(abodeFacilitiesPanel, gbc, row, actions);
 
-            gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-            abodeFacilitiesPanel.add(new JSeparator(), gbc);
+            row = addSeparatorRow(abodeFacilitiesPanel, gbc, row);
         }
+        addBottomGlue(abodeFacilitiesPanel, gbc, row);
         abodeFacilitiesPanel.revalidate();
         abodeFacilitiesPanel.repaint();
         Container parent = abodeFacilitiesPanel.getParent();
