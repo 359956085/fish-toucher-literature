@@ -7,7 +7,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.ui.JBColor;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -16,10 +15,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.fish.toucher.ui.IdleCultivationUiSupport.*;
+
 public class IdleCultivationPanel extends JPanel implements Disposable {
 
     private static final Logger LOG = Logger.getInstance(IdleCultivationPanel.class);
-    private static final int CHALLENGE_MIN_WIDTH = 200;
     private static final int CHALLENGE_LOG_HEIGHT = 150;
 
     private final JLabel realmValue;
@@ -33,10 +33,10 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final JLabel rateValue;
     private final JLabel seclusionRateValue;
     private final JLabel chanceValue;
-    private final JLabel effectsValue;
+    private final JTextArea effectsValue;
     private final JLabel rebirthLabel;
-    private final JLabel rebirthValue;
-    private final JLabel messageLabel;
+    private final JTextArea rebirthValue;
+    private final JTextArea messageLabel;
     private final JProgressBar progressBar;
     private final JButton meditateButton;
     private final JButton koiBlessingButton;
@@ -45,20 +45,20 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
     private final JComboBox<TechniqueOption> techniqueComboBox;
     private final JButton equipTechniqueButton;
-    private final JLabel techniqueDescriptionLabel;
+    private final JTextArea techniqueDescriptionLabel;
     private final JComboBox<PillOption> pillComboBox;
     private final JButton usePillButton;
-    private final JLabel pillDescriptionLabel;
+    private final JTextArea pillDescriptionLabel;
     private final List<JComboBox<SpellOption>> spellSlotComboBoxes;
-    private final List<JLabel> spellDescriptionLabels;
+    private final List<JTextArea> spellDescriptionLabels;
     private final JButton saveSpellSetupButton;
     private final List<JComboBox<ArtifactOption>> artifactSlotComboBoxes;
     private final JButton saveArtifactSetupButton;
-    private final JLabel artifactDescriptionLabel;
+    private final JTextArea artifactDescriptionLabel;
 
     private final JComboBox<TravelOption> travelComboBox;
-    private final JLabel travelDescriptionLabel;
-    private final JLabel activeTravelLabel;
+    private final JTextArea travelDescriptionLabel;
+    private final JTextArea activeTravelLabel;
     private final JProgressBar travelProgressBar;
     private final JButton startTravelButton;
     private final JButton claimTravelButton;
@@ -98,12 +98,12 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         rateValue = new JLabel();
         seclusionRateValue = new JLabel();
         chanceValue = new JLabel();
-        effectsValue = new JLabel();
+        effectsValue = createHintTextArea();
         rebirthLabel = new JLabel(FishToucherBundle.message("cultivation.label.rebirth"));
         rebirthLabel.setForeground(JBColor.GRAY);
-        rebirthValue = new JLabel();
-        messageLabel = new JLabel();
-        messageLabel.setForeground(JBColor.GRAY);
+        allowHorizontalShrink(rebirthLabel);
+        rebirthValue = createHintTextArea();
+        messageLabel = createHintTextArea();
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
         meditateButton = new JButton(FishToucherBundle.message("cultivation.button.meditate"));
@@ -113,20 +113,20 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
         techniqueComboBox = new JComboBox<>();
         equipTechniqueButton = new JButton(FishToucherBundle.message("cultivation.button.equipTechnique"));
-        techniqueDescriptionLabel = createHintLabel();
+        techniqueDescriptionLabel = createHintTextArea();
         pillComboBox = new JComboBox<>();
         usePillButton = new JButton(FishToucherBundle.message("cultivation.button.usePill"));
-        pillDescriptionLabel = createHintLabel();
+        pillDescriptionLabel = createHintTextArea();
         spellSlotComboBoxes = new ArrayList<>();
         spellDescriptionLabels = new ArrayList<>();
         saveSpellSetupButton = new JButton(FishToucherBundle.message("cultivation.button.saveSpellSetup"));
         artifactSlotComboBoxes = new ArrayList<>();
         saveArtifactSetupButton = new JButton(FishToucherBundle.message("cultivation.button.saveArtifactSetup"));
-        artifactDescriptionLabel = createHintLabel();
+        artifactDescriptionLabel = createHintTextArea();
 
         travelComboBox = new JComboBox<>();
-        travelDescriptionLabel = createHintLabel();
-        activeTravelLabel = new JLabel();
+        travelDescriptionLabel = createHintTextArea();
+        activeTravelLabel = createHintTextArea();
         travelProgressBar = new JProgressBar(0, 100);
         travelProgressBar.setStringPainted(true);
         startTravelButton = new JButton(FishToucherBundle.message("cultivation.button.startTravel"));
@@ -150,6 +150,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         endChallengeButton = new JButton(FishToucherBundle.message("cultivation.button.endChallenge"));
 
         JTabbedPane tabs = new JTabbedPane();
+        tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         tabs.addTab(FishToucherBundle.message("cultivation.tab.training"), createTrainingTab());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.bag"), createBagTab());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.travel"), createTravelTab());
@@ -222,7 +223,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         panel.add(messageLabel, gbc);
         row++;
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        JPanel actions = createActionPanel();
         meditateButton.setToolTipText(FishToucherBundle.message("cultivation.tooltip.meditate"));
         meditateButton.setFocusable(false);
         meditateButton.addActionListener(e -> IdleCultivationManager.getInstance().meditateOnce());
@@ -250,7 +251,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
         panel.add(actions, gbc);
         addBottomGlue(panel, gbc, row + 1);
-        return panel;
+        return createScrollableTab(panel);
     }
 
     private JPanel createBagTab() {
@@ -310,7 +311,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             spellSlotComboBoxes.add(spellComboBox);
             addLabelRow(panel, gbc, row++, FishToucherBundle.message("cultivation.label.spellSlot", i + 1), spellComboBox);
 
-            JLabel spellDescription = createHintLabel();
+            JTextArea spellDescription = createGuideTextArea("");
             spellDescriptionLabels.add(spellDescription);
             gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
             panel.add(spellDescription, gbc);
@@ -345,15 +346,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         techniqueComboBox.addActionListener(e -> updateTechniqueDescription());
         pillComboBox.addActionListener(e -> updatePillDescription());
         addBottomGlue(panel, gbc, row);
-
-        JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.add(scrollPane, BorderLayout.CENTER);
-        return wrapper;
+        return createScrollableTab(panel);
     }
 
     private JPanel createTravelTab() {
@@ -371,7 +364,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         panel.add(travelProgressBar, gbc);
         gbc.weightx = 0;
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        JPanel actions = createActionPanel();
         startTravelButton.setFocusable(false);
         startTravelButton.addActionListener(e -> {
             TravelOption option = (TravelOption) travelComboBox.getSelectedItem();
@@ -390,7 +383,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
         travelComboBox.addActionListener(e -> updateTravelDescription());
         addBottomGlue(panel, gbc, row + 1);
-        return panel;
+        return createScrollableTab(panel);
     }
 
     private JPanel createAbodeTab() {
@@ -407,26 +400,18 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         contentPanel.add(abodeFacilitiesPanel, gbc);
 
         addBottomGlue(contentPanel, gbc, row);
-
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(scrollPane, BorderLayout.CENTER);
-        return panel;
+        return createScrollableTab(contentPanel);
     }
 
     private JPanel createChallengeTab() {
-        JPanel contentPanel = new ChallengeFormPanel();
-        allowChallengeShrink(battleStatsLabel);
-        allowChallengeShrink(cultivatorComboBox);
-        allowChallengeShrink(cultivatorDescriptionLabel);
-        allowChallengeShrink(battleStatusLabel);
-        allowChallengeShrink(playerHealthBar);
-        allowChallengeShrink(enemyHealthBar);
-        allowChallengeShrink(battleManaBar);
+        JPanel contentPanel = createFormPanel();
+        allowHorizontalShrink(battleStatsLabel);
+        allowHorizontalShrink(cultivatorComboBox);
+        allowHorizontalShrink(cultivatorDescriptionLabel);
+        allowHorizontalShrink(battleStatusLabel);
+        allowHorizontalShrink(playerHealthBar);
+        allowHorizontalShrink(enemyHealthBar);
+        allowHorizontalShrink(battleManaBar);
         GridBagConstraints gbc = createConstraints();
         int row = 0;
 
@@ -451,7 +436,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         contentPanel.add(battleManaBar, gbc);
         gbc.weightx = 0;
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        JPanel actions = createActionPanel();
         startChallengeButton.setFocusable(false);
         startChallengeButton.addActionListener(e -> {
             CultivatorOption option = (CultivatorOption) cultivatorComboBox.getSelectedItem();
@@ -474,9 +459,10 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
         JScrollPane logScrollPane = new JScrollPane(battleLogArea);
         logScrollPane.setBorder(BorderFactory.createLineBorder(JBColor.border()));
-        Dimension challengeLogSize = new Dimension(CHALLENGE_MIN_WIDTH, CHALLENGE_LOG_HEIGHT);
-        logScrollPane.setMinimumSize(challengeLogSize);
+        Dimension challengeLogSize = new Dimension(CULTIVATION_MIN_WIDTH, CHALLENGE_LOG_HEIGHT);
+        logScrollPane.setMinimumSize(new Dimension(0, CHALLENGE_LOG_HEIGHT));
         logScrollPane.setPreferredSize(challengeLogSize);
+        logScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0; gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
         contentPanel.add(logScrollPane, gbc);
@@ -485,19 +471,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
         addBottomGlue(contentPanel, gbc, row);
         cultivatorComboBox.addActionListener(e -> updateCultivatorDescription());
-
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setMinimumSize(new Dimension(CHALLENGE_MIN_WIDTH, 0));
-        scrollPane.setPreferredSize(new Dimension(CHALLENGE_MIN_WIDTH, scrollPane.getPreferredSize().height));
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setMinimumSize(new Dimension(CHALLENGE_MIN_WIDTH, 0));
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.setPreferredSize(new Dimension(CHALLENGE_MIN_WIDTH, scrollPane.getPreferredSize().height));
-        return panel;
+        return createScrollableTab(contentPanel);
     }
 
     private JPanel createGuideTab() {
@@ -515,112 +489,14 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         row = addGuideSection(contentPanel, gbc, row, "breakthrough");
 
         addBottomGlue(contentPanel, gbc, row);
-
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(scrollPane, BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel createFormPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
-        return panel;
-    }
-
-    private GridBagConstraints createConstraints() {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 4, 5, 4);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        return gbc;
-    }
-
-    private JLabel createHintLabel() {
-        JLabel label = new JLabel();
-        label.setForeground(JBColor.GRAY);
-        return label;
-    }
-
-    private JTextArea createChallengeInfoTextArea(boolean hintStyle, int rows) {
-        JTextArea textArea = createGuideTextArea("");
-        textArea.setColumns(0);
-        textArea.setRows(rows);
-        if (!hintStyle) {
-            textArea.setForeground(UIManager.getColor("Label.foreground"));
-        }
-        Dimension minimumSize = textArea.getMinimumSize();
-        textArea.setMinimumSize(new Dimension(0, minimumSize.height));
-        return textArea;
-    }
-
-    private JLabel createSectionLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
-        return label;
-    }
-
-    private void allowChallengeShrink(JComponent component) {
-        Dimension minimumSize = component.getMinimumSize();
-        component.setMinimumSize(new Dimension(0, minimumSize.height));
-    }
-
-    private int addGuideSection(JPanel panel, GridBagConstraints gbc, int row, String sectionId) {
-        JLabel title = createSectionLabel(FishToucherBundle.message("cultivation.guide." + sectionId + ".title"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        panel.add(title, gbc);
-
-        JTextArea text = createGuideTextArea(FishToucherBundle.message("cultivation.guide." + sectionId + ".desc"));
-        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
-        panel.add(text, gbc);
-        return row;
-    }
-
-    private int addRealmDescriptionRows(JPanel panel, GridBagConstraints gbc, int row) {
-        for (int i = 0; i <= 8; i++) {
-            String label = FishToucherBundle.message("cultivation.realm." + i) + ":";
-            JTextArea description = createGuideTextArea(FishToucherBundle.message("cultivation.realm." + i + ".desc"));
-            addLabelRow(panel, gbc, row++, label, description);
-        }
-        return row;
-    }
-
-    private JTextArea createGuideTextArea(String text) {
-        JTextArea textArea = new JTextArea(text);
-        textArea.setColumns(32);
-        textArea.setEditable(false);
-        textArea.setFocusable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setOpaque(false);
-        textArea.setForeground(JBColor.GRAY);
-        textArea.setFont(UIManager.getFont("Label.font"));
-        textArea.setBorder(BorderFactory.createEmptyBorder());
-        return textArea;
-    }
-
-    private void addLabelRow(JPanel panel, GridBagConstraints gbc, int row, String label, JComponent value) {
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1; gbc.weightx = 0;
-        JLabel labelComponent = new JLabel(label);
-        labelComponent.setForeground(JBColor.GRAY);
-        panel.add(labelComponent, gbc);
-
-        gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0;
-        panel.add(value, gbc);
-        gbc.weightx = 0;
-    }
-
-    private void addBottomGlue(JPanel panel, GridBagConstraints gbc, int row) {
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weighty = 1.0;
-        panel.add(Box.createVerticalGlue(), gbc);
-        gbc.weighty = 0;
+        return createScrollableTab(contentPanel);
     }
 
     private void refreshContent() {
+        preserveOuterScrollPositions(this, this::refreshContentWithoutScrollJump);
+    }
+
+    private void refreshContentWithoutScrollJump() {
         refreshing = true;
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
@@ -655,8 +531,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             rateValue.setText(manager.getRateText());
             seclusionRateValue.setText(manager.getSeclusionRateText());
             chanceValue.setText(manager.getChanceText());
-            effectsValue.setText(manager.getActiveEffectsText());
-            messageLabel.setText(manager.getLastMessage());
+            setWrappingText(effectsValue, manager.getActiveEffectsText());
+            setWrappingText(messageLabel, manager.getLastMessage());
 
             progressBar.setValue(percent);
             progressBar.setString(requiredQi > 0L ? percent + "%" : FishToucherBundle.message("cultivation.status.max"));
@@ -699,7 +575,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         rebirthLabel.setVisible(hasRebirth);
         rebirthValue.setVisible(hasRebirth);
         if (hasRebirth) {
-            rebirthValue.setText(manager.getRebirthTrainingStatusText());
+            setWrappingText(rebirthValue, manager.getRebirthTrainingStatusText());
         }
 
         boolean canRebirth = manager.canRebirth();
@@ -863,24 +739,23 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         GridBagConstraints gbc = createConstraints();
         int row = 0;
         for (IdleCultivationManager.AbodeFacilityDefinition facility : manager.getAbodeFacilityDefinitions()) {
-            JLabel title = createSectionLabel(facility.name() + "  " + manager.getAbodeFacilityLevelText(facility.id()));
+            JTextArea title = createSectionTextArea(facility.name() + "  " + manager.getAbodeFacilityLevelText(facility.id()));
             gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2; gbc.weightx = 1.0;
             abodeFacilitiesPanel.add(title, gbc);
 
-            JLabel description = createHintLabel();
-            description.setText(facility.description());
+            JTextArea description = createHintTextArea(facility.description());
             gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
             abodeFacilitiesPanel.add(description, gbc);
 
-            addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.effect"), new JLabel(manager.getAbodeFacilityEffectText(facility.id())));
-            addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.upgradeCost"), new JLabel(manager.getAbodeUpgradeCostText(facility.id())));
+            addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.effect"), createHintTextArea(manager.getAbodeFacilityEffectText(facility.id())));
+            addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.upgradeCost"), createHintTextArea(manager.getAbodeUpgradeCostText(facility.id())));
 
             boolean productionFacility = manager.isAbodeProductionFacility(facility.id());
             if (productionFacility) {
-                addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.claimable"), new JLabel(manager.getAbodeClaimableText(facility.id())));
+                addLabelRow(abodeFacilitiesPanel, gbc, row++, FishToucherBundle.message("cultivation.label.claimable"), createHintTextArea(manager.getAbodeClaimableText(facility.id())));
             }
 
-            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+            JPanel actions = createActionPanel();
             JButton upgradeButton = new JButton(FishToucherBundle.message("cultivation.button.upgradeFacility"));
             upgradeButton.setFocusable(false);
             upgradeButton.setEnabled(manager.canUpgradeAbodeFacility(facility.id()));
@@ -903,20 +778,25 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         }
         abodeFacilitiesPanel.revalidate();
         abodeFacilitiesPanel.repaint();
+        Container parent = abodeFacilitiesPanel.getParent();
+        if (parent != null) {
+            parent.revalidate();
+            parent.repaint();
+        }
     }
 
     private void updateTechniqueDescription() {
         TechniqueOption option = (TechniqueOption) techniqueComboBox.getSelectedItem();
         if (option == null) return;
         IdleCultivationManager.TechniqueDefinition technique = option.technique;
-        techniqueDescriptionLabel.setText(technique.description());
+        setWrappingText(techniqueDescriptionLabel, technique.description());
         equipTechniqueButton.setEnabled(option.unlocked && !technique.id().equals(NovelReaderSettings.getInstance().getEquippedTechniqueId()));
     }
 
     private void updatePillDescription() {
         PillOption option = (PillOption) pillComboBox.getSelectedItem();
         if (option == null) return;
-        pillDescriptionLabel.setText(option.pill.description());
+        setWrappingText(pillDescriptionLabel, option.pill.description());
         usePillButton.setEnabled(option.count > 0);
     }
 
@@ -924,12 +804,12 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         if (refreshing) return;
         for (int i = 0; i < spellSlotComboBoxes.size(); i++) {
             JComboBox<SpellOption> comboBox = spellSlotComboBoxes.get(i);
-            JLabel descriptionLabel = spellDescriptionLabels.get(i);
+            JTextArea descriptionLabel = spellDescriptionLabels.get(i);
             SpellOption option = (SpellOption) comboBox.getSelectedItem();
             if (option != null && !option.empty && option.spell != null) {
-                descriptionLabel.setText(option.spell.name() + " - " + option.spell.description());
+                setWrappingText(descriptionLabel, option.spell.name() + " - " + option.spell.description());
             } else {
-                descriptionLabel.setText("");
+                setWrappingText(descriptionLabel, "");
             }
         }
     }
@@ -944,9 +824,12 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
                 names.add(option.artifact.name() + " - " + option.artifact.description());
             }
         }
-        artifactDescriptionLabel.setText(names.isEmpty()
-                ? FishToucherBundle.message("cultivation.status.noArtifactEquipped")
-                : String.join("  |  ", names));
+        setWrappingText(
+                artifactDescriptionLabel,
+                names.isEmpty()
+                        ? FishToucherBundle.message("cultivation.status.noArtifactEquipped")
+                        : String.join("  |  ", names)
+        );
     }
 
     private void normalizeArtifactSelection() {
@@ -979,14 +862,14 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
                 ? manager.getTravelDurationText(option.location)
                 : FishToucherBundle.message("cultivation.travel.locked", manager.getRealmName(option.location.minRealmIndex()));
         String blockReason = getTravelBlockReason(manager, option);
-        travelDescriptionLabel.setText(option.location.description() + "  " + suffix + appendBlockReason(blockReason));
+        setWrappingText(travelDescriptionLabel, option.location.description() + "  " + suffix + appendBlockReason(blockReason));
         updateStartTravelButton(manager, option);
     }
 
     private void updateActiveTravel(IdleCultivationManager manager) {
         IdleCultivationManager.TravelLocationDefinition active = manager.getActiveTravelLocation();
         if (active == null) {
-            activeTravelLabel.setText(FishToucherBundle.message("cultivation.travel.none"));
+            setWrappingText(activeTravelLabel, FishToucherBundle.message("cultivation.travel.none"));
             travelProgressBar.setValue(0);
             travelProgressBar.setString(FishToucherBundle.message("cultivation.travel.none"));
             TravelOption option = (TravelOption) travelComboBox.getSelectedItem();
@@ -994,7 +877,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             claimTravelButton.setEnabled(false);
             return;
         }
-        activeTravelLabel.setText(active.name() + " | " + manager.getTravelRemainingText());
+        setWrappingText(activeTravelLabel, active.name() + " | " + manager.getTravelRemainingText());
         int percent = manager.getTravelProgressPercent();
         travelProgressBar.setValue(percent);
         travelProgressBar.setString(manager.isTravelReady() ? FishToucherBundle.message("cultivation.status.travelClaimReady") : percent + "%");
@@ -1037,15 +920,13 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         );
         String reward = FishToucherBundle.message("cultivation.status.challengeReward", manager.getCultivatorRewardText(cultivator));
         String blockReason = getChallengeBlockReason(manager, option);
-        cultivatorDescriptionLabel.setText(manager.getCultivatorStatusText(cultivator) + "  " + stats + "  " + reward + appendBlockReason(blockReason));
-        cultivatorDescriptionLabel.revalidate();
+        setWrappingText(cultivatorDescriptionLabel, manager.getCultivatorStatusText(cultivator) + "  " + stats + "  " + reward + appendBlockReason(blockReason));
         updateStartChallengeButton(manager);
     }
 
     private void updateBattleState(IdleCultivationManager manager) {
         IdleCultivationManager.CombatStats stats = manager.getCombatStats();
-        battleStatsLabel.setText(FishToucherBundle.message("cultivation.status.combatStats", stats.attack(), stats.defense(), stats.mana(), stats.health()));
-        battleStatsLabel.revalidate();
+        setWrappingText(battleStatsLabel, FishToucherBundle.message("cultivation.status.combatStats", stats.attack(), stats.defense(), stats.mana(), stats.health()));
 
         IdleCultivationManager.BattleSnapshot snapshot = manager.getBattleSnapshot();
         if (snapshot == null) {
@@ -1053,7 +934,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             setProgressText(playerHealthBar, 100, FishToucherBundle.message("cultivation.battle.playerHp", stats.health(), stats.health()));
             setProgressText(enemyHealthBar, 0, FishToucherBundle.message("cultivation.battle.enemyHp", 0, 0));
             setProgressText(battleManaBar, 100, FishToucherBundle.message("cultivation.battle.mana", stats.mana(), stats.mana()));
-            battleLogArea.setText("");
+            setWrappingText(battleLogArea, "");
             updateStartChallengeButton(manager);
             endChallengeButton.setEnabled(false);
             return;
@@ -1066,7 +947,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         setProgressText(playerHealthBar, playerHpPercent, FishToucherBundle.message("cultivation.battle.playerHp", snapshot.playerHealth(), snapshot.playerStats().health()));
         setProgressText(enemyHealthBar, enemyHpPercent, FishToucherBundle.message("cultivation.battle.enemyHp", snapshot.enemyHealth(), snapshot.enemyMaxHealth()));
         setProgressText(battleManaBar, manaPercent, FishToucherBundle.message("cultivation.battle.mana", snapshot.playerMana(), snapshot.playerStats().mana()));
-        battleLogArea.setText(String.join("\n", snapshot.logs()));
+        setWrappingText(battleLogArea, String.join("\n", snapshot.logs()));
         battleLogArea.setCaretPosition(battleLogArea.getDocument().getLength());
         updateStartChallengeButton(manager);
         endChallengeButton.setEnabled(manager.hasActiveBattle());
@@ -1222,47 +1103,4 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         }
     }
 
-    private static class ChallengeFormPanel extends JPanel implements Scrollable {
-        private ChallengeFormPanel() {
-            super(new GridBagLayout());
-            setBorder(new EmptyBorder(12, 12, 12, 12));
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            Dimension preferredSize = super.getPreferredSize();
-            return new Dimension(CHALLENGE_MIN_WIDTH, preferredSize.height);
-        }
-
-        @Override
-        public Dimension getMinimumSize() {
-            Dimension minimumSize = super.getMinimumSize();
-            return new Dimension(CHALLENGE_MIN_WIDTH, minimumSize.height);
-        }
-
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return Math.max(16, visibleRect.height - 16);
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
-    }
 }
