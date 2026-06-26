@@ -172,6 +172,30 @@ final class IdleCultivationUiSupport {
         component.setMinimumSize(new Dimension(0, Math.max(minimumSize.height, preferredSize.height)));
     }
 
+    static void setLabelTextIfChanged(JLabel label, String text) {
+        String normalizedText = text != null ? text : "";
+        if (!normalizedText.equals(label.getText())) {
+            label.setText(normalizedText);
+        }
+    }
+
+    static void setButtonTextIfChanged(AbstractButton button, String text) {
+        String normalizedText = text != null ? text : "";
+        if (!normalizedText.equals(button.getText())) {
+            button.setText(normalizedText);
+        }
+    }
+
+    static void setProgressTextIfChanged(JProgressBar progressBar, int value, String text) {
+        String normalizedText = text != null ? text : "";
+        if (progressBar.getValue() != value) {
+            progressBar.setValue(value);
+        }
+        if (!normalizedText.equals(progressBar.getString())) {
+            progressBar.setString(normalizedText);
+        }
+    }
+
     static void setWrappingText(JTextArea textArea, String text) {
         String normalizedText = text != null ? text : "";
         if (normalizedText.equals(textArea.getText())) {
