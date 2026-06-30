@@ -38,7 +38,6 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "261.*"
         }
     }
 

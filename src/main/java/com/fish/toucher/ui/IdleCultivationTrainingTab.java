@@ -68,9 +68,6 @@ final class IdleCultivationTrainingTab {
         return component;
     }
 
-    void setRefreshing(boolean refreshing) {
-    }
-
     void updateTrainingState(IdleCultivationManager manager) {
         long currentQi = manager.getCurrentQi();
         long requiredQi = manager.getRequiredQi();

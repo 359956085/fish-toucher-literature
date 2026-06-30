@@ -17,9 +17,6 @@ final class IdleCultivationGuideTab {
         return component;
     }
 
-    void setRefreshing(boolean refreshing) {
-    }
-
     private JComponent createContent() {
         JPanel contentPanel = createFormPanel();
         GridBagConstraints gbc = createConstraints();
