@@ -23,9 +23,6 @@ final class IdleCultivationAbodeTab {
         return component;
     }
 
-    void setRefreshing(boolean refreshing) {
-    }
-
     void reloadAbodeFacilities(IdleCultivationManager manager) {
         setLabelTextIfChanged(stonesValue, String.valueOf(manager.getSpiritStones()));
         contentPanel.removeAll();

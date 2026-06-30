@@ -22,7 +22,6 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final IdleCultivationChallengeTab challengeTab;
     private final IdleCultivationGuideTab guideTab;
     private final Runnable changeListener;
-    private boolean refreshing;
 
     public IdleCultivationPanel() {
         LOG.info("IdleCultivationPanel: initializing");
@@ -81,7 +80,6 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     }
 
     private void refreshContentWithoutScrollJump() {
-        refreshing = true;
         setTabsRefreshing(true);
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
@@ -94,25 +92,18 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             challengeTab.reloadCultivatorOptions(manager);
             challengeTab.updateBattleState(manager);
         } finally {
-            refreshing = false;
             setTabsRefreshing(false);
         }
         updateSelectionDescriptions();
     }
 
     private void setTabsRefreshing(boolean refreshing) {
-        trainingTab.setRefreshing(refreshing);
         bagTab.setRefreshing(refreshing);
         travelTab.setRefreshing(refreshing);
-        abodeTab.setRefreshing(refreshing);
         challengeTab.setRefreshing(refreshing);
-        guideTab.setRefreshing(refreshing);
     }
 
     private void updateSelectionDescriptions() {
-        if (refreshing) {
-            return;
-        }
         bagTab.updateSelectionDescriptions();
         travelTab.updateSelectionDescriptions();
         challengeTab.updateSelectionDescriptions();
