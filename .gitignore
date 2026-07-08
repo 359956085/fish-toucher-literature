@@ -5,3 +5,4 @@
 /build/
 /build/classes/java/main/
 /bin/
+.codegraph/*

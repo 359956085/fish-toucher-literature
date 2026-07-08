@@ -1,14 +1,11 @@
 package com.fish.toucher;
 
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import com.intellij.openapi.actionSystem.Shortcut;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.project.Project;
@@ -20,8 +17,13 @@ import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
+import java.io.InputStream;
 import javax.swing.*;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * Applies custom keyboard shortcuts from plugin settings to the active keymap on project open.
@@ -30,7 +32,6 @@ import javax.swing.*;
 public class ShortcutInitializer implements ProjectActivity {
 
     private static final Logger LOG = Logger.getInstance(ShortcutInitializer.class);
-    private static final String PLUGIN_ID = "com.fishtoucher.literature";
 
     @Nullable
     @Override
@@ -89,8 +90,29 @@ public class ShortcutInitializer implements ProjectActivity {
 
     @Nullable
     private String getPluginVersion() {
-        IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID));
-        return descriptor != null ? descriptor.getVersion() : null;
+        try (InputStream inputStream = ShortcutInitializer.class.getResourceAsStream("/META-INF/plugin.xml")) {
+            if (inputStream == null) {
+                return null;
+            }
+
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            factory.setExpandEntityReferences(false);
+
+            Document document = factory.newDocumentBuilder().parse(inputStream);
+            NodeList versions = document.getElementsByTagName("version");
+            if (versions.getLength() == 0) {
+                return null;
+            }
+
+            String version = versions.item(0).getTextContent().trim();
+            return version.isEmpty() ? null : version;
+        } catch (Exception e) {
+            LOG.warn("getPluginVersion: failed to read plugin.xml version", e);
+            return null;
+        }
     }
 
     private void applyShortcut(String actionId, String keystrokeStr) {

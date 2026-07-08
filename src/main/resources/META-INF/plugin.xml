@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.6.2</version>
+    <version>3.6.3</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,17 +25,25 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.6.3</b>
+    <ul>
+        <li>Improved: Better display stability for Idle Cultivation UI at narrow widths and after refreshes.<br/>
+            优化：提升放置修仙界面在窄宽度和刷新后的显示稳定性。</li>
+    </ul>
     <b>3.6.2</b>
     <ul>
-        <li>优化：调整挑战修士名称，避免与修炼境界名称产生歧义。</li>
+        <li>Improved: Adjusted challenge cultivator names to avoid ambiguity with cultivation realm names.<br/>
+            优化：调整挑战修士名称，避免与修炼境界名称产生歧义。</li>
     </ul>
     <b>3.6.1</b>
     <ul>
-        <li>优化：修炼页转世状态显示战斗增益，背包页法术描述按槽位展示。</li>
+        <li>Improved: Training tab now shows rebirth combat bonuses, and bag spell descriptions are shown per slot.<br/>
+            优化：修炼页转世状态显示战斗增益，背包页法术描述按槽位展示。</li>
     </ul>
     <b>3.6.0</b>
     <ul>
-        <li>新增：放置修仙挑战玩法与战斗系统。</li>
+        <li>New: Added Idle Cultivation challenge gameplay and combat system.<br/>
+            新增：放置修仙挑战玩法与战斗系统。</li>
     </ul>
     <b>3.5.0</b>
     <ul>
