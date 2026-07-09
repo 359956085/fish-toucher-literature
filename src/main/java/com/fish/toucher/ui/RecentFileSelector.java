@@ -129,8 +129,6 @@ public class RecentFileSelector extends JPanel {
 
         popupMenu.setVisible(false);
         loadFile(item.path());
-        onChange.run();
-        refresh();
     }
 
     private void removeRecentFile(RecentFileItem item) {
@@ -160,12 +158,19 @@ public class RecentFileSelector extends JPanel {
     }
 
     private void loadFile(String path) {
-        boolean success = NovelReaderManager.getInstance().loadFile(path);
-        if (!success) {
-            Messages.showErrorDialog(project,
-                    FishToucherBundle.message("settings.dialog.recentFileLoadFailed", path),
-                    "Fish Toucher");
-        }
+        NovelReaderManager.getInstance().loadFileAsync(project, path, result -> {
+            if (!result.isSuccess()
+                    && result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
+                Messages.showErrorDialog(
+                        project,
+                        FishToucherBundle.message("settings.dialog.recentFileLoadFailed", path)
+                                + " " + result.message(),
+                        "Fish Toucher"
+                );
+            }
+            onChange.run();
+            refresh();
+        });
     }
 
     private record RecentFileItem(String path, String label, boolean placeholder) {

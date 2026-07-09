@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+
 plugins {
     id("java")
     id("org.jetbrains.intellij.platform") version "2.11.0"
@@ -32,12 +34,21 @@ dependencies {
         zipSigner()
         // instrumentationTools()  // 不需要 forms/NotNull instrumentation，禁用避免解析问题
     }
+
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
+        }
+    }
+
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdea, "2026.1.1")
         }
     }
 
@@ -48,5 +59,22 @@ intellijPlatform {
 tasks {
     compileJava {
         options.encoding = "UTF-8"
+    }
+
+    test {
+        useJUnitPlatform {
+            excludeTags("large-file")
+        }
+    }
+
+    register<Test>("largeFileTest") {
+        group = "verification"
+        description = "验证 500 MiB 小说文件的磁盘索引加载"
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+        maxHeapSize = "512m"
+        useJUnitPlatform {
+            includeTags("large-file")
+        }
     }
 }

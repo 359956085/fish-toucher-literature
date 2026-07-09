@@ -28,13 +28,18 @@ public class OpenNovelAction extends AnAction {
         VirtualFile[] files = FileChooser.chooseFiles(descriptor, e.getProject(), null);
         if (files.length > 0) {
             LOG.info("actionPerformed: user selected file: " + files[0].getPath());
-            boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
-            if (!success) {
-                LOG.warn("actionPerformed: failed to load file: " + files[0].getPath());
-                Messages.showErrorDialog(e.getProject(),
-                        "Failed to load the file. Please check if the file is a valid text file.",
-                        "Fish Toucher");
-            }
+            String filePath = files[0].getPath();
+            NovelReaderManager.getInstance().loadFileAsync(e.getProject(), filePath, result -> {
+                if (!result.isSuccess()
+                        && result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
+                    LOG.warn("加载小说失败: " + filePath + ", " + result.message());
+                    Messages.showErrorDialog(
+                            e.getProject(),
+                            "加载文件失败：" + result.message(),
+                            "Fish Toucher"
+                    );
+                }
+            });
         } else {
             LOG.info("actionPerformed: user cancelled file selection");
         }

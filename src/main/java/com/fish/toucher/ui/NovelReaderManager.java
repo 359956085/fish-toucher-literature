@@ -1,44 +1,58 @@
 package com.fish.toucher.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.diagnostic.Logger;
 import com.fish.toucher.settings.NovelReaderSettings;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
- * Singleton manager that holds the novel content and current reading position.
- * Both stealth (status bar) and normal (tool window) modes share a unified reading position.
+ * 小说阅读应用服务。正文保存在磁盘缓存，内存只保留当前阅读窗口。
+ *
+ * @author fengshi
  */
-public class NovelReaderManager {
+@Service(Service.Level.APP)
+public final class NovelReaderManager implements Disposable {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderManager.class);
-    private static final NovelReaderManager INSTANCE = new NovelReaderManager();
-
-    /** Raw lines from file. */
-    private final List<String> rawLines = new ArrayList<>();
-    private String currentFilePath = "";
-    private boolean visible = true;
-
-    // Unified reading position shared by both modes
-    private int currentLine = 0;
 
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
+    private final AtomicBoolean notificationPending = new AtomicBoolean();
+    private final AtomicLong loadGeneration = new AtomicLong();
+    private final AtomicLong windowGeneration = new AtomicLong();
 
-    public static NovelReaderManager getInstance() {
-        return INSTANCE;
+    private IndexedNovelDocument document;
+    private IndexedNovelDocument.LineWindow window;
+    private String currentFilePath = "";
+    private int currentLine;
+    private boolean visible = true;
+    private boolean loading;
+    private boolean disposed;
+
+    public NovelReaderManager() {
+        IndexedNovelDocument.cleanupStaleCaches();
     }
 
-    private NovelReaderManager() {}
+    public static NovelReaderManager getInstance() {
+        return ApplicationManager.getApplication().getService(NovelReaderManager.class);
+    }
 
     public void addChangeListener(Runnable listener) {
-        listeners.add(listener);
+        listeners.addIfAbsent(listener);
     }
 
     public void removeChangeListener(Runnable listener) {
@@ -46,227 +60,324 @@ public class NovelReaderManager {
     }
 
     private void fireChange() {
-        for (Runnable r : listeners) {
-            ApplicationManager.getApplication().invokeLater(r);
+        if (!notificationPending.compareAndSet(false, true)) {
+            return;
         }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            notificationPending.set(false);
+            if (disposed) {
+                return;
+            }
+            for (Runnable listener : listeners) {
+                listener.run();
+            }
+        });
     }
 
-    // ========== File loading ==========
-
     /**
-     * Load a novel file with auto charset detection (UTF-8 / GBK fallback).
+     * 异步加载小说。新请求会使旧请求失效，完成回调始终在 EDT 执行。
      */
-    public boolean loadFile(String filePath) {
-        LOG.info("loadFile: attempting to load file: " + filePath);
-        File file = new File(filePath);
-        if (!file.exists() || !file.isFile()) {
-            LOG.warn("loadFile: file does not exist or is not a file: " + filePath);
-            return false;
+    public void loadFileAsync(
+            @Nullable Project project,
+            String filePath,
+            @Nullable Consumer<LoadResult> completion
+    ) {
+        if (filePath == null || filePath.isBlank()) {
+            complete(completion, new LoadResult(LoadStatus.INVALID_FILE, "文件路径为空"));
+            return;
         }
 
-        byte[] rawBytes;
-        try (FileInputStream fis = new FileInputStream(file)) {
-            rawBytes = fis.readAllBytes();
-            LOG.info("loadFile: read " + rawBytes.length + " bytes from file");
-        } catch (Exception e) {
-            LOG.error("loadFile: failed to read file: " + filePath, e);
-            return false;
-        }
-
-        if (rawBytes.length == 0) {
-            LOG.warn("loadFile: file is empty: " + filePath);
-            return false;
-        }
-
-        // Detect charset
-        int offset = 0;
-        Charset charset;
-
-        if (rawBytes.length >= 3
-                && (rawBytes[0] & 0xFF) == 0xEF
-                && (rawBytes[1] & 0xFF) == 0xBB
-                && (rawBytes[2] & 0xFF) == 0xBF) {
-            charset = StandardCharsets.UTF_8;
-            offset = 3;
-        } else if (rawBytes.length >= 2
-                && (rawBytes[0] & 0xFF) == 0xFF
-                && (rawBytes[1] & 0xFF) == 0xFE) {
-            charset = StandardCharsets.UTF_16LE;
-            offset = 2;
-        } else if (rawBytes.length >= 2
-                && (rawBytes[0] & 0xFF) == 0xFE
-                && (rawBytes[1] & 0xFF) == 0xFF) {
-            charset = StandardCharsets.UTF_16BE;
-            offset = 2;
-        } else if (isValidUtf8(rawBytes)) {
-            charset = StandardCharsets.UTF_8;
-        } else {
-            try {
-                charset = Charset.forName("GBK");
-            } catch (Exception e) {
-                charset = StandardCharsets.UTF_8;
+        long generation = loadGeneration.incrementAndGet();
+        synchronized (this) {
+            if (disposed) {
+                complete(completion, new LoadResult(LoadStatus.CANCELLED, "服务已关闭"));
+                return;
             }
+            loading = true;
         }
-
-        String content;
-        try {
-            content = new String(rawBytes, offset, rawBytes.length - offset, charset);
-        } catch (Exception e) {
-            content = new String(rawBytes, offset, rawBytes.length - offset, StandardCharsets.UTF_8);
-        }
-
-        // Split into lines, filter empty
-        List<String> newLines = new ArrayList<>();
-        for (String line : content.split("\\r?\\n")) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                newLines.add(trimmed);
-            }
-        }
-
-        if (newLines.isEmpty()) {
-            LOG.warn("loadFile: no valid lines after parsing file: " + filePath);
-            return false;
-        }
-
-        rawLines.clear();
-        rawLines.addAll(newLines);
-        currentFilePath = filePath;
-
-        // Restore unified reading progress
-        NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        settings.setLastFilePath(filePath);
-        settings.addRecentFilePath(filePath);
-
-        currentLine = settings.getReadingProgress(filePath);
-        if (currentLine >= rawLines.size()) currentLine = 0;
-
-        LOG.info("loadFile: loaded " + rawLines.size() + " lines, position@" + currentLine);
-        visible = true;
         fireChange();
+
+        new Task.Backgroundable(project, "加载小说", true) {
+            private IndexedNovelDocument loadedDocument;
+            private IndexedNovelDocument.LineWindow loadedWindow;
+            private int loadedLine;
+            private LoadResult result;
+
+            @Override
+            public void run(ProgressIndicator indicator) {
+                try {
+                    loadedDocument = IndexedNovelDocument.load(
+                            Path.of(filePath),
+                            () -> indicator.isCanceled() || generation != loadGeneration.get()
+                    );
+                    if (generation != loadGeneration.get()) {
+                        throw new CancellationException("加载请求已失效");
+                    }
+                    int savedLine = NovelReaderSettings.getInstance().getReadingProgress(filePath);
+                    loadedLine = savedLine >= 0 && savedLine < loadedDocument.lineCount()
+                            ? savedLine : 0;
+                    loadedWindow = loadedDocument.readWindow(loadedLine);
+                    result = new LoadResult(LoadStatus.SUCCESS, "");
+                } catch (CancellationException exception) {
+                    result = new LoadResult(LoadStatus.CANCELLED, "加载已取消");
+                } catch (IndexedNovelDocument.LoadException exception) {
+                    result = new LoadResult(exception.status(), exception.getMessage());
+                } catch (Exception exception) {
+                    LOG.warn("加载小说失败: " + filePath, exception);
+                    result = new LoadResult(LoadStatus.IO_ERROR, "读取文件失败");
+                }
+            }
+
+            @Override
+            public void onSuccess() {
+                finishLoad(
+                        generation,
+                        filePath,
+                        loadedDocument,
+                        loadedWindow,
+                        loadedLine,
+                        result,
+                        completion
+                );
+            }
+
+            @Override
+            public void onCancel() {
+                closeQuietly(loadedDocument);
+                finishCancelled(generation, completion);
+            }
+
+            @Override
+            public void onThrowable(Throwable error) {
+                LOG.warn("小说后台任务异常: " + filePath, error);
+                closeQuietly(loadedDocument);
+                finishLoad(
+                        generation,
+                        filePath,
+                        null,
+                        null,
+                        0,
+                        new LoadResult(LoadStatus.IO_ERROR, "读取文件失败"),
+                        completion
+                );
+            }
+        }.queue();
+    }
+
+
+    public boolean loadMostRecentFileIfNeeded() {
+        synchronized (this) {
+            if (hasContent() || loading) {
+                return false;
+            }
+        }
+        List<String> paths = NovelReaderSettings.getInstance().getRecentFilePaths();
+        if (paths.isEmpty()) {
+            return false;
+        }
+        loadFileAsync(null, paths.get(0), result -> {
+            if (!result.isSuccess() && result.status() != LoadStatus.CANCELLED) {
+                LOG.warn("最近小说加载失败: " + result.message());
+            }
+        });
         return true;
     }
 
-    public boolean loadMostRecentFileIfNeeded() {
-        if (hasContent()) {
-            LOG.debug("loadMostRecentFileIfNeeded: content already loaded");
-            return false;
+    private void finishLoad(
+            long generation,
+            String filePath,
+            IndexedNovelDocument loadedDocument,
+            IndexedNovelDocument.LineWindow loadedWindow,
+            int loadedLine,
+            LoadResult result,
+            @Nullable Consumer<LoadResult> completion
+    ) {
+        LoadResult safeResult = result != null
+                ? result : new LoadResult(LoadStatus.IO_ERROR, "读取文件失败");
+        if (generation != loadGeneration.get() || disposed) {
+            closeQuietly(loadedDocument);
+            complete(completion, new LoadResult(LoadStatus.CANCELLED, "加载已取消"));
+            return;
         }
 
-        List<String> recentFilePaths = NovelReaderSettings.getInstance().getRecentFilePaths();
-        if (recentFilePaths.isEmpty()) {
-            LOG.debug("loadMostRecentFileIfNeeded: no recent files");
-            return false;
-        }
+        synchronized (this) {
+            loading = false;
+            if (safeResult.isSuccess() && loadedDocument != null && loadedWindow != null) {
+                closeQuietly(document);
+                document = loadedDocument;
+                window = loadedWindow;
+                currentLine = loadedLine;
+                currentFilePath = filePath;
+                visible = true;
 
-        String filePath = recentFilePaths.get(0);
-        boolean success = loadFile(filePath);
-        if (!success) {
-            LOG.warn("loadMostRecentFileIfNeeded: failed to load recent file: " + filePath);
-        }
-        return success;
-    }
-
-    // ========== Stealth mode (status bar): 1 line at a time ==========
-
-    public void stealthNextPage() {
-        if (rawLines.isEmpty()) return;
-        currentLine = Math.min(currentLine + 1, rawLines.size() - 1);
-        saveProgress();
-        fireChange();
-    }
-
-    public void stealthPrevPage() {
-        if (rawLines.isEmpty()) return;
-        currentLine = Math.max(currentLine - 1, 0);
-        saveProgress();
-        fireChange();
-    }
-
-    public String getStealthText() {
-        if (rawLines.isEmpty()) return "[No novel loaded]";
-        NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int maxChars = settings.getStealthCharsPerLine();
-        String line = rawLines.get(currentLine);
-        if (maxChars > 0) {
-            if (line.length() > maxChars) {
-                line = line.substring(0, maxChars);
-            } else if (line.length() < maxChars) {
-                // Pad with ideographic spaces to fixed width for stable left-aligned display
-                line = line + "\u3000".repeat(maxChars - line.length());
+                NovelReaderSettings settings = NovelReaderSettings.getInstance();
+                settings.setLastFilePath(filePath);
+                settings.addRecentFilePath(filePath);
+                LOG.info("小说加载完成: lines=" + document.lineCount());
+            } else {
+                closeQuietly(loadedDocument);
             }
+        }
+        fireChange();
+        complete(completion, safeResult);
+    }
+
+    private void finishCancelled(long generation, @Nullable Consumer<LoadResult> completion) {
+        if (generation == loadGeneration.get()) {
+            synchronized (this) {
+                loading = false;
+            }
+            fireChange();
+        }
+        complete(completion, new LoadResult(LoadStatus.CANCELLED, "加载已取消"));
+    }
+
+    private static void complete(@Nullable Consumer<LoadResult> completion, LoadResult result) {
+        if (completion != null) {
+            completion.accept(result);
+        }
+    }
+
+    public synchronized void stealthNextPage() {
+        moveToLine(Math.min(currentLine + 1, getTotalLines() - 1));
+    }
+
+    public synchronized void stealthPrevPage() {
+        moveToLine(Math.max(currentLine - 1, 0));
+    }
+
+    public synchronized String getStealthText() {
+        String line = getCachedLine(currentLine);
+        if (line == null) {
+            return loading ? "[加载中...]" : "[未加载小说]";
+        }
+        int maxChars = NovelReaderSettings.getInstance().getStealthCharsPerLine();
+        if (line.length() > maxChars) {
+            return line.substring(0, maxChars);
+        }
+        if (line.length() < maxChars) {
+            return line + "\u3000".repeat(maxChars - line.length());
         }
         return line;
     }
 
-    public String getStealthStatusText() {
-        if (rawLines.isEmpty()) return "";
-        int percent = (int) ((long) currentLine * 100 / rawLines.size());
-        return String.format("[%d/%d] %d%%", currentLine + 1, rawLines.size(), percent);
+    public synchronized String getStealthStatusText() {
+        return buildStatusText();
     }
 
-    public int getStealthCurrentLine() { return currentLine; }
+    public synchronized int getStealthCurrentLine() {
+        return currentLine;
+    }
 
-    // ========== Normal mode (tool window): multi-line ==========
-
-    public void normalNextPage() {
-        if (rawLines.isEmpty()) return;
+    public synchronized void normalNextPage() {
         int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
-        currentLine = Math.min(currentLine + linesPerPage, rawLines.size() - 1);
-        saveProgress();
-        fireChange();
+        moveToLine(Math.min(currentLine + linesPerPage, getTotalLines() - 1));
     }
 
-    public void normalPrevPage() {
-        if (rawLines.isEmpty()) return;
+    public synchronized void normalPrevPage() {
         int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
-        currentLine = Math.max(currentLine - linesPerPage, 0);
-        saveProgress();
-        fireChange();
+        moveToLine(Math.max(currentLine - linesPerPage, 0));
     }
 
-    public void normalJumpToPercent(int percent) {
-        if (rawLines.isEmpty()) return;
-        currentLine = (int) ((long) percent * (rawLines.size() - 1) / 100);
-        saveProgress();
-        fireChange();
+    public synchronized void normalJumpToPercent(int percent) {
+        if (document == null) {
+            return;
+        }
+        int safePercent = Math.max(0, Math.min(100, percent));
+        int target = (int) ((long) safePercent * (document.lineCount() - 1) / 100);
+        moveToLine(target);
     }
 
-    /**
-     * Get display lines for normal mode tool window (respects normalCharsPerLine wrapping).
-     */
-    public List<String> getNormalPageDisplayLines() {
+    public synchronized List<String> getNormalPageDisplayLines() {
         List<String> result = new ArrayList<>();
-        if (rawLines.isEmpty()) return result;
-        NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int linesPerPage = settings.getNormalLinesPerPage();
-        int charsPerLine = settings.getNormalCharsPerLine();
-        int end = Math.min(currentLine + linesPerPage, rawLines.size());
-        for (int i = currentLine; i < end; i++) {
-            String line = rawLines.get(i);
-            if (charsPerLine > 0 && line.length() > charsPerLine) {
-                int pos = 0;
-                while (pos < line.length()) {
-                    int lineEnd = Math.min(pos + charsPerLine, line.length());
-                    result.add(line.substring(pos, lineEnd));
-                    pos = lineEnd;
-                }
-            } else {
+        if (document == null || window == null) {
+            return result;
+        }
+        int linesPerPage = NovelReaderSettings.getInstance().getNormalLinesPerPage();
+        int charsPerLine = NovelReaderSettings.getInstance().getNormalCharsPerLine();
+        int end = Math.min(currentLine + linesPerPage, document.lineCount());
+        for (int lineNumber = currentLine; lineNumber < end; lineNumber++) {
+            String line = getCachedLine(lineNumber);
+            if (line == null) {
+                queueWindowLoad(lineNumber, currentLine);
+                break;
+            }
+            if (line.length() <= charsPerLine) {
                 result.add(line);
+                continue;
+            }
+            for (int position = 0; position < line.length(); position += charsPerLine) {
+                result.add(line.substring(position, Math.min(position + charsPerLine, line.length())));
             }
         }
         return result;
     }
 
-    public String getNormalStatusText() {
-        if (rawLines.isEmpty()) return "";
-        int percent = (int) ((long) currentLine * 100 / rawLines.size());
-        return String.format("[%d/%d] %d%%", currentLine + 1, rawLines.size(), percent);
+    public synchronized String getNormalStatusText() {
+        return buildStatusText();
     }
 
-    public int getNormalCurrentLine() { return currentLine; }
+    public synchronized int getNormalCurrentLine() {
+        return currentLine;
+    }
 
-    // ========== Progress persistence ==========
+    private String buildStatusText() {
+        if (document == null) {
+            return "";
+        }
+        int percent = (int) ((long) currentLine * 100 / document.lineCount());
+        return String.format("[%d/%d] %d%%", currentLine + 1, document.lineCount(), percent);
+    }
+
+    private void moveToLine(int targetLine) {
+        if (document == null || targetLine < 0) {
+            return;
+        }
+        int target = Math.min(targetLine, document.lineCount() - 1);
+        if (window != null && window.contains(target)) {
+            currentLine = target;
+            saveProgress();
+            fireChange();
+            return;
+        }
+        queueWindowLoad(target, target);
+    }
+
+    private void queueWindowLoad(int requestedLine, int targetLine) {
+        IndexedNovelDocument activeDocument = document;
+        if (activeDocument == null) {
+            return;
+        }
+        long generation = windowGeneration.incrementAndGet();
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                IndexedNovelDocument.LineWindow loadedWindow =
+                        activeDocument.readWindow(requestedLine);
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    synchronized (NovelReaderManager.this) {
+                        if (generation != windowGeneration.get()
+                                || activeDocument != document
+                                || disposed) {
+                            return;
+                        }
+                        window = loadedWindow;
+                        currentLine = Math.max(
+                                0,
+                                Math.min(targetLine, document.lineCount() - 1)
+                        );
+                        saveProgress();
+                    }
+                    fireChange();
+                });
+            } catch (IOException exception) {
+                LOG.warn("读取小说分页缓存失败", exception);
+            }
+        });
+    }
+
+    private String getCachedLine(int line) {
+        return window != null && window.contains(line) ? window.get(line) : null;
+    }
 
     private void saveProgress() {
         if (!currentFilePath.isEmpty()) {
@@ -274,46 +385,69 @@ public class NovelReaderManager {
         }
     }
 
-    // ========== Shared ==========
+    public synchronized boolean isVisible() {
+        return visible;
+    }
 
-    public boolean isVisible() { return visible; }
-    public void toggleVisibility() { visible = !visible; LOG.info("toggleVisibility: visible=" + visible); fireChange(); }
-    public boolean hasContent() { return !rawLines.isEmpty(); }
-    public int getTotalLines() { return rawLines.size(); }
-    public String getCurrentFilePath() { return currentFilePath; }
+    public synchronized void toggleVisibility() {
+        visible = !visible;
+        fireChange();
+    }
 
-    // ========== Shortcut actions ==========
+    public synchronized boolean hasContent() {
+        return document != null && document.lineCount() > 0;
+    }
 
-    /** Next page: advances by 1 line (used by keyboard shortcuts). */
+    public synchronized boolean isLoading() {
+        return loading;
+    }
+
+    public synchronized int getTotalLines() {
+        return document == null ? 0 : document.lineCount();
+    }
+
+    public synchronized String getCurrentFilePath() {
+        return currentFilePath;
+    }
+
     public void nextPage() {
         stealthNextPage();
     }
 
-    /** Prev page: retreats by 1 line (used by keyboard shortcuts). */
     public void prevPage() {
         stealthPrevPage();
     }
 
-    // ========== Charset detection ==========
+    @Override
+    public synchronized void dispose() {
+        disposed = true;
+        loadGeneration.incrementAndGet();
+        windowGeneration.incrementAndGet();
+        closeQuietly(document);
+        document = null;
+        window = null;
+        listeners.clear();
+    }
 
-    private boolean isValidUtf8(byte[] data) {
-        int len = Math.min(data.length, 8192);
-        int i = 0;
-        while (i < len) {
-            int b = data[i] & 0xFF;
-            int expectedBytes;
-            if (b <= 0x7F) { i++; continue; }
-            else if (b >= 0xC2 && b <= 0xDF) expectedBytes = 1;
-            else if (b >= 0xE0 && b <= 0xEF) expectedBytes = 2;
-            else if (b >= 0xF0 && b <= 0xF4) expectedBytes = 3;
-            else return false;
-            if (i + expectedBytes >= len) break;
-            for (int j = 1; j <= expectedBytes; j++) {
-                int cb = data[i + j] & 0xFF;
-                if (cb < 0x80 || cb > 0xBF) return false;
-            }
-            i += expectedBytes + 1;
+    private static void closeQuietly(@Nullable IndexedNovelDocument value) {
+        if (value != null) {
+            value.close();
         }
-        return true;
+    }
+
+    public enum LoadStatus {
+        SUCCESS,
+        CANCELLED,
+        INVALID_FILE,
+        TOO_LARGE,
+        EMPTY,
+        LINE_TOO_LONG,
+        IO_ERROR
+    }
+
+    public record LoadResult(LoadStatus status, String message) {
+        public boolean isSuccess() {
+            return status == LoadStatus.SUCCESS;
+        }
     }
 }

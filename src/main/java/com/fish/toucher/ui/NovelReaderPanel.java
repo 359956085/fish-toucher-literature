@@ -199,14 +199,20 @@ public class NovelReaderPanel extends JPanel implements Disposable {
                 project, null);
         if (files.length > 0) {
             LOG.info("openFile: user selected file: " + files[0].getPath());
-            boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
-            if (!success) {
-                JOptionPane.showMessageDialog(this,
-                        FishToucherBundle.message("settings.dialog.fileLoadFailed"),
-                        "Fish Toucher",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-            recentFileSelector.refresh();
+            String filePath = files[0].getPath();
+            NovelReaderManager.getInstance().loadFileAsync(project, filePath, result -> {
+                if (!result.isSuccess()
+                        && result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            FishToucherBundle.message("settings.dialog.fileLoadFailed")
+                                    + " " + result.message(),
+                            "Fish Toucher",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                }
+                recentFileSelector.refresh();
+            });
         } else {
             LOG.info("openFile: user cancelled file selection");
         }

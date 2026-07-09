@@ -1,17 +1,16 @@
 package com.fish.toucher.settings;
 
-import com.intellij.openapi.actionSystem.KeyboardShortcut;
-import com.intellij.openapi.actionSystem.Shortcut;
+
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
-import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.JBUI;
 import com.fish.toucher.FishToucherBundle;
+import com.fish.toucher.ShortcutBindingSupport;
 import com.fish.toucher.ui.HotSearchManager;
 import com.fish.toucher.ui.IdleCultivationManager;
 import com.fish.toucher.ui.LanguageSelector;
@@ -356,14 +355,25 @@ public class NovelReaderConfigurable implements Configurable {
                     .withDescription(FishToucherBundle.message("settings.dialog.selectFileDesc"));
             VirtualFile[] files = FileChooser.chooseFiles(descriptor, null, null);
             if (files.length > 0) {
-                boolean success = NovelReaderManager.getInstance().loadFile(files[0].getPath());
-                if (success) {
-                    Messages.showInfoMessage(FishToucherBundle.message("settings.dialog.fileLoadSuccess", files[0].getName()), "Fish Toucher");
-                    updateCurrentFileLabel();
-                    recentFileSelector.refresh();
-                } else {
-                    Messages.showErrorDialog(FishToucherBundle.message("settings.dialog.fileLoadFailed"), "Fish Toucher");
-                }
+                NovelReaderManager.getInstance().loadFileAsync(null, files[0].getPath(), result -> {
+                    if (result.isSuccess()) {
+                        Messages.showInfoMessage(
+                                FishToucherBundle.message(
+                                        "settings.dialog.fileLoadSuccess",
+                                        files[0].getName()
+                                ),
+                                "Fish Toucher"
+                        );
+                        updateCurrentFileLabel();
+                        recentFileSelector.refresh();
+                    } else if (result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
+                        Messages.showErrorDialog(
+                                FishToucherBundle.message("settings.dialog.fileLoadFailed")
+                                        + " " + result.message(),
+                                "Fish Toucher"
+                        );
+                    }
+                });
             }
         });
         importPanel.add(importFileButton);
@@ -553,35 +563,19 @@ public class NovelReaderConfigurable implements Configurable {
         applyShortcutToKeymap("NovelReader.Toggle", oldToggle, settings.getShortcutToggle());
     }
 
-    private void applyShortcutToKeymap(String actionId, String oldKeystroke, String newKeystroke) {
-        Keymap keymap = KeymapManager.getInstance().getActiveKeymap();
-
-        if (oldKeystroke != null && !oldKeystroke.isEmpty()) {
-            KeyStroke oldKs = KeyStroke.getKeyStroke(oldKeystroke.replace("ctrl", "control"));
-            if (oldKs != null) {
-                try {
-                    keymap.removeShortcut(actionId, new KeyboardShortcut(oldKs, null));
-                } catch (Exception e) {
-                    LOG.debug("applyShortcutToKeymap: could not remove old shortcut for " + actionId);
-                }
-            }
-        }
-
-        Shortcut[] existingShortcuts = keymap.getShortcuts(actionId);
-        for (Shortcut s : existingShortcuts) {
-            try {
-                keymap.removeShortcut(actionId, s);
-            } catch (Exception e) {
-                LOG.debug("applyShortcutToKeymap: could not remove existing shortcut for " + actionId);
-            }
-        }
-
-        if (newKeystroke != null && !newKeystroke.isEmpty()) {
-            KeyStroke newKs = KeyStroke.getKeyStroke(newKeystroke.replace("ctrl", "control"));
-            if (newKs != null) {
-                keymap.addShortcut(actionId, new KeyboardShortcut(newKs, null));
-                LOG.info("applyShortcutToKeymap: set " + actionId + " -> " + newKeystroke);
-            }
+    private void applyShortcutToKeymap(
+            String actionId,
+            String oldKeystroke,
+            String newKeystroke
+    ) {
+        boolean applied = ShortcutBindingSupport.apply(
+                KeymapManager.getInstance().getActiveKeymap(),
+                actionId,
+                oldKeystroke,
+                newKeystroke
+        );
+        if (!applied) {
+            LOG.warn("快捷键格式无效: " + actionId + " -> " + newKeystroke);
         }
     }
 

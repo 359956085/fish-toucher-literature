@@ -14,12 +14,26 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @State(name = "NovelReaderSettings", storages = @Storage("NovelReaderSettings.xml"))
 public class NovelReaderSettings implements PersistentStateComponent<NovelReaderSettings.State> {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderSettings.class);
     private static final int MAX_RECENT_FILE_PATHS = 10;
+    private static final int MAX_CULTIVATION_REALM_INDEX = 8;
+    private static final Set<String> HOT_SEARCH_SOURCES = Set.of(
+            "baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x", "google"
+    );
+    private static final Set<String> X_REGIONS = Set.of(
+            "", "united-states", "japan", "korea", "russia", "france",
+            "germany", "italy", "spain", "brazil", "india", "indonesia",
+            "thailand", "vietnam", "saudi-arabia", "portugal"
+    );
+    private static final Set<String> GOOGLE_GEOS = Set.of(
+            "US", "JP", "KR", "RU", "FR", "DE", "IT", "ES", "BR",
+            "IN", "ID", "TH", "VN", "SA", "PT", "GB", "AU", "CA", "MX"
+    );
     public static final String MODE_NOVEL = "novel";
     public static final String MODE_HOT_SEARCH = "hotsearch";
     public static final String MODE_CULTIVATION = "cultivation";
@@ -131,7 +145,25 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         }
         state.pluginMode = normalizePluginMode(state.pluginMode);
         state.uiLanguage = normalizeUiLanguage(state.uiLanguage);
-        state.cultivationRealmIndex = Math.max(0, state.cultivationRealmIndex);
+        state.stealthCharsPerLine = clamp(state.stealthCharsPerLine, 10, 500);
+        state.normalLinesPerPage = clamp(state.normalLinesPerPage, 1, 50);
+        state.normalCharsPerLine = clamp(state.normalCharsPerLine, 10, 500);
+        state.fontSize = clamp(state.fontSize, 8, 30);
+        state.fontFamily = state.fontFamily == null || state.fontFamily.isBlank()
+                ? "Microsoft YaHei" : state.fontFamily;
+        state.hotSearchSource = normalizeHotSearchSource(state.hotSearchSource);
+        state.carouselIntervalSeconds = clamp(state.carouselIntervalSeconds, 3, 120);
+        state.refreshIntervalMinutes = clamp(state.refreshIntervalMinutes, 1, 120);
+        state.xTrendsRegion = normalizeXRegion(state.xTrendsRegion);
+        state.googleTrendsGeo = normalizeGoogleGeo(state.googleTrendsGeo);
+        normalizeReadingProgress(state.readingProgress);
+        normalizeReadingProgress(state.stealthReadingProgress);
+        normalizeReadingProgress(state.normalReadingProgress);
+        state.cultivationRealmIndex = clamp(
+                state.cultivationRealmIndex,
+                0,
+                MAX_CULTIVATION_REALM_INDEX
+        );
         state.cultivationQi = Math.max(0L, state.cultivationQi);
         state.cultivationSpiritStones = Math.max(0L, state.cultivationSpiritStones);
         state.cultivationQiRemainderSeconds = Math.max(0L, state.cultivationQiRemainderSeconds);
@@ -177,7 +209,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         return myState.readingProgress.getOrDefault(filePath, 0);
     }
     public void setReadingProgress(String filePath, int lineNumber) {
-        myState.readingProgress.put(filePath, lineNumber);
+        if (filePath == null || filePath.isBlank()) return;
+        myState.readingProgress.put(filePath, Math.max(0, lineNumber));
     }
 
     // --- Shared ---
@@ -224,10 +257,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public String getFontFamily() { return myState.fontFamily; }
-    public void setFontFamily(String fontFamily) { myState.fontFamily = fontFamily; }
+    public void setFontFamily(String fontFamily) {
+        myState.fontFamily = fontFamily == null || fontFamily.isBlank()
+                ? "Microsoft YaHei" : fontFamily;
+    }
 
     public int getFontSize() { return myState.fontSize; }
-    public void setFontSize(int fontSize) { myState.fontSize = fontSize; }
+    public void setFontSize(int fontSize) { myState.fontSize = clamp(fontSize, 8, 30); }
 
     public boolean isShowInStatusBar() { return myState.showInStatusBar; }
     public void setShowInStatusBar(boolean show) { myState.showInStatusBar = show; }
@@ -256,6 +292,31 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     public String getUiLanguage() { return normalizeUiLanguage(myState.uiLanguage); }
     public void setUiLanguage(String language) { myState.uiLanguage = normalizeUiLanguage(language); }
+
+    private static int clamp(int value, int minimum, int maximum) {
+        return Math.max(minimum, Math.min(maximum, value));
+    }
+
+    private static String normalizeHotSearchSource(String source) {
+        return source != null && HOT_SEARCH_SOURCES.contains(source) ? source : "baidu";
+    }
+
+    private static String normalizeXRegion(String region) {
+        return region != null && X_REGIONS.contains(region) ? region : "";
+    }
+
+    private static String normalizeGoogleGeo(String geo) {
+        return geo != null && GOOGLE_GEOS.contains(geo) ? geo : "US";
+    }
+
+    private static void normalizeReadingProgress(Map<String, Integer> progress) {
+        progress.entrySet().removeIf(entry ->
+                entry.getKey() == null
+                        || entry.getKey().isBlank()
+                        || entry.getValue() == null
+                        || entry.getValue() < 0
+        );
+    }
 
     private static String normalizePluginMode(String mode) {
         if (MODE_HOT_SEARCH.equals(mode) || MODE_CULTIVATION.equals(mode) || MODE_NOVEL.equals(mode)) {
@@ -360,8 +421,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     // --- Hot search source ---
-    public String getHotSearchSource() { return myState.hotSearchSource; }
-    public void setHotSearchSource(String source) { myState.hotSearchSource = (source != null && !source.isEmpty()) ? source : "baidu"; }
+    public String getHotSearchSource() { return normalizeHotSearchSource(myState.hotSearchSource); }
+    public void setHotSearchSource(String source) { myState.hotSearchSource = normalizeHotSearchSource(source); }
 
     // --- Hot search timing ---
     public int getCarouselIntervalSeconds() { return myState.carouselIntervalSeconds; }
@@ -371,16 +432,24 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public void setRefreshIntervalMinutes(int m) { myState.refreshIntervalMinutes = Math.max(1, Math.min(120, m)); }
 
     // --- X trends region ---
-    public String getXTrendsRegion() { return myState.xTrendsRegion; }
-    public void setXTrendsRegion(String region) { myState.xTrendsRegion = region != null ? region : ""; }
+    public String getXTrendsRegion() { return normalizeXRegion(myState.xTrendsRegion); }
+    public void setXTrendsRegion(String region) { myState.xTrendsRegion = normalizeXRegion(region); }
 
     // --- Google Trends geo ---
-    public String getGoogleTrendsGeo() { return myState.googleTrendsGeo; }
-    public void setGoogleTrendsGeo(String geo) { myState.googleTrendsGeo = (geo != null && !geo.isEmpty()) ? geo : "US"; }
+    public String getGoogleTrendsGeo() { return normalizeGoogleGeo(myState.googleTrendsGeo); }
+    public void setGoogleTrendsGeo(String geo) { myState.googleTrendsGeo = normalizeGoogleGeo(geo); }
 
     // --- Idle cultivation ---
-    public int getCultivationRealmIndex() { return Math.max(0, myState.cultivationRealmIndex); }
-    public void setCultivationRealmIndex(int realmIndex) { myState.cultivationRealmIndex = Math.max(0, realmIndex); }
+    public int getCultivationRealmIndex() {
+        return clamp(myState.cultivationRealmIndex, 0, MAX_CULTIVATION_REALM_INDEX);
+    }
+    public void setCultivationRealmIndex(int realmIndex) {
+        myState.cultivationRealmIndex = clamp(
+                realmIndex,
+                0,
+                MAX_CULTIVATION_REALM_INDEX
+        );
+    }
 
     public long getCultivationQi() { return Math.max(0L, myState.cultivationQi); }
     public void setCultivationQi(long qi) { myState.cultivationQi = Math.max(0L, qi); }

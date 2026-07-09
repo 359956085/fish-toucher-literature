@@ -2,7 +2,9 @@ package com.fish.toucher.ui;
 
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 
 import java.util.ArrayList;
@@ -17,8 +19,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class IdleCultivationManager {
+@Service(Service.Level.APP)
+public final class IdleCultivationManager implements Disposable {
 
     public static final String BASIC_TECHNIQUE_ID = "basic_breathing";
     private static final String QI_PILL_ID = "qi_pill";
@@ -46,7 +50,6 @@ public class IdleCultivationManager {
     private static final String TAIXU_CAULDRON_ARTIFACT_ID = "taixu_cauldron";
 
     private static final Logger LOG = Logger.getInstance(IdleCultivationManager.class);
-    private static final IdleCultivationManager INSTANCE = new IdleCultivationManager();
 
     private static final int OFFLINE_CAP_HOURS = 8;
     public static final int MAX_ABODE_LEVEL = 5;
@@ -72,9 +75,6 @@ public class IdleCultivationManager {
     private static final int BATTLE_MANA_RECOVERY_DIVISOR = 180;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
-    private static final long[] REQUIRED_QI = {
-            8_000L, 18_000L, 34_000L, 58_000L, 90_000L, 130_000L, 180_000L, 245_000L
-    };
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
             new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
@@ -143,6 +143,7 @@ public class IdleCultivationManager {
     private static final Map<String, AbodeFacilityDefinition> ABODE_BY_ID = indexAbodeFacilities();
 
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
+    private final AtomicBoolean notificationPending = new AtomicBoolean();
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
     private ScheduledFuture<?> battleTask;
@@ -151,13 +152,13 @@ public class IdleCultivationManager {
     private BattleState battleState;
 
     public static IdleCultivationManager getInstance() {
-        return INSTANCE;
+        return ApplicationManager.getApplication().getService(IdleCultivationManager.class);
     }
 
-    private IdleCultivationManager() {}
+    public IdleCultivationManager() {}
 
     public void addChangeListener(Runnable listener) {
-        listeners.add(listener);
+        listeners.addIfAbsent(listener);
     }
 
     public void removeChangeListener(Runnable listener) {
@@ -165,9 +166,15 @@ public class IdleCultivationManager {
     }
 
     private void fireChange() {
-        for (Runnable listener : listeners) {
-            ApplicationManager.getApplication().invokeLater(listener);
+        if (!notificationPending.compareAndSet(false, true)) {
+            return;
         }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            notificationPending.set(false);
+            for (Runnable listener : listeners) {
+                listener.run();
+            }
+        });
     }
 
     public synchronized void start() {
@@ -807,8 +814,9 @@ public class IdleCultivationManager {
     }
 
     public String getRealmName(int realmIndex) {
-        int clampedIndex = Math.max(0, Math.min(getRealmCount() - 1, realmIndex));
-        return FishToucherBundle.message("cultivation.realm." + clampedIndex);
+        return FishToucherBundle.message(
+                "cultivation.realm." + CultivationRules.clampRealm(realmIndex)
+        );
     }
 
     public synchronized long getCurrentQi() {
@@ -820,10 +828,7 @@ public class IdleCultivationManager {
     }
 
     public long getRequiredQi(int realmIndex) {
-        if (isMaxRealm(realmIndex)) {
-            return 0L;
-        }
-        return REQUIRED_QI[Math.max(0, Math.min(REQUIRED_QI.length - 1, realmIndex))];
+        return CultivationRules.requiredQi(realmIndex);
     }
 
     public synchronized long getSpiritStones() {
@@ -1559,11 +1564,11 @@ public class IdleCultivationManager {
     }
 
     private boolean isMaxRealm(int realmIndex) {
-        return realmIndex >= getRealmCount() - 1;
+        return CultivationRules.isMaxRealm(realmIndex);
     }
 
     private int getRealmCount() {
-        return REQUIRED_QI.length + 1;
+        return CultivationRules.realmCount();
     }
 
     private long getCultivationQiLimit(int realmIndex) {
@@ -1606,13 +1611,16 @@ public class IdleCultivationManager {
 
     private int getBreakthroughChance(int realmIndex, int failures) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int baseChance = Math.max(42, 72 - realmIndex * 4);
+        int baseChance = CultivationRules.baseBreakthroughChance(realmIndex);
         int techniqueBonus = getEquippedTechnique().breakthroughBonus();
         int pillBonus = settings.isBreakthroughPillActive() ? 18 : 0;
         int abodeBonus = getInsightRoomBreakthroughBonusPercent(getAbodeFacilityLevel(INSIGHT_ROOM_ID));
         int additiveChance = baseChance + failures * 16 + techniqueBonus + pillBonus + abodeBonus;
-        long rebirthChance = additiveChance * (100L + settings.getCultivationRebirthCount() * REBIRTH_BREAKTHROUGH_BONUS_PERCENT) / 100L;
-        return (int) Math.min(96L, rebirthChance);
+        return CultivationRules.finalBreakthroughChance(
+                additiveChance,
+                settings.getCultivationRebirthCount(),
+                REBIRTH_BREAKTHROUGH_BONUS_PERCENT
+        );
     }
 
     private int getInsightRoomBreakthroughBonusPercent(int level) {
@@ -2050,6 +2058,12 @@ public class IdleCultivationManager {
             }
             return parts.isEmpty() ? FishToucherBundle.message("cultivation.abode.claimNone") : String.join(", ", parts);
         }
+    }
+
+    @Override
+    public void dispose() {
+        stop();
+        listeners.clear();
     }
 
     public record TravelReward(long qi, long stones, String pillId, int pillCount,

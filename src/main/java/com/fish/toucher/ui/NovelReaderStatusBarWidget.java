@@ -1,5 +1,6 @@
 package com.fish.toucher.ui;
 
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.StatusBar;
@@ -12,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.net.URI;
 
 /**
  * Stealth mode: status bar widget that shows novel content in a single line.
@@ -124,12 +124,9 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         return mouseEvent -> {
             if (NovelReaderSettings.getInstance().isHotSearchMode()) {
                 String url = HotSearchManager.getInstance().getCurrentUrl();
-                if (url != null && !url.isEmpty()) {
-                    try {
-                        Desktop.getDesktop().browse(new URI(url));
-                    } catch (Exception e) {
-                        LOG.warn("getClickConsumer: failed to open URL: " + e.getMessage());
-                    }
+                String safeUrl = HotSearchParser.safeHttpUrl(url);
+                if (!safeUrl.isEmpty()) {
+                    BrowserUtil.browse(safeUrl);
                 }
                 return;
             }

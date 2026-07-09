@@ -1,6 +1,7 @@
 package com.fish.toucher.ui;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -13,7 +14,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.net.URI;
 import java.util.List;
 
 /**
@@ -188,11 +188,9 @@ public class HotSearchPanel extends JPanel implements Disposable {
     }
 
     private void openInBrowser(String url) {
-        if (url == null || url.isEmpty()) return;
-        try {
-            Desktop.getDesktop().browse(new URI(url));
-        } catch (Exception e) {
-            LOG.warn("openInBrowser: failed to open URL: " + e.getMessage());
+        String safeUrl = HotSearchParser.safeHttpUrl(url);
+        if (!safeUrl.isEmpty()) {
+            BrowserUtil.browse(safeUrl);
         }
     }
 
