@@ -70,6 +70,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
         NovelReaderManager.getInstance().removeChangeListener(changeListener);
         HotSearchManager.getInstance().removeChangeListener(hotSearchChangeListener);
         IdleCultivationManager.getInstance().removeChangeListener(cultivationChangeListener);
+        statusBar = null;
     }
 
     @Override
@@ -83,7 +84,6 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
         if (settings.isHotSearchMode()) {
             HotSearchManager manager = HotSearchManager.getInstance();
-            if (!manager.hasContent()) return "\uD83D\uDD25 [Loading...]";
             String title = manager.getCurrentTitle();
             String status = manager.getCurrentStatusText();
             return "\uD83D\uDD25 " + title + "  " + status;

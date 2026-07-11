@@ -110,6 +110,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     private State myState = new State();
+    private final Object defaultTransactionMonitor = new Object();
+    private volatile Object cultivationTransactionMonitor = defaultTransactionMonitor;
 
     public static NovelReaderSettings getInstance() {
         return ApplicationManager.getApplication().getService(NovelReaderSettings.class);
@@ -117,11 +119,31 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     @Override
     public @Nullable State getState() {
-        return myState;
+        Object monitor = cultivationTransactionMonitor;
+        synchronized (monitor) {
+            synchronized (this) {
+                return copyState(myState);
+            }
+        }
     }
 
     @Override
     public void loadState(@NotNull State state) {
+        Object monitor = cultivationTransactionMonitor;
+        synchronized (monitor) {
+            synchronized (this) {
+                loadStateLocked(state);
+            }
+        }
+    }
+
+    public void registerCultivationTransactionMonitor(@NotNull Object monitor) {
+        synchronized (defaultTransactionMonitor) {
+            cultivationTransactionMonitor = monitor;
+        }
+    }
+
+    private void loadStateLocked(State state) {
         LOG.info("loadState: restoring settings"
                 + ", stealthCharsPerLine=" + state.stealthCharsPerLine
                 + ", normalLinesPerPage=" + state.normalLinesPerPage
@@ -193,6 +215,59 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         }
     }
 
+    private static State copyState(State source) {
+        State copy = new State();
+        copy.stealthCharsPerLine = source.stealthCharsPerLine;
+        copy.normalLinesPerPage = source.normalLinesPerPage;
+        copy.normalCharsPerLine = source.normalCharsPerLine;
+        copy.pluginMode = source.pluginMode;
+        copy.uiLanguage = source.uiLanguage;
+        copy.hotSearchSource = source.hotSearchSource;
+        copy.carouselIntervalSeconds = source.carouselIntervalSeconds;
+        copy.refreshIntervalMinutes = source.refreshIntervalMinutes;
+        copy.xTrendsRegion = source.xTrendsRegion;
+        copy.googleTrendsGeo = source.googleTrendsGeo;
+        copy.lastFilePath = source.lastFilePath;
+        copy.recentFilePaths = new ArrayList<>(source.recentFilePaths);
+        copy.fontFamily = source.fontFamily;
+        copy.fontSize = source.fontSize;
+        copy.showInStatusBar = source.showInStatusBar;
+        copy.installedVersion = source.installedVersion;
+        copy.readingProgress = new HashMap<>(source.readingProgress);
+        copy.stealthReadingProgress = new HashMap<>(source.stealthReadingProgress);
+        copy.normalReadingProgress = new HashMap<>(source.normalReadingProgress);
+        copy.shortcutOpen = source.shortcutOpen;
+        copy.shortcutNextPage = source.shortcutNextPage;
+        copy.shortcutPrevPage = source.shortcutPrevPage;
+        copy.shortcutToggle = source.shortcutToggle;
+        copy.cultivationRealmIndex = source.cultivationRealmIndex;
+        copy.cultivationQi = source.cultivationQi;
+        copy.cultivationSpiritStones = source.cultivationSpiritStones;
+        copy.cultivationQiRemainderSeconds = source.cultivationQiRemainderSeconds;
+        copy.cultivationSpiritStoneRemainderSeconds = source.cultivationSpiritStoneRemainderSeconds;
+        copy.cultivationBreakthroughFailures = source.cultivationBreakthroughFailures;
+        copy.cultivationLastUpdateMillis = source.cultivationLastUpdateMillis;
+        copy.cultivationLastMeditationMillis = source.cultivationLastMeditationMillis;
+        copy.cultivationRebirthCount = source.cultivationRebirthCount;
+        copy.equippedTechniqueId = source.equippedTechniqueId;
+        copy.unlockedTechniqueIds = new ArrayList<>(source.unlockedTechniqueIds);
+        copy.pillInventory = new HashMap<>(source.pillInventory);
+        copy.breakthroughPillActive = source.breakthroughPillActive;
+        copy.meridianPillActive = source.meridianPillActive;
+        copy.activeTravelLocationId = source.activeTravelLocationId;
+        copy.travelStartMillis = source.travelStartMillis;
+        copy.travelEndMillis = source.travelEndMillis;
+        copy.activeTravelElapsedMillis = source.activeTravelElapsedMillis;
+        copy.abodeFacilityLevels = new HashMap<>(source.abodeFacilityLevels);
+        copy.abodeLastClaimMillis = new HashMap<>(source.abodeLastClaimMillis);
+        copy.unlockedSpellIds = new ArrayList<>(source.unlockedSpellIds);
+        copy.equippedSpellIds = new ArrayList<>(source.equippedSpellIds);
+        copy.unlockedArtifactIds = new ArrayList<>(source.unlockedArtifactIds);
+        copy.equippedArtifactIds = new ArrayList<>(source.equippedArtifactIds);
+        copy.defeatedCultivatorIds = new ArrayList<>(source.defeatedCultivatorIds);
+        return copy;
+    }
+
     // --- Stealth mode ---
     public int getStealthCharsPerLine() { return myState.stealthCharsPerLine; }
     public void setStealthCharsPerLine(int chars) { myState.stealthCharsPerLine = Math.max(10, Math.min(500, chars)); }
@@ -205,10 +280,10 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public void setNormalCharsPerLine(int chars) { myState.normalCharsPerLine = Math.max(10, Math.min(500, chars)); }
 
     // --- Unified reading progress ---
-    public int getReadingProgress(String filePath) {
+    public synchronized int getReadingProgress(String filePath) {
         return myState.readingProgress.getOrDefault(filePath, 0);
     }
-    public void setReadingProgress(String filePath, int lineNumber) {
+    public synchronized void setReadingProgress(String filePath, int lineNumber) {
         if (filePath == null || filePath.isBlank()) return;
         myState.readingProgress.put(filePath, Math.max(0, lineNumber));
     }
@@ -217,12 +292,12 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public String getLastFilePath() { return myState.lastFilePath; }
     public void setLastFilePath(String path) { myState.lastFilePath = path; }
 
-    public List<String> getRecentFilePaths() {
+    public synchronized List<String> getRecentFilePaths() {
         normalizeRecentFilePaths();
         return Collections.unmodifiableList(new ArrayList<>(myState.recentFilePaths));
     }
 
-    public void addRecentFilePath(String path) {
+    public synchronized void addRecentFilePath(String path) {
         if (path == null || path.isEmpty()) return;
         normalizeRecentFilePaths();
         myState.recentFilePaths.remove(path);
@@ -230,7 +305,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         trimRecentFilePaths();
     }
 
-    public void removeRecentFilePath(String path) {
+    public synchronized void removeRecentFilePath(String path) {
         if (path == null || path.isEmpty() || myState.recentFilePaths == null) return;
         myState.recentFilePaths.remove(path);
     }
@@ -476,8 +551,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public void setCultivationRebirthCount(int rebirthCount) { myState.cultivationRebirthCount = Math.max(0, rebirthCount); }
 
     public String getEquippedTechniqueId() {
-        normalizeCultivationState(myState);
-        return myState.equippedTechniqueId;
+        return myState.equippedTechniqueId != null && !myState.equippedTechniqueId.isEmpty()
+                ? myState.equippedTechniqueId
+                : "basic_breathing";
     }
 
     public void setEquippedTechniqueId(String techniqueId) {
@@ -488,13 +564,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getUnlockedTechniqueIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.unlockedTechniqueIds));
+        return myState.unlockedTechniqueIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.unlockedTechniqueIds));
     }
 
     public boolean isTechniqueUnlocked(String techniqueId) {
-        normalizeCultivationState(myState);
-        return techniqueId != null && myState.unlockedTechniqueIds.contains(techniqueId);
+        return techniqueId != null && myState.unlockedTechniqueIds != null
+                && myState.unlockedTechniqueIds.contains(techniqueId);
     }
 
     public boolean unlockTechnique(String techniqueId) {
@@ -521,13 +598,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public Map<String, Integer> getPillInventory() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableMap(new HashMap<>(myState.pillInventory));
+        return myState.pillInventory == null
+                ? Map.of()
+                : Collections.unmodifiableMap(new HashMap<>(myState.pillInventory));
     }
 
     public int getPillCount(String pillId) {
-        normalizeCultivationState(myState);
-        return myState.pillInventory.getOrDefault(pillId, 0);
+        return myState.pillInventory == null ? 0 : myState.pillInventory.getOrDefault(pillId, 0);
     }
 
     public void addPill(String pillId, int count) {
@@ -580,13 +657,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public Map<String, Integer> getAbodeFacilityLevels() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableMap(new HashMap<>(myState.abodeFacilityLevels));
+        return myState.abodeFacilityLevels == null
+                ? Map.of()
+                : Collections.unmodifiableMap(new HashMap<>(myState.abodeFacilityLevels));
     }
 
     public int getAbodeFacilityLevel(String facilityId) {
-        normalizeCultivationState(myState);
-        return myState.abodeFacilityLevels.getOrDefault(facilityId, 0);
+        return myState.abodeFacilityLevels == null ? 0 : myState.abodeFacilityLevels.getOrDefault(facilityId, 0);
     }
 
     public void setAbodeFacilityLevel(String facilityId, int level) {
@@ -605,8 +682,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public long getAbodeLastClaimMillis(String facilityId) {
-        normalizeCultivationState(myState);
-        return myState.abodeLastClaimMillis.getOrDefault(facilityId, 0L);
+        return myState.abodeLastClaimMillis == null ? 0L : myState.abodeLastClaimMillis.getOrDefault(facilityId, 0L);
     }
 
     public void setAbodeLastClaimMillis(String facilityId, long millis) {
@@ -620,13 +696,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getUnlockedSpellIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.unlockedSpellIds));
+        return myState.unlockedSpellIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.unlockedSpellIds));
     }
 
     public boolean isSpellUnlocked(String spellId) {
-        normalizeCultivationState(myState);
-        return spellId != null && myState.unlockedSpellIds.contains(spellId);
+        return spellId != null && myState.unlockedSpellIds != null && myState.unlockedSpellIds.contains(spellId);
     }
 
     public boolean unlockSpell(String spellId) {
@@ -639,8 +715,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getEquippedSpellIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.equippedSpellIds));
+        return myState.equippedSpellIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.equippedSpellIds));
     }
 
     public void setEquippedSpellIds(List<String> spellIds) {
@@ -660,13 +737,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getUnlockedArtifactIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.unlockedArtifactIds));
+        return myState.unlockedArtifactIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.unlockedArtifactIds));
     }
 
     public boolean isArtifactUnlocked(String artifactId) {
-        normalizeCultivationState(myState);
-        return artifactId != null && myState.unlockedArtifactIds.contains(artifactId);
+        return artifactId != null && myState.unlockedArtifactIds != null
+                && myState.unlockedArtifactIds.contains(artifactId);
     }
 
     public boolean unlockArtifact(String artifactId) {
@@ -682,8 +760,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getEquippedArtifactIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.equippedArtifactIds));
+        return myState.equippedArtifactIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.equippedArtifactIds));
     }
 
     public void setEquippedArtifactIds(List<String> artifactIds) {
@@ -703,13 +782,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     }
 
     public List<String> getDefeatedCultivatorIds() {
-        normalizeCultivationState(myState);
-        return Collections.unmodifiableList(new ArrayList<>(myState.defeatedCultivatorIds));
+        return myState.defeatedCultivatorIds == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(myState.defeatedCultivatorIds));
     }
 
     public boolean isCultivatorDefeated(String cultivatorId) {
-        normalizeCultivationState(myState);
-        return cultivatorId != null && myState.defeatedCultivatorIds.contains(cultivatorId);
+        return cultivatorId != null && myState.defeatedCultivatorIds != null
+                && myState.defeatedCultivatorIds.contains(cultivatorId);
     }
 
     public boolean markCultivatorDefeated(String cultivatorId) {

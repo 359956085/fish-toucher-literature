@@ -7,9 +7,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -74,6 +81,29 @@ class IndexedNovelDocumentTest {
                 () -> IndexedNovelDocument.load(source, () -> false)
         );
         assertEquals(NovelReaderManager.LoadStatus.LINE_TOO_LONG, exception.status());
+    }
+
+    @Test
+    void cleanupSkipsLockedSessionFromAnotherIdeProcess() throws Exception {
+        Path cacheRoot = Path.of(System.getProperty("java.io.tmpdir"), "fish-toucher-literature");
+        Path session = cacheRoot.resolve("session-test-" + UUID.randomUUID());
+        Files.createDirectories(session);
+        Path lockPath = session.resolve(".owner.lock");
+        try (FileChannel channel = FileChannel.open(
+                lockPath,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+        ); FileLock ignored = channel.lock()) {
+            Files.setLastModifiedTime(
+                    session,
+                    FileTime.from(Instant.now().minus(2, ChronoUnit.DAYS))
+            );
+            IndexedNovelDocument.cleanupStaleCaches();
+            assertTrue(Files.exists(session));
+        } finally {
+            Files.deleteIfExists(lockPath);
+            Files.deleteIfExists(session);
+        }
     }
 
     private void assertContent(byte[] bytes) throws Exception {

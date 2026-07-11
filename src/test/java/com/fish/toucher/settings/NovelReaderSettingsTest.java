@@ -49,4 +49,19 @@ class NovelReaderSettingsTest {
         assertEquals("US", settings.getGoogleTrendsGeo());
         assertEquals(0, settings.getReadingProgress("book.txt"));
     }
+
+    @Test
+    void persistentStateIsDeepCopy() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+        settings.unlockTechnique("evergreen_method");
+        settings.addPill("qi_pill", 2);
+
+        NovelReaderSettings.State snapshot = settings.getState();
+        assertNotNull(snapshot);
+        snapshot.unlockedTechniqueIds.clear();
+        snapshot.pillInventory.clear();
+
+        assertTrue(settings.isTechniqueUnlocked("evergreen_method"));
+        assertEquals(2, settings.getPillCount("qi_pill"));
+    }
 }

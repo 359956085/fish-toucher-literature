@@ -12,10 +12,9 @@ import com.intellij.util.ui.JBUI;
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.ShortcutBindingSupport;
 import com.fish.toucher.ui.HotSearchManager;
-import com.fish.toucher.ui.IdleCultivationManager;
 import com.fish.toucher.ui.LanguageSelector;
 import com.fish.toucher.ui.NovelReaderManager;
-import com.fish.toucher.ui.NovelReaderToolWindowFactory;
+import com.fish.toucher.ui.NovelReaderRuntimeCoordinator;
 import com.fish.toucher.ui.PluginModeSelector;
 import com.fish.toucher.ui.RecentFileSelector;
 import org.jetbrains.annotations.Nls;
@@ -61,6 +60,8 @@ public class NovelReaderConfigurable implements Configurable {
     private JComboBox<String> googleTrendsGeoComboBox;
     private JPanel hotSearchSettingsPanel;
     private JPanel cultivationSettingsPanel;
+    private long uiGeneration;
+    private boolean uiDisposed;
 
     static final String[] X_REGION_SLUGS = {
             "", "united-states", "japan", "korea", "russia", "france",
@@ -94,6 +95,8 @@ public class NovelReaderConfigurable implements Configurable {
 
     @Override
     public @Nullable JComponent createComponent() {
+        uiDisposed = false;
+        uiGeneration++;
         JPanel mainPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = JBUI.insets(5);
@@ -355,24 +358,30 @@ public class NovelReaderConfigurable implements Configurable {
                     .withDescription(FishToucherBundle.message("settings.dialog.selectFileDesc"));
             VirtualFile[] files = FileChooser.chooseFiles(descriptor, null, null);
             if (files.length > 0) {
+                long generation = uiGeneration;
                 NovelReaderManager.getInstance().loadFileAsync(null, files[0].getPath(), result -> {
-                    if (result.isSuccess()) {
-                        Messages.showInfoMessage(
-                                FishToucherBundle.message(
-                                        "settings.dialog.fileLoadSuccess",
-                                        files[0].getName()
-                                ),
-                                "Fish Toucher"
-                        );
-                        updateCurrentFileLabel();
-                        recentFileSelector.refresh();
-                    } else if (result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
-                        Messages.showErrorDialog(
-                                FishToucherBundle.message("settings.dialog.fileLoadFailed")
-                                        + " " + result.message(),
-                                "Fish Toucher"
-                        );
-                    }
+                    SwingUtilities.invokeLater(() -> {
+                        if (uiDisposed || generation != uiGeneration) return;
+                        if (result.isSuccess()) {
+                            Messages.showInfoMessage(
+                                    FishToucherBundle.message(
+                                            "settings.dialog.fileLoadSuccess",
+                                            files[0].getName()
+                                    ),
+                                    "Fish Toucher"
+                            );
+                            updateCurrentFileLabel();
+                            if (recentFileSelector != null) {
+                                recentFileSelector.refresh();
+                            }
+                        } else if (result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
+                            Messages.showErrorDialog(
+                                    FishToucherBundle.message("settings.dialog.fileLoadFailed")
+                                            + " " + result.message(),
+                                    "Fish Toucher"
+                            );
+                        }
+                    });
                 });
             }
         });
@@ -469,75 +478,24 @@ public class NovelReaderConfigurable implements Configurable {
                 + ", fontFamily=" + fontFamilyField.getText()
                 + ", showInStatusBar=" + showInStatusBarCheckBox.isSelected());
 
-        String oldMode = settings.getPluginMode();
-        String oldLanguage = settings.getUiLanguage();
+        NovelReaderRuntimeCoordinator.RuntimeSettings previous =
+                NovelReaderRuntimeCoordinator.capture(settings);
         settings.setPluginMode(newMode);
         settings.setUiLanguage(newLanguage);
 
-        // Start/stop mode managers based on mode change
-        if (NovelReaderSettings.MODE_HOT_SEARCH.equals(newMode)) {
-            IdleCultivationManager.getInstance().stop();
-            if (!HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().start();
-            }
-        } else if (NovelReaderSettings.MODE_CULTIVATION.equals(newMode)) {
-            if (HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().stop();
-            }
-            IdleCultivationManager.getInstance().start();
-        } else {
-            if (HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().stop();
-            }
-            IdleCultivationManager.getInstance().stop();
-            if (!newMode.equals(oldMode)) {
-                NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
-            }
-        }
-
-        // Rebuild tool window content when mode or language changes
-        if (!newMode.equals(oldMode) || !newLanguage.equals(oldLanguage)) {
-            NovelReaderToolWindowFactory.rebuildAllToolWindows();
-        }
-        if (!newLanguage.equals(oldLanguage)) {
-            NovelReaderToolWindowFactory.refreshAllStatusBarWidgets();
-        }
-
         // Hot search source
-        String oldSource = settings.getHotSearchSource();
         String newSource = getSelectedSource();
         settings.setHotSearchSource(newSource);
-        if (!newSource.equals(oldSource) && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().switchSource();
-        }
 
         // Hot search timing
-        int oldCarousel = settings.getCarouselIntervalSeconds();
-        int oldRefresh = settings.getRefreshIntervalMinutes();
         settings.setCarouselIntervalSeconds((int) carouselIntervalSpinner.getValue());
         settings.setRefreshIntervalMinutes((int) refreshIntervalSpinner.getValue());
-        if ((oldCarousel != settings.getCarouselIntervalSeconds() || oldRefresh != settings.getRefreshIntervalMinutes())
-                && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().applyTimingChanges();
-        }
 
         // X trends region
-        String oldRegion = settings.getXTrendsRegion();
         settings.setXTrendsRegion(getSelectedXRegion());
-        if (!oldRegion.equals(settings.getXTrendsRegion())
-                && "x".equals(settings.getHotSearchSource())
-                && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().switchSource();
-        }
 
         // Google Trends geo
-        String oldGeo = settings.getGoogleTrendsGeo();
         settings.setGoogleTrendsGeo(getSelectedGoogleGeo());
-        if (!oldGeo.equals(settings.getGoogleTrendsGeo())
-                && "google".equals(settings.getHotSearchSource())
-                && HotSearchManager.getInstance().isRunning()) {
-            HotSearchManager.getInstance().switchSource();
-        }
 
         settings.setStealthCharsPerLine((int) stealthCharsPerLineSpinner.getValue());
         settings.setShowInStatusBar(showInStatusBarCheckBox.isSelected());
@@ -561,6 +519,11 @@ public class NovelReaderConfigurable implements Configurable {
         applyShortcutToKeymap("NovelReader.NextPage", oldNext, settings.getShortcutNextPage());
         applyShortcutToKeymap("NovelReader.PrevPage", oldPrev, settings.getShortcutPrevPage());
         applyShortcutToKeymap("NovelReader.Toggle", oldToggle, settings.getShortcutToggle());
+
+        NovelReaderRuntimeCoordinator.apply(
+                previous,
+                NovelReaderRuntimeCoordinator.capture(settings)
+        );
     }
 
     private void applyShortcutToKeymap(
@@ -621,5 +584,11 @@ public class NovelReaderConfigurable implements Configurable {
         if (recentFileSelector != null) {
             recentFileSelector.refresh();
         }
+    }
+
+    @Override
+    public void disposeUIResources() {
+        uiDisposed = true;
+        uiGeneration++;
     }
 }

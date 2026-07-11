@@ -3,6 +3,8 @@ package com.fish.toucher.ui;
 import java.io.*;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -32,6 +34,11 @@ final class IndexedNovelDocument implements AutoCloseable {
             System.getProperty("java.io.tmpdir"),
             "fish-toucher-literature"
     );
+    private static final Path SESSION_DIR = CACHE_DIR.resolve("session-" + UUID.randomUUID());
+    private static final Path SESSION_LOCK_PATH = SESSION_DIR.resolve(".owner.lock");
+    private static final Object SESSION_MONITOR = new Object();
+    private static FileChannel sessionLockChannel;
+    private static FileLock sessionLock;
 
     private final Path cachePath;
     private final int lineCount;
@@ -58,8 +65,8 @@ final class IndexedNovelDocument implements AutoCloseable {
             throw new LoadException(NovelReaderManager.LoadStatus.TOO_LARGE, "文件超过 500 MiB");
         }
 
-        Files.createDirectories(CACHE_DIR);
-        Path cache = Files.createTempFile(CACHE_DIR, "novel-", ".utf8");
+        Path sessionDirectory = ensureSessionCache();
+        Path cache = Files.createTempFile(sessionDirectory, "novel-", ".utf8");
         boolean completed = false;
         try {
             CharsetInfo charsetInfo = detectCharset(source);
@@ -133,6 +140,7 @@ final class IndexedNovelDocument implements AutoCloseable {
     }
 
     LineWindow readWindow(int requestedLine) throws IOException {
+        touchSession();
         int target = Math.max(0, Math.min(requestedLine, lineCount - 1));
         int checkpoint = findCheckpoint(target);
         int lineNumber = checkpointLines[checkpoint];
@@ -194,11 +202,108 @@ final class IndexedNovelDocument implements AutoCloseable {
         }
         FileTime threshold = FileTime.from(Instant.now().minus(1, ChronoUnit.DAYS));
         try (var paths = Files.list(CACHE_DIR)) {
-            paths.filter(path -> path.getFileName().toString().startsWith("novel-"))
-                    .filter(path -> isOlderThan(path, threshold))
-                    .forEach(IndexedNovelDocument::deleteQuietly);
+            paths.forEach(path -> {
+                String name = path.getFileName().toString();
+                if (Files.isRegularFile(path)
+                        && name.startsWith("novel-")
+                        && isOlderThan(path, threshold)) {
+                    deleteQuietly(path);
+                } else if (Files.isDirectory(path)
+                        && name.startsWith("session-")
+                        && !path.equals(SESSION_DIR)
+                        && isOlderThan(path, threshold)) {
+                    deleteInactiveSession(path);
+                }
+            });
         } catch (IOException ignored) {
             // 缓存清理失败不阻止插件启动。
+        }
+    }
+
+    static void shutdownSessionCache() {
+        synchronized (SESSION_MONITOR) {
+            try {
+                if (sessionLock != null) {
+                    sessionLock.release();
+                }
+            } catch (IOException ignored) {
+                // Best-effort cleanup during application shutdown.
+            }
+            try {
+                if (sessionLockChannel != null) {
+                    sessionLockChannel.close();
+                }
+            } catch (IOException ignored) {
+                // Best-effort cleanup during application shutdown.
+            }
+            sessionLock = null;
+            sessionLockChannel = null;
+        }
+        deleteRecursively(SESSION_DIR);
+    }
+
+    private static Path ensureSessionCache() throws IOException {
+        synchronized (SESSION_MONITOR) {
+            Files.createDirectories(SESSION_DIR);
+            if (sessionLock == null || !sessionLock.isValid()) {
+                sessionLockChannel = FileChannel.open(
+                        SESSION_LOCK_PATH,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE
+                );
+                sessionLock = sessionLockChannel.tryLock();
+                if (sessionLock == null) {
+                    sessionLockChannel.close();
+                    sessionLockChannel = null;
+                    throw new IOException("Unable to acquire novel cache session lock");
+                }
+            }
+            touchSession();
+            return SESSION_DIR;
+        }
+    }
+
+    private static void touchSession() {
+        try {
+            if (Files.isDirectory(SESSION_DIR)) {
+                Files.setLastModifiedTime(SESSION_DIR, FileTime.from(Instant.now()));
+            }
+        } catch (IOException ignored) {
+            // Lock ownership, not timestamp, determines whether cleanup is safe.
+        }
+    }
+
+    private static void deleteInactiveSession(Path sessionDirectory) {
+        Path lockPath = sessionDirectory.resolve(".owner.lock");
+        try (FileChannel channel = FileChannel.open(
+                lockPath,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE
+        )) {
+            FileLock lock;
+            try {
+                lock = channel.tryLock();
+            } catch (OverlappingFileLockException ignored) {
+                return;
+            }
+            if (lock == null) {
+                return;
+            }
+            lock.release();
+        } catch (IOException ignored) {
+            return;
+        }
+        deleteRecursively(sessionDirectory);
+    }
+
+    private static void deleteRecursively(Path directory) {
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try (var paths = Files.walk(directory)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(IndexedNovelDocument::deleteQuietly);
+        } catch (IOException ignored) {
+            // A later startup can retry stale session cleanup.
         }
     }
 

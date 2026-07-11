@@ -21,6 +21,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final IdleCultivationAbodeTab abodeTab;
     private final IdleCultivationChallengeTab challengeTab;
     private final IdleCultivationGuideTab guideTab;
+    private final JTabbedPane tabs;
+    private final boolean[] dirtyTabs = {true, true, true, true, true, true};
     private final Runnable changeListener;
 
     public IdleCultivationPanel() {
@@ -36,7 +38,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         challengeTab = new IdleCultivationChallengeTab();
         guideTab = new IdleCultivationGuideTab();
 
-        JTabbedPane tabs = new JTabbedPane();
+        tabs = new JTabbedPane();
         tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         tabs.addTab(FishToucherBundle.message("cultivation.tab.training"), trainingTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.bag"), bagTab.getComponent());
@@ -44,6 +46,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         tabs.addTab(FishToucherBundle.message("cultivation.tab.abode"), abodeTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.challenge"), challengeTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.guide"), guideTab.getComponent());
+        tabs.addChangeListener(event -> refreshActiveTab());
         add(tabs, BorderLayout.CENTER);
 
         changeListener = this::refreshContent;
@@ -76,37 +79,54 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     }
 
     private void refreshContent() {
-        preserveOuterScrollPositions(this, this::refreshContentWithoutScrollJump);
+        java.util.Arrays.fill(dirtyTabs, true);
+        refreshActiveTab();
     }
 
-    private void refreshContentWithoutScrollJump() {
+    private void refreshActiveTab() {
+        int index = tabs.getSelectedIndex();
+        if (index < 0 || !dirtyTabs[index]) {
+            return;
+        }
+        preserveOuterScrollPositions(this, () -> refreshTab(index));
+        dirtyTabs[index] = false;
+    }
+
+    private void refreshTab(int index) {
         setTabsRefreshing(true);
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
             NovelReaderSettings settings = NovelReaderSettings.getInstance();
-            trainingTab.updateTrainingState(manager);
-            bagTab.reloadBagOptions(manager, settings);
-            travelTab.reloadTravelOptions(manager);
-            travelTab.updateActiveTravel(manager);
-            abodeTab.reloadAbodeFacilities(manager);
-            challengeTab.reloadCultivatorOptions(manager);
-            challengeTab.updateBattleState(manager);
+            switch (index) {
+                case 0 -> trainingTab.updateTrainingState(manager);
+                case 1 -> {
+                    bagTab.reloadBagOptions(manager, settings);
+                    bagTab.updateSelectionDescriptions();
+                }
+                case 2 -> {
+                    travelTab.reloadTravelOptions(manager);
+                    travelTab.updateActiveTravel(manager);
+                    travelTab.updateSelectionDescriptions();
+                }
+                case 3 -> abodeTab.reloadAbodeFacilities(manager);
+                case 4 -> {
+                    challengeTab.reloadCultivatorOptions(manager);
+                    challengeTab.updateBattleState(manager);
+                    challengeTab.updateSelectionDescriptions();
+                }
+                default -> {
+                    // Guide tab is static.
+                }
+            }
         } finally {
             setTabsRefreshing(false);
         }
-        updateSelectionDescriptions();
     }
 
     private void setTabsRefreshing(boolean refreshing) {
         bagTab.setRefreshing(refreshing);
         travelTab.setRefreshing(refreshing);
         challengeTab.setRefreshing(refreshing);
-    }
-
-    private void updateSelectionDescriptions() {
-        bagTab.updateSelectionDescriptions();
-        travelTab.updateSelectionDescriptions();
-        challengeTab.updateSelectionDescriptions();
     }
 
     @Override

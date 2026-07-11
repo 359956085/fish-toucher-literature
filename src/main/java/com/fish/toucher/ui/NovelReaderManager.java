@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,6 +35,7 @@ public final class NovelReaderManager implements Disposable {
     private final AtomicBoolean notificationPending = new AtomicBoolean();
     private final AtomicLong loadGeneration = new AtomicLong();
     private final AtomicLong windowGeneration = new AtomicLong();
+    private final AtomicBoolean cacheRecoveryPending = new AtomicBoolean();
 
     private IndexedNovelDocument document;
     private IndexedNovelDocument.LineWindow window;
@@ -44,7 +46,7 @@ public final class NovelReaderManager implements Disposable {
     private boolean disposed;
 
     public NovelReaderManager() {
-        IndexedNovelDocument.cleanupStaleCaches();
+        CompletableFuture.runAsync(IndexedNovelDocument::cleanupStaleCaches);
     }
 
     public static NovelReaderManager getInstance() {
@@ -69,7 +71,11 @@ public final class NovelReaderManager implements Disposable {
                 return;
             }
             for (Runnable listener : listeners) {
-                listener.run();
+                try {
+                    listener.run();
+                } catch (RuntimeException exception) {
+                    LOG.warn("fireChange: novel reader listener failed", exception);
+                }
             }
         });
     }
@@ -194,47 +200,63 @@ public final class NovelReaderManager implements Disposable {
     ) {
         LoadResult safeResult = result != null
                 ? result : new LoadResult(LoadStatus.IO_ERROR, "读取文件失败");
-        if (generation != loadGeneration.get() || disposed) {
-            closeQuietly(loadedDocument);
-            complete(completion, new LoadResult(LoadStatus.CANCELLED, "加载已取消"));
-            return;
-        }
-
+        IndexedNovelDocument documentToClose = null;
+        IndexedNovelDocument rejectedDocument = null;
+        LoadResult completionResult = safeResult;
+        boolean stateChanged = false;
         synchronized (this) {
-            loading = false;
-            if (safeResult.isSuccess() && loadedDocument != null && loadedWindow != null) {
-                closeQuietly(document);
+            if (generation != loadGeneration.get() || disposed) {
+                rejectedDocument = loadedDocument;
+                completionResult = new LoadResult(LoadStatus.CANCELLED, "加载已取消");
+            } else if (safeResult.isSuccess() && loadedDocument != null && loadedWindow != null) {
+                loading = false;
+                documentToClose = document;
                 document = loadedDocument;
                 window = loadedWindow;
                 currentLine = loadedLine;
                 currentFilePath = filePath;
                 visible = true;
+                stateChanged = true;
 
                 NovelReaderSettings settings = NovelReaderSettings.getInstance();
                 settings.setLastFilePath(filePath);
                 settings.addRecentFilePath(filePath);
                 LOG.info("小说加载完成: lines=" + document.lineCount());
             } else {
-                closeQuietly(loadedDocument);
+                loading = false;
+                rejectedDocument = loadedDocument;
+                stateChanged = true;
             }
         }
-        fireChange();
-        complete(completion, safeResult);
+        closeQuietly(documentToClose);
+        closeQuietly(rejectedDocument);
+        if (stateChanged) {
+            fireChange();
+        }
+        complete(completion, completionResult);
     }
 
     private void finishCancelled(long generation, @Nullable Consumer<LoadResult> completion) {
-        if (generation == loadGeneration.get()) {
-            synchronized (this) {
+        boolean stateChanged = false;
+        synchronized (this) {
+            if (generation == loadGeneration.get() && !disposed) {
                 loading = false;
+                stateChanged = true;
             }
+        }
+        if (stateChanged) {
             fireChange();
         }
         complete(completion, new LoadResult(LoadStatus.CANCELLED, "加载已取消"));
     }
 
     private static void complete(@Nullable Consumer<LoadResult> completion, LoadResult result) {
-        if (completion != null) {
-            completion.accept(result);
+        if (completion == null) return;
+        Runnable callback = () -> completion.accept(result);
+        if (ApplicationManager.getApplication().isDispatchThread()) {
+            callback.run();
+        } else {
+            ApplicationManager.getApplication().invokeLater(callback);
         }
     }
 
@@ -252,11 +274,12 @@ public final class NovelReaderManager implements Disposable {
             return loading ? "[加载中...]" : "[未加载小说]";
         }
         int maxChars = NovelReaderSettings.getInstance().getStealthCharsPerLine();
-        if (line.length() > maxChars) {
-            return line.substring(0, maxChars);
+        int codePoints = line.codePointCount(0, line.length());
+        if (codePoints > maxChars) {
+            return line.substring(0, line.offsetByCodePoints(0, maxChars));
         }
-        if (line.length() < maxChars) {
-            return line + "\u3000".repeat(maxChars - line.length());
+        if (codePoints < maxChars) {
+            return line + "\u3000".repeat(maxChars - codePoints);
         }
         return line;
     }
@@ -302,12 +325,17 @@ public final class NovelReaderManager implements Disposable {
                 queueWindowLoad(lineNumber, currentLine);
                 break;
             }
-            if (line.length() <= charsPerLine) {
+            int codePointCount = line.codePointCount(0, line.length());
+            if (codePointCount <= charsPerLine) {
                 result.add(line);
                 continue;
             }
-            for (int position = 0; position < line.length(); position += charsPerLine) {
-                result.add(line.substring(position, Math.min(position + charsPerLine, line.length())));
+            int position = 0;
+            while (position < line.length()) {
+                int remaining = line.codePointCount(position, line.length());
+                int next = line.offsetByCodePoints(position, Math.min(charsPerLine, remaining));
+                result.add(line.substring(position, next));
+                position = next;
             }
         }
         return result;
@@ -325,7 +353,7 @@ public final class NovelReaderManager implements Disposable {
         if (document == null) {
             return "";
         }
-        int percent = (int) ((long) currentLine * 100 / document.lineCount());
+        int percent = (int) ((long) (currentLine + 1) * 100 / document.lineCount());
         return String.format("[%d/%d] %d%%", currentLine + 1, document.lineCount(), percent);
     }
 
@@ -371,6 +399,26 @@ public final class NovelReaderManager implements Disposable {
                 });
             } catch (IOException exception) {
                 LOG.warn("读取小说分页缓存失败", exception);
+                recoverFromCacheFailure(activeDocument);
+            }
+        });
+    }
+
+    private void recoverFromCacheFailure(IndexedNovelDocument failedDocument) {
+        String path;
+        synchronized (this) {
+            if (disposed || failedDocument != document || currentFilePath.isEmpty()) {
+                return;
+            }
+            path = currentFilePath;
+        }
+        if (!cacheRecoveryPending.compareAndSet(false, true)) {
+            return;
+        }
+        loadFileAsync(null, path, result -> {
+            cacheRecoveryPending.set(false);
+            if (!result.isSuccess() && result.status() != LoadStatus.CANCELLED) {
+                LOG.warn("小说分页缓存重建失败: " + result.message());
             }
         });
     }
@@ -419,14 +467,20 @@ public final class NovelReaderManager implements Disposable {
     }
 
     @Override
-    public synchronized void dispose() {
-        disposed = true;
-        loadGeneration.incrementAndGet();
-        windowGeneration.incrementAndGet();
-        closeQuietly(document);
-        document = null;
-        window = null;
-        listeners.clear();
+    public void dispose() {
+        IndexedNovelDocument documentToClose;
+        synchronized (this) {
+            disposed = true;
+            loading = false;
+            loadGeneration.incrementAndGet();
+            windowGeneration.incrementAndGet();
+            documentToClose = document;
+            document = null;
+            window = null;
+            listeners.clear();
+        }
+        closeQuietly(documentToClose);
+        IndexedNovelDocument.shutdownSessionCache();
     }
 
     private static void closeQuietly(@Nullable IndexedNovelDocument value) {

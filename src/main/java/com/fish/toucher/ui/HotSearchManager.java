@@ -58,7 +58,11 @@ public final class HotSearchManager implements Disposable {
     private Future<?> activeFetch;
     private int currentIndex;
     private String lastRefreshTime = "";
+    private String lastAttemptTime = "";
     private String currentSource = "";
+    private String lastError = "";
+    private FetchStatus status = FetchStatus.IDLE;
+    private boolean stale;
     private volatile boolean running;
     private volatile boolean disposed;
 
@@ -92,7 +96,11 @@ public final class HotSearchManager implements Disposable {
             notificationPending.set(false);
             if (disposed) return;
             for (Runnable listener : listeners) {
-                listener.run();
+                try {
+                    listener.run();
+                } catch (RuntimeException exception) {
+                    LOG.warn("fireChange: hot-search listener failed", exception);
+                }
             }
         });
     }
@@ -143,6 +151,11 @@ public final class HotSearchManager implements Disposable {
             items.clear();
             currentIndex = 0;
             lastRefreshTime = "";
+            lastAttemptTime = "";
+            lastError = "";
+            stale = false;
+            status = FetchStatus.LOADING;
+            currentSource = NovelReaderSettings.getInstance().getHotSearchSource();
             requestVersion.incrementAndGet();
             cancel(activeFetch);
         }
@@ -150,10 +163,26 @@ public final class HotSearchManager implements Disposable {
         submitFetch();
     }
 
-    public void applyTimingChanges() {
-        if (running) {
-            stop();
-            start();
+    public synchronized void applyTimingChanges() {
+        if (!running || scheduler == null || scheduler.isShutdown()) {
+            return;
+        }
+        cancel(refreshTask);
+        cancel(carouselTask);
+        carouselTask = null;
+        long refreshMinutes = Math.max(
+                1,
+                getSetting(() -> NovelReaderSettings.getInstance().getRefreshIntervalMinutes(),
+                        DEFAULT_REFRESH_MINUTES)
+        );
+        refreshTask = scheduler.scheduleAtFixedRate(
+                this::submitFetch,
+                refreshMinutes,
+                refreshMinutes,
+                TimeUnit.MINUTES
+        );
+        if (!items.isEmpty()) {
+            startCarouselIfNeeded();
         }
     }
 
@@ -167,8 +196,13 @@ public final class HotSearchManager implements Disposable {
         }
         long version = requestVersion.incrementAndGet();
         String source = NovelReaderSettings.getInstance().getHotSearchSource();
+        status = FetchStatus.LOADING;
+        lastAttemptTime = formatCurrentTime();
+        lastError = "";
+        currentSource = source;
         cancel(activeFetch);
         activeFetch = scheduler.submit(() -> fetch(version, source));
+        fireChange();
     }
 
     private void fetch(long version, String source) {
@@ -180,6 +214,7 @@ public final class HotSearchManager implements Disposable {
             if (response.statusCode() != 200) {
                 closeQuietly(response.body());
                 LOG.warn("热搜请求返回 HTTP " + response.statusCode() + ": " + source);
+                completeFailure(version, source, "HTTP " + response.statusCode());
                 return;
             }
 
@@ -188,40 +223,84 @@ public final class HotSearchManager implements Disposable {
                 byte[] bytes = input.readNBytes(MAX_RESPONSE_BYTES + 1);
                 if (bytes.length > MAX_RESPONSE_BYTES) {
                     LOG.warn("热搜响应超过 5 MiB: " + source);
+                    completeFailure(version, source, "Response exceeds 5 MiB");
                     return;
                 }
                 body = new String(bytes, StandardCharsets.UTF_8);
             }
 
             List<HotSearchItem> parsed = HotSearchParser.parse(source, body);
-            if (version != requestVersion.get()
-                    || !running
-                    || !source.equals(NovelReaderSettings.getInstance().getHotSearchSource())) {
-                return;
-            }
-
-            synchronized (this) {
-                if (version != requestVersion.get() || !running) return;
-                if (!parsed.isEmpty()) {
-                    items.clear();
-                    items.addAll(parsed);
-                    currentIndex = Math.min(currentIndex, items.size() - 1);
-                    currentSource = source;
-                }
-                lastRefreshTime = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-            }
-            if (!parsed.isEmpty()) {
-                startCarouselIfNeeded();
-                fireChange();
+            if (parsed.isEmpty()) {
+                completeEmpty(version, source);
+            } else {
+                completeSuccess(version, source, parsed);
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         } catch (Exception exception) {
-            if (version == requestVersion.get() && running) {
+            if (isCurrentRequest(version, source)) {
                 LOG.warn("热搜请求失败: " + source, exception);
+                completeFailure(version, source, exception.getClass().getSimpleName());
             }
         }
+    }
+
+    private boolean isCurrentRequest(long version, String source) {
+        return version == requestVersion.get()
+                && running
+                && source.equals(NovelReaderSettings.getInstance().getHotSearchSource());
+    }
+
+    private void completeSuccess(long version, String source, List<HotSearchItem> parsed) {
+        if (!isCurrentRequest(version, source)) return;
+        synchronized (this) {
+            if (!isCurrentRequest(version, source)) return;
+            items.clear();
+            items.addAll(parsed);
+            currentIndex = Math.min(currentIndex, items.size() - 1);
+            currentSource = source;
+            lastRefreshTime = formatCurrentTime();
+            lastError = "";
+            stale = false;
+            status = FetchStatus.SUCCESS;
+        }
+        startCarouselIfNeeded();
+        fireChange();
+    }
+
+    private void completeEmpty(long version, String source) {
+        if (!isCurrentRequest(version, source)) return;
+        synchronized (this) {
+            if (!isCurrentRequest(version, source)) return;
+            boolean keepPrevious = !items.isEmpty() && source.equals(currentSource);
+            stale = keepPrevious;
+            status = keepPrevious ? FetchStatus.FAILED : FetchStatus.EMPTY;
+            lastError = keepPrevious ? "No items returned" : "";
+            if (!keepPrevious) {
+                items.clear();
+                currentIndex = 0;
+            }
+        }
+        fireChange();
+    }
+
+    private void completeFailure(long version, String source, String error) {
+        if (!isCurrentRequest(version, source)) return;
+        synchronized (this) {
+            if (!isCurrentRequest(version, source)) return;
+            stale = !items.isEmpty() && source.equals(currentSource);
+            status = FetchStatus.FAILED;
+            lastError = error != null ? error : "Unknown error";
+            if (!stale) {
+                items.clear();
+                currentIndex = 0;
+            }
+        }
+        fireChange();
+    }
+
+    private static String formatCurrentTime() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
     }
 
     private HttpRequest buildRequest(String source) {
@@ -298,9 +377,15 @@ public final class HotSearchManager implements Disposable {
     }
 
     public synchronized String getCurrentTitle() {
-        return items.isEmpty()
-                ? "[" + FishToucherBundle.message("hotSearch.loading") + "]"
-                : items.get(currentIndex).word();
+        if (!items.isEmpty()) {
+            return items.get(currentIndex).word();
+        }
+        String key = switch (status) {
+            case FAILED -> "hotSearch.status.failedShort";
+            case EMPTY -> "hotSearch.status.empty";
+            default -> "hotSearch.loading";
+        };
+        return "[" + FishToucherBundle.message(key) + "]";
     }
 
     public synchronized String getCurrentStatusText() {
@@ -325,6 +410,19 @@ public final class HotSearchManager implements Disposable {
 
     public synchronized String getCurrentSource() {
         return currentSource;
+    }
+
+    public synchronized HotSearchSnapshot getSnapshot() {
+        return new HotSearchSnapshot(
+                status,
+                List.copyOf(items),
+                currentIndex,
+                lastAttemptTime,
+                lastRefreshTime,
+                currentSource,
+                lastError,
+                stale
+        );
     }
 
     public synchronized boolean hasContent() {
@@ -382,6 +480,25 @@ public final class HotSearchManager implements Disposable {
             return fallback;
         }
     }
+
+    public enum FetchStatus {
+        IDLE,
+        LOADING,
+        SUCCESS,
+        EMPTY,
+        FAILED
+    }
+
+    public record HotSearchSnapshot(
+            FetchStatus status,
+            List<HotSearchItem> items,
+            int currentIndex,
+            String lastAttemptTime,
+            String lastSuccessTime,
+            String source,
+            String error,
+            boolean stale
+    ) {}
 
     public record HotSearchItem(int rank, String word, String hotTag, String url) {}
 }

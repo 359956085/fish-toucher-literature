@@ -13,7 +13,6 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
 import com.fish.toucher.settings.NovelReaderSettings;
-import com.intellij.openapi.application.ApplicationManager;
 import org.jetbrains.annotations.NotNull;
 
 public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAware {
@@ -56,37 +55,27 @@ public class NovelReaderToolWindowFactory implements ToolWindowFactory, DumbAwar
      */
     public static void switchMode(@NotNull String newMode) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        NovelReaderRuntimeCoordinator.RuntimeSettings previous =
+                NovelReaderRuntimeCoordinator.capture(settings);
         settings.setPluginMode(newMode);
-        newMode = settings.getPluginMode();
-        if (NovelReaderSettings.MODE_HOT_SEARCH.equals(newMode)) {
-            IdleCultivationManager.getInstance().stop();
-            if (!HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().start();
-            }
-        } else if (NovelReaderSettings.MODE_CULTIVATION.equals(newMode)) {
-            if (HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().stop();
-            }
-            IdleCultivationManager.getInstance().start();
-        } else {
-            if (HotSearchManager.getInstance().isRunning()) {
-                HotSearchManager.getInstance().stop();
-            }
-            IdleCultivationManager.getInstance().stop();
-            NovelReaderManager.getInstance().loadMostRecentFileIfNeeded();
-        }
-        ApplicationManager.getApplication().invokeLater(NovelReaderToolWindowFactory::rebuildAllToolWindows);
+        NovelReaderRuntimeCoordinator.apply(
+                previous,
+                NovelReaderRuntimeCoordinator.capture(settings)
+        );
     }
 
     /**
      * Switch UI language and rebuild all tool windows. Safe to call from any thread.
      */
     public static void switchLanguage(@NotNull String language) {
-        NovelReaderSettings.getInstance().setUiLanguage(language);
-        ApplicationManager.getApplication().invokeLater(() -> {
-            rebuildAllToolWindows();
-            refreshAllStatusBarWidgets();
-        });
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        NovelReaderRuntimeCoordinator.RuntimeSettings previous =
+                NovelReaderRuntimeCoordinator.capture(settings);
+        settings.setUiLanguage(language);
+        NovelReaderRuntimeCoordinator.apply(
+                previous,
+                NovelReaderRuntimeCoordinator.capture(settings)
+        );
     }
 
     /**

@@ -48,6 +48,7 @@ intellijPlatform {
 
     pluginVerification {
         ides {
+            create(IntelliJPlatformType.IntellijIdea, "2024.2")
             create(IntelliJPlatformType.IntellijIdea, "2026.1.1")
         }
     }

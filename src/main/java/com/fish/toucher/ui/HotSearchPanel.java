@@ -163,28 +163,55 @@ public class HotSearchPanel extends JPanel implements Disposable {
 
     private void refreshContent() {
         HotSearchManager manager = HotSearchManager.getInstance();
+        HotSearchManager.HotSearchSnapshot snapshot = manager.getSnapshot();
+        List<HotSearchManager.HotSearchItem> items = snapshot.items();
 
-        if (!manager.hasContent()) {
-            listModel.clear();
-            statusLabel.setText(FishToucherBundle.message("hotSearch.status.loading"));
+        if (items.isEmpty()) {
+            if (!listModel.isEmpty()) {
+                listModel.clear();
+            }
+            statusLabel.setText(switch (snapshot.status()) {
+                case FAILED -> FishToucherBundle.message("hotSearch.status.failed", snapshot.error());
+                case EMPTY -> FishToucherBundle.message("hotSearch.status.empty");
+                default -> FishToucherBundle.message("hotSearch.status.loading");
+            });
             return;
         }
 
         updateFont();
+        currentIndex = snapshot.currentIndex();
 
-        List<HotSearchManager.HotSearchItem> items = manager.getAllItems();
-        currentIndex = manager.getCurrentIndex();
-
-        listModel.clear();
-        for (HotSearchManager.HotSearchItem item : items) {
-            listModel.addElement(item);
+        if (!modelMatches(items)) {
+            listModel.clear();
+            for (HotSearchManager.HotSearchItem item : items) {
+                listModel.addElement(item);
+            }
         }
 
         list.repaint();
 
-        String refreshTime = manager.getLastRefreshTime();
-        String sourceLabel = HotSearchManager.getSourceLabel(manager.getCurrentSource());
-        statusLabel.setText(FishToucherBundle.message("hotSearch.status.format", sourceLabel, items.size(), refreshTime));
+        String sourceLabel = HotSearchManager.getSourceLabel(snapshot.source());
+        String status = FishToucherBundle.message(
+                "hotSearch.status.format",
+                sourceLabel,
+                items.size(),
+                snapshot.lastSuccessTime()
+        );
+        statusLabel.setText(snapshot.stale()
+                ? FishToucherBundle.message("hotSearch.status.stale", status)
+                : status);
+    }
+
+    private boolean modelMatches(List<HotSearchManager.HotSearchItem> items) {
+        if (listModel.size() != items.size()) {
+            return false;
+        }
+        for (int index = 0; index < items.size(); index++) {
+            if (!items.get(index).equals(listModel.get(index))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void openInBrowser(String url) {

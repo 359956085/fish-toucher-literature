@@ -20,6 +20,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntUnaryOperator;
+import java.util.function.LongSupplier;
 
 @Service(Service.Level.APP)
 public final class IdleCultivationManager implements Disposable {
@@ -76,74 +78,31 @@ public final class IdleCultivationManager implements Disposable {
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
 
-    private static final List<TechniqueDefinition> TECHNIQUES = List.of(
-            new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
-            new TechniqueDefinition(EVERGREEN_TECHNIQUE_ID, "cultivation.technique.evergreen.name", "cultivation.technique.evergreen.desc", 18, 0, 0, 0, 0, 0),
-            new TechniqueDefinition(STONE_GATHERING_TECHNIQUE_ID, "cultivation.technique.stone.name", "cultivation.technique.stone.desc", 0, 25, 0, 0, 0, 0),
-            new TechniqueDefinition(MYSTIC_ORTHODOX_TECHNIQUE_ID, "cultivation.technique.mystic.name", "cultivation.technique.mystic.desc", 12, 12, 6, 0, 0, 0),
-            new TechniqueDefinition(SWORD_HEART_TECHNIQUE_ID, "cultivation.technique.swordHeart.name", "cultivation.technique.swordHeart.desc", 8, 0, 0, 16, 0, 8),
-            new TechniqueDefinition(GOLDEN_BODY_TECHNIQUE_ID, "cultivation.technique.goldenBody.name", "cultivation.technique.goldenBody.desc", 0, 0, 4, 0, 18, 12)
-    );
-    private static final Map<String, TechniqueDefinition> TECHNIQUE_BY_ID = indexTechniques();
+    private static final List<TechniqueDefinition> TECHNIQUES = CultivationCatalog.TECHNIQUES;
+    private static final Map<String, TechniqueDefinition> TECHNIQUE_BY_ID = CultivationCatalog.TECHNIQUE_BY_ID;
 
-    private static final List<PillDefinition> PILLS = List.of(
-            new PillDefinition(QI_PILL_ID, "cultivation.pill.qi.name", "cultivation.pill.qi.desc"),
-            new PillDefinition(SPIRIT_PILL_ID, "cultivation.pill.spirit.name", "cultivation.pill.spirit.desc"),
-            new PillDefinition(BREAKTHROUGH_PILL_ID, "cultivation.pill.breakthrough.name", "cultivation.pill.breakthrough.desc"),
-            new PillDefinition(MERIDIAN_PILL_ID, "cultivation.pill.meridian.name", "cultivation.pill.meridian.desc")
-    );
-    private static final Map<String, PillDefinition> PILL_BY_ID = indexPills();
+    private static final List<PillDefinition> PILLS = CultivationCatalog.PILLS;
+    private static final Map<String, PillDefinition> PILL_BY_ID = CultivationCatalog.PILL_BY_ID;
 
-    private static final List<SpellDefinition> SPELLS = List.of(
-            new SpellDefinition(FIRE_SWORD_SPELL_ID, "cultivation.spell.fireSword.name", "cultivation.spell.fireSword.desc", 90, 6, BattleSpellType.DAMAGE, 100),
-            new SpellDefinition(PALM_THUNDER_SPELL_ID, "cultivation.spell.palmThunder.name", "cultivation.spell.palmThunder.desc", 140, 10, BattleSpellType.DAMAGE, 160),
-            new SpellDefinition(FROST_BIND_SPELL_ID, "cultivation.spell.frostBind.name", "cultivation.spell.frostBind.desc", 120, 12, BattleSpellType.FROST, 70),
-            new SpellDefinition(GREENWOOD_HEAL_SPELL_ID, "cultivation.spell.greenwoodHeal.name", "cultivation.spell.greenwoodHeal.desc", 110, 14, BattleSpellType.HEAL, 16),
-            new SpellDefinition(GOLDEN_LIGHT_SPELL_ID, "cultivation.spell.goldenLight.name", "cultivation.spell.goldenLight.desc", 100, 16, BattleSpellType.SHIELD, 45)
-    );
-    private static final Map<String, SpellDefinition> SPELL_BY_ID = indexSpells();
+    private static final List<SpellDefinition> SPELLS = CultivationCatalog.SPELLS;
+    private static final Map<String, SpellDefinition> SPELL_BY_ID = CultivationCatalog.SPELL_BY_ID;
 
-    private static final List<ArtifactDefinition> ARTIFACTS = List.of(
-            new ArtifactDefinition(GREEN_SWORD_ARTIFACT_ID, "cultivation.artifact.greenSword.name", "cultivation.artifact.greenSword.desc", 14, 0, 0, 0),
-            new ArtifactDefinition(TURTLE_SHIELD_ARTIFACT_ID, "cultivation.artifact.turtleShield.name", "cultivation.artifact.turtleShield.desc", 0, 14, 0, 0),
-            new ArtifactDefinition(SPIRIT_JADE_ARTIFACT_ID, "cultivation.artifact.spiritJade.name", "cultivation.artifact.spiritJade.desc", 0, 0, 16, 6),
-            new ArtifactDefinition(WIND_THUNDER_BOOTS_ARTIFACT_ID, "cultivation.artifact.windThunderBoots.name", "cultivation.artifact.windThunderBoots.desc", 6, 6, 0, 4),
-            new ArtifactDefinition(TAIXU_CAULDRON_ARTIFACT_ID, "cultivation.artifact.taixuCauldron.name", "cultivation.artifact.taixuCauldron.desc", 8, 8, 8, 10)
-    );
-    private static final Map<String, ArtifactDefinition> ARTIFACT_BY_ID = indexArtifacts();
+    private static final List<ArtifactDefinition> ARTIFACTS = CultivationCatalog.ARTIFACTS;
+    private static final Map<String, ArtifactDefinition> ARTIFACT_BY_ID = CultivationCatalog.ARTIFACT_BY_ID;
 
-    private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
-            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 30, 0, 1_500, 45, 45, 8),
-            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 60, 0, 4_200, 120, 70, 12),
-            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 120, 1, 14_000, 420, 40, 16),
-            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 240, 2, 32_000, 900, 65, 30)
-    );
-    private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
+    private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = CultivationCatalog.TRAVEL_LOCATIONS;
+    private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = CultivationCatalog.TRAVEL_BY_ID;
 
-    private static final List<CultivatorDefinition> CULTIVATORS = List.of(
-            new CultivatorDefinition("outer_sword_lin", "cultivation.cultivator.outerSwordLin.name", 1_000L, 100L, 70L, 100L, 600L, FIRE_SWORD_SPELL_ID, "", ""),
-            new CultivatorDefinition("herbalist_chen", "cultivation.cultivator.herbalistChen.name", 1_700L, 170L, 120L, 160L, 900L, "", "", GREEN_SWORD_ARTIFACT_ID),
-            new CultivatorDefinition("talisman_zhao", "cultivation.cultivator.talismanZhao.name", 2_600L, 260L, 190L, 250L, 1_200L, PALM_THUNDER_SPELL_ID, EVERGREEN_TECHNIQUE_ID, ""),
-            new CultivatorDefinition("cold_shen", "cultivation.cultivator.coldShen.name", 4_200L, 390L, 300L, 380L, 1_600L, "", "", TURTLE_SHIELD_ARTIFACT_ID),
-            new CultivatorDefinition("golden_core_han", "cultivation.cultivator.goldenCoreHan.name", 6_500L, 550L, 420L, 600L, 2_100L, FROST_BIND_SPELL_ID, STONE_GATHERING_TECHNIQUE_ID, ""),
-            new CultivatorDefinition("armor_bai", "cultivation.cultivator.armorBai.name", 15_000L, 1_350L, 1_000L, 850L, 2_700L, "", "", SPIRIT_JADE_ARTIFACT_ID),
-            new CultivatorDefinition("thunder_luo", "cultivation.cultivator.thunderLuo.name", 18_000L, 1_550L, 1_200L, 1_100L, 3_400L, GREENWOOD_HEAL_SPELL_ID, MYSTIC_ORTHODOX_TECHNIQUE_ID, ""),
-            new CultivatorDefinition("illusion_su", "cultivation.cultivator.illusionSu.name", 22_000L, 1_800L, 1_450L, 1_350L, 4_200L, "", SWORD_HEART_TECHNIQUE_ID, WIND_THUNDER_BOOTS_ARTIFACT_ID),
-            new CultivatorDefinition("mahayana_gu", "cultivation.cultivator.mahayanaGu.name", 28_000L, 2_200L, 1_750L, 1_600L, 5_100L, GOLDEN_LIGHT_SPELL_ID, GOLDEN_BODY_TECHNIQUE_ID, ""),
-            new CultivatorDefinition("taixu_xuanheng", "cultivation.cultivator.taixuXuanheng.name", 35_000L, 2_700L, 2_150L, 1_900L, 6_200L, "", "", TAIXU_CAULDRON_ARTIFACT_ID)
-    );
-    private static final Map<String, CultivatorDefinition> CULTIVATOR_BY_ID = indexCultivators();
+    private static final List<CultivatorDefinition> CULTIVATORS = CultivationCatalog.CULTIVATORS;
+    private static final Map<String, CultivatorDefinition> CULTIVATOR_BY_ID = CultivationCatalog.CULTIVATOR_BY_ID;
 
-    private static final List<AbodeFacilityDefinition> ABODE_FACILITIES = List.of(
-            new AbodeFacilityDefinition(SPIRIT_GATHERING_ARRAY_ID, "cultivation.abode.spiritGathering.name", "cultivation.abode.spiritGathering.desc", 180),
-            new AbodeFacilityDefinition(SPIRIT_VEIN_ID, "cultivation.abode.spiritVein.name", "cultivation.abode.spiritVein.desc", 220),
-            new AbodeFacilityDefinition(ALCHEMY_ROOM_ID, "cultivation.abode.alchemyRoom.name", "cultivation.abode.alchemyRoom.desc", 260),
-            new AbodeFacilityDefinition(INSIGHT_ROOM_ID, "cultivation.abode.insightRoom.name", "cultivation.abode.insightRoom.desc", 300)
-    );
-    private static final Map<String, AbodeFacilityDefinition> ABODE_BY_ID = indexAbodeFacilities();
+    private static final List<AbodeFacilityDefinition> ABODE_FACILITIES = CultivationCatalog.ABODE_FACILITIES;
+    private static final Map<String, AbodeFacilityDefinition> ABODE_BY_ID = CultivationCatalog.ABODE_BY_ID;
 
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
     private final AtomicBoolean notificationPending = new AtomicBoolean();
+    private final LongSupplier currentTimeMillis;
+    private final IntUnaryOperator randomInt;
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
     private ScheduledFuture<?> battleTask;
@@ -155,7 +114,14 @@ public final class IdleCultivationManager implements Disposable {
         return ApplicationManager.getApplication().getService(IdleCultivationManager.class);
     }
 
-    public IdleCultivationManager() {}
+    public IdleCultivationManager() {
+        this(System::currentTimeMillis, bound -> ThreadLocalRandom.current().nextInt(bound));
+    }
+
+    IdleCultivationManager(LongSupplier currentTimeMillis, IntUnaryOperator randomInt) {
+        this.currentTimeMillis = currentTimeMillis;
+        this.randomInt = randomInt;
+    }
 
     public void addChangeListener(Runnable listener) {
         listeners.addIfAbsent(listener);
@@ -172,12 +138,28 @@ public final class IdleCultivationManager implements Disposable {
         ApplicationManager.getApplication().invokeLater(() -> {
             notificationPending.set(false);
             for (Runnable listener : listeners) {
-                listener.run();
+                try {
+                    listener.run();
+                } catch (RuntimeException exception) {
+                    LOG.warn("fireChange: cultivation listener failed", exception);
+                }
             }
         });
     }
 
+    private long now() {
+        return Math.max(0L, currentTimeMillis.getAsLong());
+    }
+
+    private int nextInt(int bound) {
+        if (bound <= 0) {
+            throw new IllegalArgumentException("bound must be positive");
+        }
+        return Math.floorMod(randomInt.applyAsInt(bound), bound);
+    }
+
     public synchronized void start() {
+        NovelReaderSettings.getInstance().registerCultivationTransactionMonitor(this);
         ensureCultivationDefaults();
         if (running) {
             settleProgress(false);
@@ -228,7 +210,7 @@ public final class IdleCultivationManager implements Disposable {
 
     public synchronized void meditateOnce() {
         settleProgress(false);
-        long now = System.currentTimeMillis();
+        long now = now();
         if (!canMeditate(now)) {
             lastMessage = FishToucherBundle.message("cultivation.status.meditationCooldown", getMeditationRemainingText(now));
             fireChange();
@@ -273,7 +255,7 @@ public final class IdleCultivationManager implements Disposable {
         int successChance = getBreakthroughChance(realmIndex, settings.getCultivationBreakthroughFailures());
         boolean usedBreakthroughPill = settings.isBreakthroughPillActive();
         boolean usedMeridianPill = settings.isMeridianPillActive();
-        boolean success = ThreadLocalRandom.current().nextInt(100) < successChance;
+        boolean success = nextInt(100) < successChance;
         settings.setBreakthroughPillActive(false);
         settings.setMeridianPillActive(false);
 
@@ -284,9 +266,11 @@ public final class IdleCultivationManager implements Disposable {
             settings.setCultivationBreakthroughFailures(0);
             lastMessage = FishToucherBundle.message("cultivation.status.breakthroughSuccess", getRealmName(nextRealm));
         } else {
-            int retainPercent = usedMeridianPill ? 88 : 78;
             settings.setCultivationBreakthroughFailures(settings.getCultivationBreakthroughFailures() + 1);
-            settings.setCultivationQi(requiredQi * retainPercent / 100L);
+            settings.setCultivationQi(CultivationProgressEngine.retainedQiAfterFailedBreakthrough(
+                    requiredQi,
+                    usedMeridianPill
+            ));
             lastMessage = usedMeridianPill
                     ? FishToucherBundle.message("cultivation.status.breakthroughProtected")
                     : FishToucherBundle.message("cultivation.status.breakthroughFailed");
@@ -301,7 +285,7 @@ public final class IdleCultivationManager implements Disposable {
     public synchronized void settleProgress(boolean showOfflineMessage) {
         ensureCultivationDefaults();
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        long now = System.currentTimeMillis();
+        long now = now();
         long lastUpdate = settings.getCultivationLastUpdateMillis();
         if (lastUpdate <= 0L || lastUpdate > now) {
             settings.setCultivationLastUpdateMillis(now);
@@ -313,16 +297,19 @@ public final class IdleCultivationManager implements Disposable {
             return;
         }
 
-        long creditedMillis = Math.min(elapsedMillis, OFFLINE_CAP_MILLIS);
         int realmIndex = settings.getCultivationRealmIndex();
         boolean offlineCatchUp = showOfflineMessage || elapsedMillis > SECLUSION_ONLINE_WINDOW_MILLIS;
-        long passiveSeconds = creditedMillis / 1_000L;
-        long seclusionSeconds = offlineCatchUp || isSeclusionPaused(settings) ? 0L : creditedMillis / 1_000L;
-        long qiUnits = settings.getCultivationQiRemainderSeconds()
-                + passiveSeconds * getPassiveQiPerMinute(realmIndex)
-                + seclusionSeconds * getSeclusionQiPerMinute(realmIndex);
-        long qiGain = qiUnits / 60L;
-        settings.setCultivationQiRemainderSeconds(qiUnits % 60L);
+        CultivationProgressEngine.ProgressGain progress = CultivationProgressEngine.settle(
+                elapsedMillis,
+                OFFLINE_CAP_MILLIS,
+                settings.getCultivationQiRemainderSeconds(),
+                getPassiveQiPerMinute(realmIndex),
+                getSeclusionQiPerMinute(realmIndex),
+                !offlineCatchUp && !isSeclusionPaused(settings)
+        );
+        long creditedMillis = progress.creditedMillis();
+        long qiGain = progress.qiGain();
+        settings.setCultivationQiRemainderSeconds(progress.remainderUnits());
         settings.setCultivationSpiritStoneRemainderSeconds(0L);
         boolean travelProgressed = advanceActiveTravel(settings, creditedMillis);
 
@@ -444,7 +431,7 @@ public final class IdleCultivationManager implements Disposable {
             return false;
         }
 
-        long now = System.currentTimeMillis();
+        long now = now();
         settings.setActiveTravelLocationId(location.id());
         settings.setTravelStartMillis(now);
         settings.setTravelEndMillis(0L);
@@ -470,20 +457,19 @@ public final class IdleCultivationManager implements Disposable {
         }
 
         int realmIndex = settings.getCultivationRealmIndex();
-        ThreadLocalRandom random = ThreadLocalRandom.current();
         long qiGain = applyQiBonus(Math.round(location.baseQiReward() * (1.0 + realmIndex * 0.04)));
         long stoneGain = applyStoneBonus(Math.round(location.baseStoneReward() * (1.0 + realmIndex * 0.08)));
         String pillId = "";
         int pillCount = 0;
-        if (random.nextInt(100) < location.pillChance()) {
+        if (nextInt(100) < location.pillChance()) {
             pillId = choosePillForLocation(location.id());
-            pillCount = random.nextInt(100) < 18 ? 2 : 1;
+            pillCount = nextInt(100) < 18 ? 2 : 1;
             settings.addPill(pillId, pillCount);
         }
 
         String techniqueId = "";
         boolean duplicateTechnique = false;
-        if (random.nextInt(100) < location.techniqueChance()) {
+        if (nextInt(100) < location.techniqueChance()) {
             techniqueId = chooseTechniqueForTravel();
             if (!techniqueId.isEmpty()) {
                 boolean unlocked = settings.unlockTechnique(techniqueId);
@@ -496,7 +482,7 @@ public final class IdleCultivationManager implements Disposable {
 
         String spellId = "";
         boolean duplicateSpell = false;
-        if (random.nextInt(100) < getTravelSpellChance(location.id())) {
+        if (nextInt(100) < getTravelSpellChance(location.id())) {
             spellId = chooseSpellForTravel();
             if (!spellId.isEmpty()) {
                 boolean unlocked = settings.unlockSpell(spellId);
@@ -537,7 +523,7 @@ public final class IdleCultivationManager implements Disposable {
         }
 
         int nextRebirthCount = settings.getCultivationRebirthCount() + 1;
-        long now = System.currentTimeMillis();
+        long now = now();
         settings.setCultivationRebirthCount(nextRebirthCount);
         settings.setCultivationRealmIndex(0);
         settings.setCultivationQi(0L);
@@ -856,11 +842,11 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean canMeditate() {
-        return canMeditate(System.currentTimeMillis());
+        return canMeditate(now());
     }
 
     public synchronized String getMeditationRemainingText() {
-        return getMeditationRemainingText(System.currentTimeMillis());
+        return getMeditationRemainingText(now());
     }
 
     public synchronized int getRebirthCount() {
@@ -1181,7 +1167,7 @@ public final class IdleCultivationManager implements Disposable {
         int nextLevel = currentLevel + 1;
         settings.setAbodeFacilityLevel(facilityId, nextLevel);
         if (isProductionAbodeFacility(facilityId)) {
-            settings.setAbodeLastClaimMillis(facilityId, System.currentTimeMillis());
+            settings.setAbodeLastClaimMillis(facilityId, now());
         }
         lastMessage = FishToucherBundle.message("cultivation.status.facilityUpgraded", facility.name(), nextLevel);
         fireChange();
@@ -1347,11 +1333,11 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long calculateBattleHealthRecovery(CombatStats stats) {
-        return Math.max(1L, stats.health() / BATTLE_HEALTH_RECOVERY_DIVISOR);
+        return CultivationBattleEngine.recovery(stats.health(), BATTLE_HEALTH_RECOVERY_DIVISOR);
     }
 
     private long calculateBattleManaRecovery(CombatStats stats) {
-        return Math.max(1L, stats.mana() / BATTLE_MANA_RECOVERY_DIVISOR);
+        return CultivationBattleEngine.recovery(stats.mana(), BATTLE_MANA_RECOVERY_DIVISOR);
     }
 
     private void finishBattle(BattleState state, boolean victory) {
@@ -1422,8 +1408,7 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long calculateBattleDamage(long attack, long defense, int attackPercent, int defensePercent) {
-        long rawDamage = attack * attackPercent / 100L - defense * defensePercent / 100L;
-        return Math.max(1L, rawDamage);
+        return CultivationBattleEngine.damage(attack, defense, attackPercent, defensePercent);
     }
 
     private void addBattleLog(BattleState state, String message) {
@@ -1470,7 +1455,7 @@ public final class IdleCultivationManager implements Disposable {
         if (!settings.isTechniqueUnlocked(settings.getEquippedTechniqueId())) {
             settings.setEquippedTechniqueId(BASIC_TECHNIQUE_ID);
         }
-        long now = System.currentTimeMillis();
+        long now = now();
         for (AbodeFacilityDefinition facility : ABODE_FACILITIES) {
             if (settings.getAbodeLastClaimMillis(facility.id()) <= 0L) {
                 settings.setAbodeLastClaimMillis(facility.id(), now);
@@ -1529,16 +1514,14 @@ public final class IdleCultivationManager implements Disposable {
             return 0L;
         }
         int reductionPercent = getTravelDurationReductionPercent(realmIndex);
-        long reducedMinutes = Math.round(location.durationMinutes() * (100.0 - reductionPercent) / 100.0);
-        return Math.max(1L, reducedMinutes);
+        return CultivationProgressEngine.travelDurationMinutes(location.durationMinutes(), reductionPercent);
     }
 
     private int getTravelDurationReductionPercent(int realmIndex) {
-        int highestRealmIndex = Math.max(1, getRealmCount() - 1);
-        int clampedRealmIndex = Math.max(0, Math.min(highestRealmIndex, realmIndex));
-        return Math.min(
-                MAX_TRAVEL_DURATION_REDUCTION_PERCENT,
-                (int) Math.round(clampedRealmIndex * MAX_TRAVEL_DURATION_REDUCTION_PERCENT / (double) highestRealmIndex)
+        return CultivationProgressEngine.travelReductionPercent(
+                realmIndex,
+                getRealmCount(),
+                MAX_TRAVEL_DURATION_REDUCTION_PERCENT
         );
     }
 
@@ -1736,7 +1719,7 @@ public final class IdleCultivationManager implements Disposable {
 
     private long getClaimableAbodePeriods(String facilityId, long intervalMillis) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        long now = System.currentTimeMillis();
+        long now = now();
         long lastClaimMillis = settings.getAbodeLastClaimMillis(facilityId);
         if (lastClaimMillis <= 0L || lastClaimMillis > now) {
             return 0L;
@@ -1797,7 +1780,7 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private void advanceAbodeClaimTime(NovelReaderSettings settings, String facilityId, long intervalMillis, long periods) {
-        long now = System.currentTimeMillis();
+        long now = now();
         long lastClaimMillis = settings.getAbodeLastClaimMillis(facilityId);
         if (lastClaimMillis <= 0L || lastClaimMillis > now || now - lastClaimMillis > OFFLINE_CAP_MILLIS) {
             settings.setAbodeLastClaimMillis(facilityId, now);
@@ -1807,12 +1790,11 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private String chooseAlchemyPill(int level) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
         int rareChance = getAlchemyRarePillChance(level);
-        if (random.nextInt(100) < rareChance) {
-            return random.nextBoolean() ? BREAKTHROUGH_PILL_ID : MERIDIAN_PILL_ID;
+        if (nextInt(100) < rareChance) {
+            return nextInt(2) == 0 ? BREAKTHROUGH_PILL_ID : MERIDIAN_PILL_ID;
         }
-        return random.nextBoolean() ? QI_PILL_ID : SPIRIT_PILL_ID;
+        return nextInt(2) == 0 ? QI_PILL_ID : SPIRIT_PILL_ID;
     }
 
     private int getAlchemyRarePillChance(int level) {
@@ -1823,17 +1805,16 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private String choosePillForLocation(String locationId) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
         return switch (locationId) {
-            case "abandoned_alchemy_room" -> switch (random.nextInt(4)) {
+            case "abandoned_alchemy_room" -> switch (nextInt(4)) {
                 case 0 -> QI_PILL_ID;
                 case 1 -> BREAKTHROUGH_PILL_ID;
                 case 2 -> MERIDIAN_PILL_ID;
                 default -> SPIRIT_PILL_ID;
             };
-            case "spirit_mine" -> random.nextInt(100) < 70 ? SPIRIT_PILL_ID : QI_PILL_ID;
-            case "cloud_dream_secret" -> PILLS.get(random.nextInt(PILLS.size())).id();
-            default -> random.nextInt(100) < 75 ? QI_PILL_ID : SPIRIT_PILL_ID;
+            case "spirit_mine" -> nextInt(100) < 70 ? SPIRIT_PILL_ID : QI_PILL_ID;
+            case "cloud_dream_secret" -> PILLS.get(nextInt(PILLS.size())).id();
+            default -> nextInt(100) < 75 ? QI_PILL_ID : SPIRIT_PILL_ID;
         };
     }
 
@@ -1846,7 +1827,7 @@ public final class IdleCultivationManager implements Disposable {
         if (candidates.isEmpty()) {
             return "";
         }
-        return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())).id();
+        return candidates.get(nextInt(candidates.size())).id();
     }
 
     private int getTravelSpellChance(String locationId) {
@@ -1862,7 +1843,7 @@ public final class IdleCultivationManager implements Disposable {
         if (SPELLS.isEmpty()) {
             return "";
         }
-        return SPELLS.get(ThreadLocalRandom.current().nextInt(SPELLS.size())).id();
+        return SPELLS.get(nextInt(SPELLS.size())).id();
     }
 
     private String formatDuration(long millis) {
@@ -1883,62 +1864,6 @@ public final class IdleCultivationManager implements Disposable {
             return hours + "h " + remainingMinutes + "m";
         }
         return minutes + "m";
-    }
-
-    private static Map<String, TechniqueDefinition> indexTechniques() {
-        Map<String, TechniqueDefinition> result = new LinkedHashMap<>();
-        for (TechniqueDefinition technique : TECHNIQUES) {
-            result.put(technique.id(), technique);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, PillDefinition> indexPills() {
-        Map<String, PillDefinition> result = new LinkedHashMap<>();
-        for (PillDefinition pill : PILLS) {
-            result.put(pill.id(), pill);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, SpellDefinition> indexSpells() {
-        Map<String, SpellDefinition> result = new LinkedHashMap<>();
-        for (SpellDefinition spell : SPELLS) {
-            result.put(spell.id(), spell);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, ArtifactDefinition> indexArtifacts() {
-        Map<String, ArtifactDefinition> result = new LinkedHashMap<>();
-        for (ArtifactDefinition artifact : ARTIFACTS) {
-            result.put(artifact.id(), artifact);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, TravelLocationDefinition> indexTravelLocations() {
-        Map<String, TravelLocationDefinition> result = new LinkedHashMap<>();
-        for (TravelLocationDefinition location : TRAVEL_LOCATIONS) {
-            result.put(location.id(), location);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, CultivatorDefinition> indexCultivators() {
-        Map<String, CultivatorDefinition> result = new LinkedHashMap<>();
-        for (CultivatorDefinition cultivator : CULTIVATORS) {
-            result.put(cultivator.id(), cultivator);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, AbodeFacilityDefinition> indexAbodeFacilities() {
-        Map<String, AbodeFacilityDefinition> result = new LinkedHashMap<>();
-        for (AbodeFacilityDefinition facility : ABODE_FACILITIES) {
-            result.put(facility.id(), facility);
-        }
-        return Collections.unmodifiableMap(result);
     }
 
     public enum BattleSpellType {

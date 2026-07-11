@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.openapi.wm.StatusBarWidgetFactory;
+import com.intellij.openapi.util.Disposer;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +38,7 @@ public class NovelReaderWidgetFactory implements StatusBarWidgetFactory {
     @Override
     public void disposeWidget(@NotNull StatusBarWidget widget) {
         LOG.info("disposeWidget: disposing status bar widget");
-        // cleanup handled in widget dispose
+        Disposer.dispose(widget);
     }
 
     @Override
