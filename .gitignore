@@ -5,4 +5,7 @@
 /build/
 /build/classes/java/main/
 /bin/
-.codegraph/*
+/.codegraph/
+/.rustcodegraph/
+/.claude/settings.local.json
+/.idea/ApifoxUploaderProjectSetting.xml
