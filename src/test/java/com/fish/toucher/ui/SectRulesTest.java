@@ -57,4 +57,17 @@ class SectRulesTest {
         settings.markSectTrialDefeated("qingyun_sword:5");
         assertTrue(SectRules.canPurchaseInheritance(settings, core));
     }
+
+    @Test
+    void 宗门随机事件定义应具备可处理选项() {
+        assertEquals(5, SectCatalog.events().size());
+        for (SectCatalog.SectEventDefinition event : SectCatalog.events()) {
+            assertNotNull(SectCatalog.event(event.id()));
+            assertFalse(event.options().isEmpty());
+            for (SectCatalog.SectEventOptionDefinition option : event.options()) {
+                assertFalse(option.id().isEmpty());
+                assertFalse(option.label().isEmpty());
+            }
+        }
+    }
 }

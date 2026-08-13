@@ -22,6 +22,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     private static final Logger LOG = Logger.getInstance(NovelReaderSettings.class);
     private static final int MAX_RECENT_FILE_PATHS = 10;
     private static final int MAX_CULTIVATION_REALM_INDEX = 8;
+    private static final int MAX_PENDING_SECT_EVENTS = 3;
     private static final Set<String> HOT_SEARCH_SOURCES = Set.of(
             "baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x", "google"
     );
@@ -120,6 +121,23 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public List<String> defeatedSectTrialIds = new ArrayList<>();
         public List<String> learnedSectInheritanceIds = new ArrayList<>();
         public List<String> graduatedSectIds = new ArrayList<>();
+        public List<SectPendingEventState> pendingSectEvents = new ArrayList<>();
+    }
+
+    public static class SectPendingEventState {
+        public String instanceId = "";
+        public String eventId = "";
+        public String sectId = "";
+        public long createdMillis = 0L;
+
+        public SectPendingEventState() {}
+
+        public SectPendingEventState(String instanceId, String eventId, String sectId, long createdMillis) {
+            this.instanceId = instanceId != null ? instanceId : "";
+            this.eventId = eventId != null ? eventId : "";
+            this.sectId = sectId != null ? sectId : "";
+            this.createdMillis = Math.max(0L, createdMillis);
+        }
     }
 
     private State myState = new State();
@@ -434,6 +452,31 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.defeatedSectTrialIds = normalizeStringList(state.defeatedSectTrialIds);
         state.learnedSectInheritanceIds = normalizeStringList(state.learnedSectInheritanceIds);
         state.graduatedSectIds = normalizeStringList(state.graduatedSectIds);
+        state.pendingSectEvents = normalizeSectPendingEvents(state.pendingSectEvents);
+    }
+
+    private static List<SectPendingEventState> normalizeSectPendingEvents(List<SectPendingEventState> values) {
+        List<SectPendingEventState> normalized = new ArrayList<>();
+        if (values == null) {
+            return normalized;
+        }
+        Set<String> instanceIds = new LinkedHashSet<>();
+        for (SectPendingEventState value : values) {
+            if (value == null) {
+                continue;
+            }
+            String instanceId = value.instanceId != null ? value.instanceId : "";
+            String eventId = value.eventId != null ? value.eventId : "";
+            String sectId = value.sectId != null ? value.sectId : "";
+            if (instanceId.isEmpty() || eventId.isEmpty() || sectId.isEmpty() || !instanceIds.add(instanceId)) {
+                continue;
+            }
+            normalized.add(new SectPendingEventState(instanceId, eventId, sectId, Math.max(0L, value.createdMillis)));
+            if (normalized.size() >= MAX_PENDING_SECT_EVENTS) {
+                break;
+            }
+        }
+        return normalized;
     }
 
     private static Map<String, Long> normalizeLongMap(Map<String, Long> values) {
@@ -908,5 +951,40 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         }
         myState.graduatedSectIds.add(sectId);
         return true;
+    }
+
+    public List<SectPendingEventState> getPendingSectEvents() {
+        normalizeCultivationState(myState);
+        List<SectPendingEventState> snapshot = new ArrayList<>();
+        for (SectPendingEventState event : myState.pendingSectEvents) {
+            snapshot.add(new SectPendingEventState(event.instanceId, event.eventId, event.sectId, event.createdMillis));
+        }
+        return Collections.unmodifiableList(snapshot);
+    }
+
+    public boolean addPendingSectEvent(String instanceId, String eventId, String sectId, long createdMillis) {
+        normalizeCultivationState(myState);
+        if (myState.pendingSectEvents.size() >= MAX_PENDING_SECT_EVENTS) {
+            return false;
+        }
+        SectPendingEventState eventState = new SectPendingEventState(instanceId, eventId, sectId, createdMillis);
+        if (eventState.instanceId.isEmpty() || eventState.eventId.isEmpty() || eventState.sectId.isEmpty()) {
+            return false;
+        }
+        for (SectPendingEventState existing : myState.pendingSectEvents) {
+            if (eventState.instanceId.equals(existing.instanceId)) {
+                return false;
+            }
+        }
+        myState.pendingSectEvents.add(eventState);
+        return true;
+    }
+
+    public boolean removePendingSectEvent(String instanceId) {
+        normalizeCultivationState(myState);
+        if (instanceId == null || instanceId.isEmpty()) {
+            return false;
+        }
+        return myState.pendingSectEvents.removeIf(event -> instanceId.equals(event.instanceId));
     }
 }

@@ -88,10 +88,29 @@ final class SectCatalog {
             trial("taiqing_dao", 5, "太清祖师残影", 18_800L, 1_320L, 1_120L, 1_650L, 3_200L)
     );
 
+    private static final List<SectEventDefinition> EVENTS = List.of(
+            event("sparring", "同门切磋", "同门邀你切磋，胜负不伤和气。",
+                    option("accept", "接受", "按当前战力即时判定，胜利获得威望和灵石。"),
+                    option("decline", "婉拒", "不获得奖励。")),
+            event("elder_lecture", "长老授课", "长老临时开坛讲法，适合补足修行细节。",
+                    option("listen", "听讲", "获得一笔修为。"),
+                    option("skip", "继续闭关", "不获得奖励。")),
+            event("back_mountain", "后山异动", "后山灵气异常，可能有小机缘，也可能空手而归。",
+                    option("inspect", "前往查看", "随机获得灵石、丹药或修为。"),
+                    option("ignore", "忽略", "不获得奖励。")),
+            event("junior_help", "同门求助", "同门修行受阻，希望借一枚聚气丹渡过关口。",
+                    option("give_qi_pill", "赠送聚气丹", "消耗 1 枚聚气丹，获得威望和贡献。"),
+                    option("refuse", "婉拒", "不获得奖励。")),
+            event("inheritance_fragment", "传承残卷", "你偶然得到一页残卷，可自行参悟，也可上交宗门。",
+                    option("study", "自行参悟", "获得修为。"),
+                    option("submit", "上交宗门", "获得宗门贡献。"))
+    );
+
     private static final Map<String, SectDefinition> SECT_BY_ID = index(SECTS);
     private static final Map<String, SectTaskDefinition> TASK_BY_ID = index(TASKS);
     private static final Map<String, SectInheritanceDefinition> INHERITANCE_BY_ID = index(INHERITANCES);
     private static final Map<String, SectTrialDefinition> TRIAL_BY_ID = index(TRIALS);
+    private static final Map<String, SectEventDefinition> EVENT_BY_ID = index(EVENTS);
 
     private SectCatalog() {}
 
@@ -100,11 +119,21 @@ final class SectCatalog {
     static List<SectTaskDefinition> tasks() { return TASKS; }
     static List<SectInheritanceDefinition> inheritances() { return INHERITANCES; }
     static List<SectTrialDefinition> trials() { return TRIALS; }
+    static List<SectEventDefinition> events() { return EVENTS; }
     static SectDefinition sect(String id) { return SECT_BY_ID.get(id); }
     static SectTaskDefinition task(String id) { return TASK_BY_ID.get(id); }
     static SectInheritanceDefinition inheritance(String id) { return INHERITANCE_BY_ID.get(id); }
     static SectTrialDefinition trial(String id) { return TRIAL_BY_ID.get(id); }
+    static SectEventDefinition event(String id) { return EVENT_BY_ID.get(id); }
     static SectRankDefinition rank(int rankIndex) { return RANKS.get(Math.max(0, Math.min(RANKS.size() - 1, rankIndex))); }
+
+    private static SectEventDefinition event(String id, String title, String description, SectEventOptionDefinition... options) {
+        return new SectEventDefinition(id, title, description, List.of(options));
+    }
+
+    private static SectEventOptionDefinition option(String id, String label, String description) {
+        return new SectEventOptionDefinition(id, label, description);
+    }
 
     private static SectTrialDefinition trial(String sectId, int floor, String enemyName,
                                              long maxHealth, long attack, long defense, long mana, long stoneReward) {
@@ -148,4 +177,9 @@ final class SectCatalog {
     record SectTrialDefinition(String id, String sectId, int floor, String enemyName,
                                long maxHealth, long attack, long defense,
                                long mana, long stoneReward) implements Identified {}
+
+    record SectEventDefinition(String id, String title, String description,
+                               List<SectEventOptionDefinition> options) implements Identified {}
+
+    record SectEventOptionDefinition(String id, String label, String description) implements Identified {}
 }

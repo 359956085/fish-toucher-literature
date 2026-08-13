@@ -11,6 +11,7 @@ import static com.fish.toucher.ui.IdleCultivationUiSupport.*;
 final class IdleCultivationSectTab {
 
     private final JComponent component;
+    private final JPanel unlockedPanel = createFormPanel();
     private final JComboBox<SectOption> sectComboBox = new JComboBox<>();
     private final JComboBox<TaskOption> taskComboBox = new JComboBox<>();
     private final JComboBox<InheritanceOption> inheritanceComboBox = new JComboBox<>();
@@ -18,8 +19,10 @@ final class IdleCultivationSectTab {
     private final JTextArea statusText = createSectionTextArea("");
     private final JTextArea sectDescText = createHintTextArea();
     private final JTextArea taskDescText = createHintTextArea();
+    private final JTextArea eventDescText = createHintTextArea();
     private final JTextArea inheritanceDescText = createHintTextArea();
     private final JTextArea trialDescText = createHintTextArea();
+    private final JPanel eventActions = createActionPanel();
     private final JProgressBar taskProgressBar = new JProgressBar(0, 100);
     private final JButton joinButton = new JButton(FishToucherBundle.message("cultivation.sect.button.join"));
     private final JButton leaveButton = new JButton(FishToucherBundle.message("cultivation.sect.button.leave"));
@@ -46,12 +49,16 @@ final class IdleCultivationSectTab {
     void reloadSectState(IdleCultivationManager manager) {
         refreshing = true;
         try {
+            unlockedPanel.setVisible(manager.isSectUnlocked());
             reloadSects(manager);
             reloadTasks(manager);
             reloadInheritances(manager);
             reloadTrials(manager);
             updateButtons(manager);
-            setWrappingText(statusText, manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText());
+            updateEventState(manager);
+            setWrappingText(statusText, manager.isSectUnlocked()
+                    ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
+                    : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
             setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
         } finally {
             refreshing = false;
@@ -66,8 +73,12 @@ final class IdleCultivationSectTab {
 
         row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.title")));
         row = addFullWidthRow(contentPanel, gbc, row, statusText);
-        addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.sect.label.choose"), sectComboBox);
-        row = addFullWidthRow(contentPanel, gbc, row, sectDescText);
+        row = addFullWidthRow(contentPanel, gbc, row, unlockedPanel);
+
+        GridBagConstraints unlockedGbc = createConstraints();
+        int unlockedRow = 0;
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.choose"), sectComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, sectDescText);
 
         JPanel sectActions = createActionPanel();
         joinButton.addActionListener(e -> {
@@ -79,13 +90,13 @@ final class IdleCultivationSectTab {
         sectActions.add(joinButton);
         sectActions.add(leaveButton);
         sectActions.add(promoteButton);
-        row = addActionRow(contentPanel, gbc, row, sectActions);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, sectActions);
 
-        row = addSeparatorRow(contentPanel, gbc, row);
-        row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.task")));
-        addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.sect.label.task"), taskComboBox);
-        row = addFullWidthRow(contentPanel, gbc, row, taskDescText);
-        row = addFullWidthRow(contentPanel, gbc, row, taskProgressBar);
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.task")));
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.task"), taskComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, taskDescText);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, taskProgressBar);
         JPanel taskActions = createActionPanel();
         startTaskButton.addActionListener(e -> {
             TaskOption option = (TaskOption) taskComboBox.getSelectedItem();
@@ -94,31 +105,36 @@ final class IdleCultivationSectTab {
         claimTaskButton.addActionListener(e -> IdleCultivationManager.getInstance().claimSectTask());
         taskActions.add(startTaskButton);
         taskActions.add(claimTaskButton);
-        row = addActionRow(contentPanel, gbc, row, taskActions);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, taskActions);
 
-        row = addSeparatorRow(contentPanel, gbc, row);
-        row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.inheritance")));
-        addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.sect.label.inheritance"), inheritanceComboBox);
-        row = addFullWidthRow(contentPanel, gbc, row, inheritanceDescText);
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.event")));
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, eventDescText);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, eventActions);
+
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.inheritance")));
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.inheritance"), inheritanceComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, inheritanceDescText);
         JPanel inheritanceActions = createActionPanel();
         purchaseButton.addActionListener(e -> {
             InheritanceOption option = (InheritanceOption) inheritanceComboBox.getSelectedItem();
             if (option != null) IdleCultivationManager.getInstance().purchaseSectInheritance(option.inheritance.id());
         });
         inheritanceActions.add(purchaseButton);
-        row = addActionRow(contentPanel, gbc, row, inheritanceActions);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, inheritanceActions);
 
-        row = addSeparatorRow(contentPanel, gbc, row);
-        row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.trial")));
-        addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.sect.label.trial"), trialComboBox);
-        row = addFullWidthRow(contentPanel, gbc, row, trialDescText);
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.trial")));
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.trial"), trialComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, trialDescText);
         JPanel trialActions = createActionPanel();
         startTrialButton.addActionListener(e -> {
             TrialOption option = (TrialOption) trialComboBox.getSelectedItem();
             if (option != null) IdleCultivationManager.getInstance().startSectTrial(option.trial.id());
         });
         trialActions.add(startTrialButton);
-        row = addActionRow(contentPanel, gbc, row, trialActions);
+        addActionRow(unlockedPanel, unlockedGbc, unlockedRow, trialActions);
 
         addBottomGlue(contentPanel, gbc, row);
         sectComboBox.addActionListener(e -> updateDescriptions());
@@ -154,10 +170,13 @@ final class IdleCultivationSectTab {
     }
 
     private void reloadInheritances(IdleCultivationManager manager) {
-        String currentSectName = manager.getCurrentSect() == null ? "" : manager.getCurrentSect().name();
         inheritanceComboBox.removeAllItems();
+        SectCatalog.SectDefinition currentSect = manager.getCurrentSect();
+        if (currentSect == null) {
+            return;
+        }
         for (SectCatalog.SectInheritanceDefinition inheritance : manager.getSectInheritanceDefinitions()) {
-            if (currentSectName.isEmpty() || currentSectName.equals(inheritance.sectName())) {
+            if (currentSect.name().equals(inheritance.sectName())) {
                 inheritanceComboBox.addItem(new InheritanceOption(inheritance));
             }
         }
@@ -166,8 +185,11 @@ final class IdleCultivationSectTab {
     private void reloadTrials(IdleCultivationManager manager) {
         String currentSectId = NovelReaderSettings.getInstance().getCultivationSectId();
         trialComboBox.removeAllItems();
+        if (currentSectId.isEmpty()) {
+            return;
+        }
         for (SectCatalog.SectTrialDefinition trial : manager.getSectTrialDefinitions()) {
-            if (currentSectId.isEmpty() || currentSectId.equals(trial.sectId())) {
+            if (currentSectId.equals(trial.sectId())) {
                 trialComboBox.addItem(new TrialOption(trial));
             }
         }
@@ -182,13 +204,47 @@ final class IdleCultivationSectTab {
         startTaskButton.setEnabled(joined && !manager.hasActiveSectTask());
         claimTaskButton.setEnabled(manager.isSectTaskReady());
         InheritanceOption inheritance = (InheritanceOption) inheritanceComboBox.getSelectedItem();
-        purchaseButton.setEnabled(inheritance != null && manager.canPurchaseSectInheritance(inheritance.inheritance));
+        purchaseButton.setEnabled(joined && inheritance != null && manager.canPurchaseSectInheritance(inheritance.inheritance));
         TrialOption trial = (TrialOption) trialComboBox.getSelectedItem();
-        startTrialButton.setEnabled(trial != null
+        startTrialButton.setEnabled(joined
+                && trial != null
                 && SectRules.isTrialUnlocked(settings, trial.trial)
                 && !settings.isSectTrialDefeated(trial.trial.id())
                 && !manager.hasActiveBattle()
                 && !manager.hasActiveTravel());
+    }
+
+    private void updateEventState(IdleCultivationManager manager) {
+        eventActions.removeAll();
+        if (manager.getCurrentSect() == null) {
+            setWrappingText(eventDescText, "");
+            eventActions.revalidate();
+            eventActions.repaint();
+            return;
+        }
+        IdleCultivationManager.SectEventInstance event = manager.getCurrentSectEvent();
+        if (event == null) {
+            setWrappingText(eventDescText, FishToucherBundle.message("cultivation.sect.eventNone"));
+            eventActions.revalidate();
+            eventActions.repaint();
+            return;
+        }
+        int pendingCount = manager.getPendingSectEvents().size();
+        setWrappingText(eventDescText, FishToucherBundle.message(
+                "cultivation.sect.eventDesc",
+                event.event().title(),
+                event.event().description(),
+                pendingCount
+        ));
+        for (SectCatalog.SectEventOptionDefinition option : event.event().options()) {
+            JButton button = new JButton(option.label());
+            button.setToolTipText(option.description());
+            button.setEnabled(manager.canResolveSectEvent(event.instanceId(), option.id()));
+            button.addActionListener(e -> IdleCultivationManager.getInstance().resolveSectEvent(event.instanceId(), option.id()));
+            eventActions.add(button);
+        }
+        eventActions.revalidate();
+        eventActions.repaint();
     }
 
     private void updateDescriptions() {

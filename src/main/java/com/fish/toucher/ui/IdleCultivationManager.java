@@ -13,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -75,6 +77,7 @@ public final class IdleCultivationManager implements Disposable {
     private static final int BATTLE_MANA_RECOVERY_DIVISOR = 180;
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
+    private static final int MAX_PENDING_SECT_EVENTS = 3;
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
             new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
@@ -150,12 +153,17 @@ public final class IdleCultivationManager implements Disposable {
     private boolean running;
     private String lastMessage;
     private BattleState battleState;
+    private Random sectEventRandom;
 
     public static IdleCultivationManager getInstance() {
         return ApplicationManager.getApplication().getService(IdleCultivationManager.class);
     }
 
     public IdleCultivationManager() {}
+
+    void setSectEventRandomForTest(Random random) {
+        this.sectEventRandom = random;
+    }
 
     public void addChangeListener(Runnable listener) {
         listeners.addIfAbsent(listener);
@@ -669,6 +677,10 @@ public final class IdleCultivationManager implements Disposable {
         return SectCatalog.trials();
     }
 
+    public List<SectCatalog.SectEventDefinition> getSectEventDefinitions() {
+        return SectCatalog.events();
+    }
+
     public synchronized boolean isSectUnlocked() {
         return SectRules.isSectUnlocked(NovelReaderSettings.getInstance().getCultivationRealmIndex());
     }
@@ -704,6 +716,69 @@ public final class IdleCultivationManager implements Disposable {
                 settings.getCurrentSectContribution(),
                 next
         );
+    }
+
+    public synchronized List<SectEventInstance> getPendingSectEvents() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        purgeInvalidSectEvents(settings);
+        String currentSectId = settings.getCultivationSectId();
+        if (currentSectId.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<SectEventInstance> result = new ArrayList<>();
+        for (NovelReaderSettings.SectPendingEventState eventState : settings.getPendingSectEvents()) {
+            if (!currentSectId.equals(eventState.sectId)) {
+                continue;
+            }
+            SectCatalog.SectEventDefinition event = SectCatalog.event(eventState.eventId);
+            if (event != null && SectCatalog.sect(eventState.sectId) != null) {
+                result.add(new SectEventInstance(eventState.instanceId, eventState.sectId, eventState.createdMillis, event));
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    public synchronized SectEventInstance getCurrentSectEvent() {
+        List<SectEventInstance> events = getPendingSectEvents();
+        return events.isEmpty() ? null : events.get(0);
+    }
+
+    public synchronized boolean canResolveSectEvent(String instanceId, String optionId) {
+        SectEventInstance event = findCurrentSectEvent(instanceId);
+        if (event == null || findEventOption(event.event, optionId) == null) {
+            return false;
+        }
+        return !("junior_help".equals(event.event.id()) && "give_qi_pill".equals(optionId)
+                && NovelReaderSettings.getInstance().getPillCount(QI_PILL_ID) <= 0);
+    }
+
+    public synchronized boolean resolveSectEvent(String instanceId, String optionId) {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectEventInstance event = findCurrentSectEvent(instanceId);
+        if (event == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.eventUnknown");
+            fireChange();
+            return false;
+        }
+        SectCatalog.SectEventOptionDefinition option = findEventOption(event.event, optionId);
+        if (option == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.eventOptionUnknown");
+            fireChange();
+            return false;
+        }
+        if (!canResolveSectEvent(instanceId, optionId)) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.eventOptionBlocked");
+            fireChange();
+            return false;
+        }
+        String rewardText = applySectEventReward(settings, event.event.id(), optionId);
+        settings.removePendingSectEvent(instanceId);
+        lastMessage = rewardText.isEmpty()
+                ? FishToucherBundle.message("cultivation.sect.eventResolvedNone", event.event.title(), option.label())
+                : FishToucherBundle.message("cultivation.sect.eventResolved", event.event.title(), option.label(), rewardText);
+        fireChange();
+        return true;
     }
 
     public synchronized boolean joinSect(String sectId) {
@@ -870,9 +945,41 @@ public final class IdleCultivationManager implements Disposable {
             settings.addPill(QI_PILL_ID, 1);
         }
         settings.clearSectTask();
+        boolean eventGenerated = maybeGenerateSectEvent(task.id());
         lastMessage = FishToucherBundle.message("cultivation.sect.taskClaimed", task.contributionReward(), task.prestigeReward(), qiGain, stoneGain);
+        if (eventGenerated) {
+            lastMessage = lastMessage + " " + FishToucherBundle.message("cultivation.sect.eventGenerated");
+        }
         fireChange();
         return true;
+    }
+
+    public synchronized boolean maybeGenerateSectEvent(String taskId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        purgeInvalidSectEvents(settings);
+        String currentSectId = settings.getCultivationSectId();
+        SectCatalog.SectTaskDefinition task = SectCatalog.task(taskId);
+        if (currentSectId.isEmpty() || SectCatalog.sect(currentSectId) == null || task == null) {
+            return false;
+        }
+        if (settings.getPendingSectEvents().size() >= MAX_PENDING_SECT_EVENTS) {
+            return false;
+        }
+        int chance = "explore_secret".equals(task.id()) ? 45 : 25;
+        if (nextSectEventInt(100) >= chance) {
+            return false;
+        }
+        List<SectCatalog.SectEventDefinition> events = SectCatalog.events();
+        if (events.isEmpty()) {
+            return false;
+        }
+        SectCatalog.SectEventDefinition event = events.get(nextSectEventInt(events.size()));
+        return settings.addPendingSectEvent(
+                UUID.randomUUID().toString(),
+                event.id(),
+                currentSectId,
+                System.currentTimeMillis()
+        );
     }
 
     public synchronized boolean canPurchaseSectInheritance(SectCatalog.SectInheritanceDefinition inheritance) {
@@ -1903,6 +2010,105 @@ public final class IdleCultivationManager implements Disposable {
         }
     }
 
+    private SectEventInstance findCurrentSectEvent(String instanceId) {
+        if (instanceId == null || instanceId.isEmpty()) {
+            return null;
+        }
+        for (SectEventInstance event : getPendingSectEvents()) {
+            if (instanceId.equals(event.instanceId())) {
+                return event;
+            }
+        }
+        return null;
+    }
+
+    private void purgeInvalidSectEvents(NovelReaderSettings settings) {
+        for (NovelReaderSettings.SectPendingEventState eventState : settings.getPendingSectEvents()) {
+            if (SectCatalog.event(eventState.eventId) == null || SectCatalog.sect(eventState.sectId) == null) {
+                settings.removePendingSectEvent(eventState.instanceId);
+            }
+        }
+    }
+
+    private SectCatalog.SectEventOptionDefinition findEventOption(SectCatalog.SectEventDefinition event, String optionId) {
+        if (event == null || optionId == null || optionId.isEmpty()) {
+            return null;
+        }
+        for (SectCatalog.SectEventOptionDefinition option : event.options()) {
+            if (optionId.equals(option.id())) {
+                return option;
+            }
+        }
+        return null;
+    }
+
+    private String applySectEventReward(NovelReaderSettings settings, String eventId, String optionId) {
+        int realmIndex = settings.getCultivationRealmIndex();
+        return switch (eventId + ":" + optionId) {
+            case "sparring:accept" -> resolveSparringReward(settings, realmIndex);
+            case "elder_lecture:listen" -> {
+                long qiGain = addCultivationQi(settings, applyQiBonus(900L + realmIndex * 350L));
+                yield qiGain > 0L ? "修为 +" + qiGain : "";
+            }
+            case "back_mountain:inspect" -> resolveBackMountainReward(settings, realmIndex);
+            case "junior_help:give_qi_pill" -> {
+                if (!settings.consumePill(QI_PILL_ID)) {
+                    yield "";
+                }
+                settings.addCurrentSectPrestige(60L);
+                settings.addCurrentSectContribution(80L);
+                yield "消耗聚气丹 x1，威望 +60，贡献 +80";
+            }
+            case "inheritance_fragment:study" -> {
+                long qiGain = addCultivationQi(settings, applyQiBonus(1_200L + realmIndex * 400L));
+                yield qiGain > 0L ? "修为 +" + qiGain : "";
+            }
+            case "inheritance_fragment:submit" -> {
+                settings.addCurrentSectContribution(120L);
+                yield "贡献 +120";
+            }
+            default -> "";
+        };
+    }
+
+    private String resolveSparringReward(NovelReaderSettings settings, int realmIndex) {
+        CombatStats stats = calculateCombatStats();
+        long combatScore = stats.attack() + stats.defense() + stats.mana() / 2L + stats.health() / 20L;
+        long targetScore = 480L + Math.max(0, realmIndex) * 180L;
+        boolean victory = combatScore >= targetScore || nextSectEventInt(100) < 35;
+        if (victory) {
+            long stones = applyStoneBonus(180L + realmIndex * 80L);
+            settings.addCurrentSectPrestige(45L);
+            settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stones);
+            return "切磋胜利，威望 +45，灵石 +" + stones;
+        }
+        settings.addCurrentSectPrestige(10L);
+        return "切磋落败，威望 +10";
+    }
+
+    private String resolveBackMountainReward(NovelReaderSettings settings, int realmIndex) {
+        return switch (nextSectEventInt(3)) {
+            case 0 -> {
+                long stones = applyStoneBonus(240L + realmIndex * 120L);
+                settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stones);
+                yield "灵石 +" + stones;
+            }
+            case 1 -> {
+                settings.addPill(QI_PILL_ID, 1);
+                yield "聚气丹 +1";
+            }
+            default -> {
+                long qiGain = addCultivationQi(settings, applyQiBonus(700L + realmIndex * 300L));
+                yield qiGain > 0L ? "修为 +" + qiGain : "";
+            }
+        };
+    }
+
+    private int nextSectEventInt(int bound) {
+        Random random = sectEventRandom;
+        return random != null ? random.nextInt(bound) : ThreadLocalRandom.current().nextInt(bound);
+    }
+
     private long getTravelDurationMillis(TravelLocationDefinition location) {
         return TimeUnit.MINUTES.toMillis(getTravelDurationMinutes(location));
     }
@@ -2407,6 +2613,9 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public record CombatStats(long attack, long defense, long mana, long health) {}
+
+    public record SectEventInstance(String instanceId, String sectId, long createdMillis,
+                                    SectCatalog.SectEventDefinition event) {}
 
     public record BattleSnapshot(CultivatorDefinition cultivator, CombatStats playerStats,
                                  long playerHealth, long playerMana,

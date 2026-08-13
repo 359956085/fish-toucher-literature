@@ -3,6 +3,8 @@ package com.fish.toucher.settings;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +27,16 @@ class NovelReaderSettingsTest {
         state.sectRankBySectId = new HashMap<>(Map.of("taiqing_dao", 99));
         state.activeSectTaskId = "";
         state.activeSectTaskElapsedMillis = -1L;
+        state.pendingSectEvents = new ArrayList<>(List.of(
+                new NovelReaderSettings.SectPendingEventState("a", "sparring", "qingyun_sword", -1L),
+                new NovelReaderSettings.SectPendingEventState("a", "elder_lecture", "qingyun_sword", 1L),
+                new NovelReaderSettings.SectPendingEventState("", "back_mountain", "qingyun_sword", 1L),
+                new NovelReaderSettings.SectPendingEventState("b", "", "qingyun_sword", 1L),
+                new NovelReaderSettings.SectPendingEventState("c", "back_mountain", "", 1L),
+                new NovelReaderSettings.SectPendingEventState("d", "back_mountain", "qingyun_sword", 1L),
+                new NovelReaderSettings.SectPendingEventState("e", "junior_help", "qingyun_sword", 1L),
+                new NovelReaderSettings.SectPendingEventState("f", "inheritance_fragment", "qingyun_sword", 1L)
+        ));
 
         NovelReaderSettings settings = new NovelReaderSettings();
         settings.loadState(state);
@@ -41,6 +53,8 @@ class NovelReaderSettingsTest {
         assertEquals(30L, settings.getSectContribution("taiqing_dao"));
         assertEquals(4, settings.getSectRankIndex("taiqing_dao"));
         assertEquals(0L, settings.getActiveSectTaskElapsedMillis());
+        assertEquals(3, settings.getPendingSectEvents().size());
+        assertEquals(0L, settings.getPendingSectEvents().get(0).createdMillis);
     }
 
     @Test
@@ -57,5 +71,20 @@ class NovelReaderSettingsTest {
         assertEquals("", settings.getXTrendsRegion());
         assertEquals("US", settings.getGoogleTrendsGeo());
         assertEquals(0, settings.getReadingProgress("book.txt"));
+    }
+
+    @Test
+    void 宗门事件队列限制最多三条且不允许重复实例() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+
+        assertTrue(settings.addPendingSectEvent("a", "sparring", "qingyun_sword", 1L));
+        assertFalse(settings.addPendingSectEvent("a", "elder_lecture", "qingyun_sword", 2L));
+        assertTrue(settings.addPendingSectEvent("b", "elder_lecture", "qingyun_sword", 2L));
+        assertTrue(settings.addPendingSectEvent("c", "back_mountain", "qingyun_sword", 3L));
+        assertFalse(settings.addPendingSectEvent("d", "junior_help", "qingyun_sword", 4L));
+
+        assertEquals(3, settings.getPendingSectEvents().size());
+        assertTrue(settings.removePendingSectEvent("b"));
+        assertEquals(2, settings.getPendingSectEvents().size());
     }
 }
