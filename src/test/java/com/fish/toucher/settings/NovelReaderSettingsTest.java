@@ -20,6 +20,11 @@ class NovelReaderSettingsTest {
         state.googleTrendsGeo = "BAD";
         state.cultivationRealmIndex = 999;
         state.readingProgress = new HashMap<>(Map.of("book.txt", -10));
+        state.sectPrestigeBySectId = new HashMap<>(Map.of("qingyun_sword", -1L, "taiqing_dao", 20L));
+        state.sectContributionBySectId = new HashMap<>(Map.of("qingyun_sword", -2L, "taiqing_dao", 30L));
+        state.sectRankBySectId = new HashMap<>(Map.of("taiqing_dao", 99));
+        state.activeSectTaskId = "";
+        state.activeSectTaskElapsedMillis = -1L;
 
         NovelReaderSettings settings = new NovelReaderSettings();
         settings.loadState(state);
@@ -32,6 +37,10 @@ class NovelReaderSettingsTest {
         assertEquals("US", settings.getGoogleTrendsGeo());
         assertEquals(8, settings.getCultivationRealmIndex());
         assertEquals(0, settings.getReadingProgress("book.txt"));
+        assertEquals(20L, settings.getSectPrestige("taiqing_dao"));
+        assertEquals(30L, settings.getSectContribution("taiqing_dao"));
+        assertEquals(4, settings.getSectRankIndex("taiqing_dao"));
+        assertEquals(0L, settings.getActiveSectTaskElapsedMillis());
     }
 
     @Test

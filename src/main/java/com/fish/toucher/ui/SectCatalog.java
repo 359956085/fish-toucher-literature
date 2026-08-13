@@ -1,0 +1,151 @@
+package com.fish.toucher.ui;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 宗门静态定义集中放在这里，避免继续把玩法数据堆进 IdleCultivationManager。
+ * 作者：fengshi
+ */
+final class SectCatalog {
+
+    static final int UNLOCK_REALM_INDEX = 1;
+
+    private static final List<SectDefinition> SECTS = List.of(
+            new SectDefinition("qingyun_sword", "青云剑宗", "攻击 / 剑修", "攻击 +5%", BonusType.ATTACK, 5),
+            new SectDefinition("danxia_valley", "丹霞谷", "丹药 / 发育", "丹药奖励 +10%", BonusType.PILL, 10),
+            new SectDefinition("xuanwu_gate", "玄武门", "防御 / 渡劫", "防御 +6%", BonusType.DEFENSE, 6),
+            new SectDefinition("tianji_pavilion", "天机阁", "游历 / 气运", "游历耗时 -5%", BonusType.TRAVEL_DURATION, 5),
+            new SectDefinition("taiqing_dao", "太清道宗", "修炼 / 突破", "修为收益 +5%", BonusType.QI, 5)
+    );
+
+    private static final List<SectRankDefinition> RANKS = List.of(
+            new SectRankDefinition(0, "外门弟子", 0L, 1),
+            new SectRankDefinition(1, "内门弟子", 400L, 2),
+            new SectRankDefinition(2, "真传弟子", 1_500L, 3),
+            new SectRankDefinition(3, "执事", 4_000L, 4),
+            new SectRankDefinition(4, "长老", 10_000L, 6)
+    );
+
+    private static final List<SectTaskDefinition> TASKS = List.of(
+            new SectTaskDefinition("sort_library", "整理经阁", 30, 30L, 10L, 0, 500L, "少量灵石/修为"),
+            new SectTaskDefinition("guard_herb_garden", "看守药园", 60, 60L, 20L, 0, 1_200L, "小概率丹药"),
+            new SectTaskDefinition("clear_beasts", "清理妖兽", 120, 120L, 35L, 1, 2_600L, "灵石 + 战斗资源"),
+            new SectTaskDefinition("escort_herbs", "护送灵药", 240, 240L, 70L, 1, 5_200L, "丹药/材料倾向"),
+            new SectTaskDefinition("guard_spirit_vein", "镇守灵脉", 360, 340L, 95L, 2, 8_800L, "高额灵石"),
+            new SectTaskDefinition("explore_secret", "探查秘境", 480, 450L, 120L, 2, 13_500L, "高价值随机奖励")
+    );
+
+    private static final List<SectInheritanceDefinition> INHERITANCES = List.of(
+            new SectInheritanceDefinition("qingyun_basic", "青云吐纳法", "青云剑宗", "青云基础功法，偏向攻击。", InheritanceType.TECHNIQUE, "sword_heart", 200L, 0, ""),
+            new SectInheritanceDefinition("qingyun_spell", "流云剑术", "青云剑宗", "剑修入门法术。", InheritanceType.SPELL, "fire_sword", 600L, 1, ""),
+            new SectInheritanceDefinition("qingyun_core", "万剑归宗", "青云剑宗", "镇宗剑诀，需要最终试炼认可。", InheritanceType.ARTIFACT, "green_sword", 6_000L, 4, "qingyun_sword:5"),
+
+            new SectInheritanceDefinition("danxia_basic", "百草诀", "丹霞谷", "丹药与资源成长传承。", InheritanceType.TECHNIQUE, "evergreen_method", 200L, 0, ""),
+            new SectInheritanceDefinition("danxia_spell", "丹火术", "丹霞谷", "丹霞谷火法。", InheritanceType.SPELL, "greenwood_heal", 600L, 1, ""),
+            new SectInheritanceDefinition("danxia_core", "太上丹经", "丹霞谷", "丹道镇宗传承。", InheritanceType.PILL, "breakthrough_pill", 6_000L, 4, "danxia_valley:5"),
+
+            new SectInheritanceDefinition("xuanwu_basic", "玄武吐息", "玄武门", "防御与护体传承。", InheritanceType.TECHNIQUE, "golden_body", 200L, 0, ""),
+            new SectInheritanceDefinition("xuanwu_spell", "岩甲术", "玄武门", "护盾法术。", InheritanceType.SPELL, "golden_light", 600L, 1, ""),
+            new SectInheritanceDefinition("xuanwu_core", "玄武真甲", "玄武门", "镇宗护体法宝。", InheritanceType.ARTIFACT, "turtle_shield", 6_000L, 4, "xuanwu_gate:5"),
+
+            new SectInheritanceDefinition("tianji_basic", "观星术", "天机阁", "游历收益传承。", InheritanceType.TECHNIQUE, "stone_gathering", 200L, 0, ""),
+            new SectInheritanceDefinition("tianji_spell", "遁甲术", "天机阁", "控场法术。", InheritanceType.SPELL, "frost_bind", 600L, 1, ""),
+            new SectInheritanceDefinition("tianji_core", "天衍神诀", "天机阁", "镇宗机缘法宝。", InheritanceType.ARTIFACT, "wind_thunder_boots", 6_000L, 4, "tianji_pavilion:5"),
+
+            new SectInheritanceDefinition("taiqing_basic", "清心诀", "太清道宗", "稳健修炼传承。", InheritanceType.TECHNIQUE, "mystic_orthodox", 200L, 0, ""),
+            new SectInheritanceDefinition("taiqing_spell", "太清御气", "太清道宗", "雷法传承。", InheritanceType.SPELL, "palm_thunder", 600L, 1, ""),
+            new SectInheritanceDefinition("taiqing_core", "一气化三清", "太清道宗", "镇宗综合法宝。", InheritanceType.ARTIFACT, "taixu_cauldron", 6_000L, 4, "taiqing_dao:5")
+    );
+
+    private static final List<SectTrialDefinition> TRIALS = List.of(
+            trial("qingyun_sword", 1, "青云外门师兄", 1_200L, 130L, 80L, 120L, 200L),
+            trial("qingyun_sword", 2, "青云内门剑修", 2_200L, 210L, 140L, 180L, 450L),
+            trial("qingyun_sword", 3, "青云真传首席", 4_400L, 390L, 250L, 320L, 900L),
+            trial("qingyun_sword", 4, "护宗剑长老", 9_500L, 820L, 560L, 680L, 1_800L),
+            trial("qingyun_sword", 5, "青云祖师残影", 18_000L, 1_450L, 950L, 1_250L, 3_200L),
+            trial("danxia_valley", 1, "丹霞药童", 1_300L, 110L, 90L, 160L, 200L),
+            trial("danxia_valley", 2, "丹霞内门丹师", 2_500L, 190L, 160L, 240L, 450L),
+            trial("danxia_valley", 3, "丹霞真传炉主", 4_800L, 340L, 290L, 420L, 900L),
+            trial("danxia_valley", 4, "丹霞护法长老", 10_000L, 720L, 650L, 760L, 1_800L),
+            trial("danxia_valley", 5, "丹霞丹祖残影", 19_000L, 1_300L, 1_080L, 1_400L, 3_200L),
+            trial("xuanwu_gate", 1, "玄武外门武修", 1_500L, 100L, 120L, 100L, 200L),
+            trial("xuanwu_gate", 2, "玄武内门铁卫", 2_900L, 175L, 220L, 170L, 450L),
+            trial("xuanwu_gate", 3, "玄武真传盾修", 5_400L, 310L, 420L, 300L, 900L),
+            trial("xuanwu_gate", 4, "玄武护宗长老", 11_000L, 650L, 880L, 610L, 1_800L),
+            trial("xuanwu_gate", 5, "玄武祖师残影", 21_000L, 1_150L, 1_520L, 1_050L, 3_200L),
+            trial("tianji_pavilion", 1, "天机外门卜者", 1_150L, 120L, 75L, 150L, 200L),
+            trial("tianji_pavilion", 2, "天机内门术士", 2_150L, 205L, 135L, 260L, 450L),
+            trial("tianji_pavilion", 3, "天机真传阵师", 4_200L, 370L, 240L, 440L, 900L),
+            trial("tianji_pavilion", 4, "天机护阁长老", 9_000L, 760L, 520L, 820L, 1_800L),
+            trial("tianji_pavilion", 5, "天机阁主残影", 17_500L, 1_360L, 900L, 1_520L, 3_200L),
+            trial("taiqing_dao", 1, "太清外门道人", 1_250L, 115L, 95L, 170L, 200L),
+            trial("taiqing_dao", 2, "太清内门道士", 2_400L, 195L, 170L, 280L, 450L),
+            trial("taiqing_dao", 3, "太清真传道子", 4_600L, 350L, 300L, 480L, 900L),
+            trial("taiqing_dao", 4, "太清执法长老", 9_800L, 730L, 670L, 900L, 1_800L),
+            trial("taiqing_dao", 5, "太清祖师残影", 18_800L, 1_320L, 1_120L, 1_650L, 3_200L)
+    );
+
+    private static final Map<String, SectDefinition> SECT_BY_ID = index(SECTS);
+    private static final Map<String, SectTaskDefinition> TASK_BY_ID = index(TASKS);
+    private static final Map<String, SectInheritanceDefinition> INHERITANCE_BY_ID = index(INHERITANCES);
+    private static final Map<String, SectTrialDefinition> TRIAL_BY_ID = index(TRIALS);
+
+    private SectCatalog() {}
+
+    static List<SectDefinition> sects() { return SECTS; }
+    static List<SectRankDefinition> ranks() { return RANKS; }
+    static List<SectTaskDefinition> tasks() { return TASKS; }
+    static List<SectInheritanceDefinition> inheritances() { return INHERITANCES; }
+    static List<SectTrialDefinition> trials() { return TRIALS; }
+    static SectDefinition sect(String id) { return SECT_BY_ID.get(id); }
+    static SectTaskDefinition task(String id) { return TASK_BY_ID.get(id); }
+    static SectInheritanceDefinition inheritance(String id) { return INHERITANCE_BY_ID.get(id); }
+    static SectTrialDefinition trial(String id) { return TRIAL_BY_ID.get(id); }
+    static SectRankDefinition rank(int rankIndex) { return RANKS.get(Math.max(0, Math.min(RANKS.size() - 1, rankIndex))); }
+
+    private static SectTrialDefinition trial(String sectId, int floor, String enemyName,
+                                             long maxHealth, long attack, long defense, long mana, long stoneReward) {
+        return new SectTrialDefinition(sectId + ":" + floor, sectId, floor, enemyName, maxHealth, attack, defense, mana, stoneReward);
+    }
+
+    private static <T extends Identified> Map<String, T> index(List<T> values) {
+        Map<String, T> result = new LinkedHashMap<>();
+        for (T value : values) {
+            result.put(value.id(), value);
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    interface Identified {
+        String id();
+    }
+
+    enum BonusType {
+        ATTACK, DEFENSE, QI, PILL, TRAVEL_DURATION
+    }
+
+    enum InheritanceType {
+        TECHNIQUE, SPELL, ARTIFACT, PILL
+    }
+
+    record SectDefinition(String id, String name, String style, String bonusText,
+                          BonusType bonusType, int bonusPercent) implements Identified {}
+
+    record SectRankDefinition(int rankIndex, String name, long prestigeRequired,
+                              int realmRequired) {}
+
+    record SectTaskDefinition(String id, String name, int durationMinutes,
+                              long contributionReward, long prestigeReward,
+                              int minRankIndex, long qiReward, String extraText) implements Identified {}
+
+    record SectInheritanceDefinition(String id, String name, String sectName, String description,
+                                     InheritanceType type, String rewardId, long contributionCost,
+                                     int minRankIndex, String requiredTrialId) implements Identified {}
+
+    record SectTrialDefinition(String id, String sectId, int floor, String enemyName,
+                               long maxHealth, long attack, long defense,
+                               long mana, long stoneReward) implements Identified {}
+}

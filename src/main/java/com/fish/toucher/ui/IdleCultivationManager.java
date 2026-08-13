@@ -325,6 +325,7 @@ public final class IdleCultivationManager implements Disposable {
         settings.setCultivationQiRemainderSeconds(qiUnits % 60L);
         settings.setCultivationSpiritStoneRemainderSeconds(0L);
         boolean travelProgressed = advanceActiveTravel(settings, creditedMillis);
+        boolean sectTaskProgressed = advanceActiveSectTask(settings, creditedMillis);
 
         long actualQiGain = 0L;
         if (qiGain > 0L) {
@@ -332,7 +333,7 @@ public final class IdleCultivationManager implements Disposable {
         }
         settings.setCultivationLastUpdateMillis(now);
 
-        if (actualQiGain > 0L || travelProgressed) {
+        if (actualQiGain > 0L || travelProgressed || sectTaskProgressed) {
             if (showOfflineMessage && elapsedMillis > TICK_SECONDS * 1_000L) {
                 lastMessage = FishToucherBundle.message(
                         "cultivation.status.offline",
@@ -652,6 +653,326 @@ public final class IdleCultivationManager implements Disposable {
         return true;
     }
 
+    public List<SectCatalog.SectDefinition> getSectDefinitions() {
+        return SectCatalog.sects();
+    }
+
+    public List<SectCatalog.SectTaskDefinition> getSectTaskDefinitions() {
+        return SectCatalog.tasks();
+    }
+
+    public List<SectCatalog.SectInheritanceDefinition> getSectInheritanceDefinitions() {
+        return SectCatalog.inheritances();
+    }
+
+    public List<SectCatalog.SectTrialDefinition> getSectTrialDefinitions() {
+        return SectCatalog.trials();
+    }
+
+    public synchronized boolean isSectUnlocked() {
+        return SectRules.isSectUnlocked(NovelReaderSettings.getInstance().getCultivationRealmIndex());
+    }
+
+    public synchronized SectCatalog.SectDefinition getCurrentSect() {
+        return SectCatalog.sect(NovelReaderSettings.getInstance().getCultivationSectId());
+    }
+
+    public synchronized String getCurrentSectTitle() {
+        SectCatalog.SectDefinition sect = getCurrentSect();
+        if (sect == null) {
+            return FishToucherBundle.message("cultivation.sect.none");
+        }
+        return sect.name() + " · " + SectRules.currentRank(NovelReaderSettings.getInstance()).name();
+    }
+
+    public synchronized String getSectProgressText() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectDefinition sect = getCurrentSect();
+        if (sect == null) {
+            return isSectUnlocked()
+                    ? FishToucherBundle.message("cultivation.sect.chooseHint")
+                    : FishToucherBundle.message("cultivation.sect.locked", getRealmName(SectCatalog.UNLOCK_REALM_INDEX));
+        }
+        SectCatalog.SectRankDefinition nextRank = SectRules.nextRank(settings);
+        String next = nextRank == null
+                ? FishToucherBundle.message("cultivation.sect.rankMax")
+                : FishToucherBundle.message("cultivation.sect.nextRank", nextRank.name(), nextRank.prestigeRequired(), getRealmName(nextRank.realmRequired()));
+        return FishToucherBundle.message(
+                "cultivation.sect.progress",
+                sect.bonusText(),
+                settings.getCurrentSectPrestige(),
+                settings.getCurrentSectContribution(),
+                next
+        );
+    }
+
+    public synchronized boolean joinSect(String sectId) {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectDefinition sect = SectCatalog.sect(sectId);
+        if (!isSectUnlocked()) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.locked", getRealmName(SectCatalog.UNLOCK_REALM_INDEX));
+            fireChange();
+            return false;
+        }
+        if (sect == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.unknown");
+            fireChange();
+            return false;
+        }
+        settings.clearSectTask();
+        settings.setCultivationSectId(sect.id());
+        settings.setCurrentSectRankIndex(settings.getSectRankIndex(sect.id()));
+        lastMessage = FishToucherBundle.message("cultivation.sect.joined", sect.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean leaveSect() {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectDefinition sect = getCurrentSect();
+        if (sect == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.none");
+            fireChange();
+            return false;
+        }
+        settings.clearSectTask();
+        settings.clearCurrentSectContribution();
+        settings.setCultivationSectId("");
+        lastMessage = FishToucherBundle.message("cultivation.sect.left", sect.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean canPromoteSectRank() {
+        return SectRules.canPromote(NovelReaderSettings.getInstance());
+    }
+
+    public synchronized boolean promoteSectRank() {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!canPromoteSectRank()) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.promoteBlocked");
+            fireChange();
+            return false;
+        }
+        SectCatalog.SectRankDefinition nextRank = SectRules.nextRank(settings);
+        settings.setCurrentSectRankIndex(nextRank.rankIndex());
+        lastMessage = FishToucherBundle.message("cultivation.sect.promoted", nextRank.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean startSectTask(String taskId) {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectTaskDefinition task = SectCatalog.task(taskId);
+        if (getCurrentSect() == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.needJoin");
+            fireChange();
+            return false;
+        }
+        if (task == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.taskUnknown");
+            fireChange();
+            return false;
+        }
+        if (hasActiveSectTask()) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.taskBusy");
+            fireChange();
+            return false;
+        }
+        if (!SectRules.isTaskUnlocked(settings, task)) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.taskLocked");
+            fireChange();
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        settings.setActiveSectTaskId(task.id());
+        settings.setSectTaskStartMillis(now);
+        settings.setSectTaskEndMillis(0L);
+        settings.setActiveSectTaskElapsedMillis(0L);
+        lastMessage = FishToucherBundle.message("cultivation.sect.taskStarted", task.name(), task.durationMinutes());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean hasActiveSectTask() {
+        return SectCatalog.task(NovelReaderSettings.getInstance().getActiveSectTaskId()) != null;
+    }
+
+    public synchronized SectCatalog.SectTaskDefinition getActiveSectTask() {
+        return SectCatalog.task(NovelReaderSettings.getInstance().getActiveSectTaskId());
+    }
+
+    public synchronized boolean isSectTaskReady() {
+        SectCatalog.SectTaskDefinition task = getActiveSectTask();
+        return task != null && NovelReaderSettings.getInstance().getActiveSectTaskElapsedMillis() >= getSectTaskDurationMillis(task);
+    }
+
+    public synchronized int getSectTaskProgressPercent() {
+        SectCatalog.SectTaskDefinition task = getActiveSectTask();
+        if (task == null) {
+            return 0;
+        }
+        long total = Math.max(1L, getSectTaskDurationMillis(task));
+        long done = Math.max(0L, NovelReaderSettings.getInstance().getActiveSectTaskElapsedMillis());
+        return (int) Math.min(100L, done * 100L / total);
+    }
+
+    public synchronized String getSectTaskRemainingText() {
+        SectCatalog.SectTaskDefinition task = getActiveSectTask();
+        if (task == null) {
+            return FishToucherBundle.message("cultivation.sect.taskNone");
+        }
+        if (isSectTaskReady()) {
+            return FishToucherBundle.message("cultivation.sect.taskClaimReady");
+        }
+        long remaining = Math.max(0L, getSectTaskDurationMillis(task) - NovelReaderSettings.getInstance().getActiveSectTaskElapsedMillis());
+        return formatRemainingDuration(remaining);
+    }
+
+    public synchronized String getSectTaskDescription(SectCatalog.SectTaskDefinition task) {
+        if (task == null) {
+            return "";
+        }
+        return FishToucherBundle.message(
+                "cultivation.sect.taskDesc",
+                task.durationMinutes(),
+                task.contributionReward(),
+                task.prestigeReward(),
+                task.extraText(),
+                SectCatalog.rank(task.minRankIndex()).name()
+        );
+    }
+
+    public synchronized boolean claimSectTask() {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectTaskDefinition task = getActiveSectTask();
+        if (task == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.taskNone");
+            fireChange();
+            return false;
+        }
+        if (!isSectTaskReady()) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.taskNotReady", getSectTaskRemainingText());
+            fireChange();
+            return false;
+        }
+        long qiGain = addCultivationQi(settings, applyQiBonus(task.qiReward()));
+        long stoneGain = applyStoneBonus(task.contributionReward() * 4L);
+        settings.addCurrentSectContribution(task.contributionReward());
+        settings.addCurrentSectPrestige(task.prestigeReward());
+        settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stoneGain);
+        if (SectRules.currentSectBonus(settings, SectCatalog.BonusType.PILL) > 0 && task.durationMinutes() >= 60) {
+            settings.addPill(QI_PILL_ID, 1);
+        }
+        settings.clearSectTask();
+        lastMessage = FishToucherBundle.message("cultivation.sect.taskClaimed", task.contributionReward(), task.prestigeReward(), qiGain, stoneGain);
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean canPurchaseSectInheritance(SectCatalog.SectInheritanceDefinition inheritance) {
+        return SectRules.canPurchaseInheritance(NovelReaderSettings.getInstance(), inheritance);
+    }
+
+    public synchronized boolean purchaseSectInheritance(String inheritanceId) {
+        settleProgress(false);
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectInheritanceDefinition inheritance = SectCatalog.inheritance(inheritanceId);
+        if (inheritance == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.inheritanceUnknown");
+            fireChange();
+            return false;
+        }
+        if (!SectRules.isInheritanceUnlocked(settings, inheritance)) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.inheritanceLocked");
+            fireChange();
+            return false;
+        }
+        if (settings.isSectInheritanceLearned(inheritance.id())) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.inheritanceLearned", inheritance.name());
+            fireChange();
+            return false;
+        }
+        if (!settings.spendCurrentSectContribution(inheritance.contributionCost())) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.contributionNotEnough", inheritance.contributionCost());
+            fireChange();
+            return false;
+        }
+        grantSectInheritance(settings, inheritance);
+        settings.markSectInheritanceLearned(inheritance.id());
+        lastMessage = FishToucherBundle.message("cultivation.sect.inheritancePurchased", inheritance.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean startSectTrial(String trialId) {
+        settleProgress(false);
+        if (!running) {
+            start();
+        }
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectTrialDefinition trial = SectCatalog.trial(trialId);
+        if (trial == null) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.trialUnknown");
+            fireChange();
+            return false;
+        }
+        if (!SectRules.isTrialUnlocked(settings, trial)) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.trialLocked");
+            fireChange();
+            return false;
+        }
+        if (settings.isSectTrialDefeated(trial.id())) {
+            lastMessage = FishToucherBundle.message("cultivation.sect.trialDefeated");
+            fireChange();
+            return false;
+        }
+        if (hasActiveBattle()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeBusy");
+            fireChange();
+            return false;
+        }
+        if (hasActiveTravel()) {
+            lastMessage = FishToucherBundle.message("cultivation.status.challengeBlockedByTravel");
+            fireChange();
+            return false;
+        }
+        CultivatorDefinition enemy = new CultivatorDefinition(
+                "sect_trial_" + trial.id(),
+                trial.enemyName(),
+                trial.maxHealth(),
+                trial.attack(),
+                trial.defense(),
+                trial.mana(),
+                trial.stoneReward(),
+                "",
+                "",
+                ""
+        );
+        battleState = new BattleState(enemy, calculateCombatStats(), getEquippedSpellDefinitions(), trial.id());
+        addBattleLog(battleState, FishToucherBundle.message("cultivation.battle.log.started", enemy.name()));
+        lastMessage = FishToucherBundle.message("cultivation.sect.trialStarted", enemy.name());
+        if (battleTask != null) {
+            battleTask.cancel(false);
+        }
+        if (scheduler != null) {
+            battleTask = scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    advanceBattle();
+                } catch (Exception e) {
+                    LOG.warn("battle: failed to advance sect trial: " + e.getMessage());
+                }
+            }, BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
+        }
+        fireChange();
+        return true;
+    }
+
     public List<CultivatorDefinition> getCultivatorDefinitions() {
         return CULTIVATORS;
     }
@@ -933,6 +1254,11 @@ public final class IdleCultivationManager implements Disposable {
         }
         if (hasActiveBattle()) {
             notices.add(FishToucherBundle.message("cultivation.status.battleRunning"));
+        }
+        if (isSectTaskReady()) {
+            notices.add(FishToucherBundle.message("cultivation.sect.taskClaimReady"));
+        } else if (hasActiveSectTask()) {
+            notices.add(FishToucherBundle.message("cultivation.sect.taskStatus", getSectTaskRemainingText()));
         }
         if (settings.getCultivationRebirthCount() > 0) {
             notices.add(getRebirthStatusText());
@@ -1360,7 +1686,9 @@ public final class IdleCultivationManager implements Disposable {
         state.victory = victory;
         cancelBattleTask();
         if (victory) {
-            ChallengeReward reward = grantChallengeReward(state.cultivator);
+            ChallengeReward reward = state.sectTrialId.isEmpty()
+                    ? grantChallengeReward(state.cultivator)
+                    : grantSectTrialReward(state.sectTrialId, state.cultivator);
             addBattleLog(state, FishToucherBundle.message("cultivation.battle.log.victory", reward.summary()));
             lastMessage = FishToucherBundle.message("cultivation.status.challengeVictory", state.cultivator.name(), reward.summary());
         } else {
@@ -1416,6 +1744,26 @@ public final class IdleCultivationManager implements Disposable {
         return new ChallengeReward(stones, rewardParts);
     }
 
+    private ChallengeReward grantSectTrialReward(String trialId, CultivatorDefinition cultivator) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectTrialDefinition trial = SectCatalog.trial(trialId);
+        long stones = applyStoneBonus(cultivator.stoneReward());
+        long contribution = trial == null ? 0L : 120L * trial.floor();
+        long prestige = trial == null ? 0L : 40L * trial.floor();
+        List<String> rewardParts = new ArrayList<>();
+        settings.markSectTrialDefeated(trialId);
+        settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stones);
+        settings.addCurrentSectContribution(contribution);
+        settings.addCurrentSectPrestige(prestige);
+        if (trial != null && trial.floor() >= 5) {
+            settings.markSectGraduated(trial.sectId());
+        }
+        rewardParts.add(FishToucherBundle.message("cultivation.reward.stones", stones));
+        rewardParts.add(FishToucherBundle.message("cultivation.sect.rewardContribution", contribution));
+        rewardParts.add(FishToucherBundle.message("cultivation.sect.rewardPrestige", prestige));
+        return new ChallengeReward(stones, rewardParts);
+    }
+
     private int getCultivatorOrder(CultivatorDefinition cultivator) {
         int index = CULTIVATORS.indexOf(cultivator);
         return index < 0 ? 1 : index + 1;
@@ -1452,8 +1800,12 @@ public final class IdleCultivationManager implements Disposable {
         long attack = 120L + Math.max(0, realmIndex) * 80L;
         long defense = 95L + Math.max(0, realmIndex) * 65L;
         long mana = 180L + Math.max(0, realmIndex) * 90L;
-        attack = applyPercent(attack, technique.attackBonusPercent() + getArtifactAttackBonusPercent());
-        defense = applyPercent(defense, technique.defenseBonusPercent() + getArtifactDefenseBonusPercent());
+        attack = applyPercent(attack, technique.attackBonusPercent()
+                + getArtifactAttackBonusPercent()
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.ATTACK));
+        defense = applyPercent(defense, technique.defenseBonusPercent()
+                + getArtifactDefenseBonusPercent()
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.DEFENSE));
         mana = applyPercent(mana, technique.manaBonusPercent() + getArtifactManaBonusPercent());
         attack = applyPercent(attack, rebirthCount * REBIRTH_ATTACK_BONUS_PERCENT);
         defense = applyPercent(defense, rebirthCount * REBIRTH_DEFENSE_BONUS_PERCENT);
@@ -1520,6 +1872,37 @@ public final class IdleCultivationManager implements Disposable {
         return true;
     }
 
+    private boolean advanceActiveSectTask(NovelReaderSettings settings, long creditedMillis) {
+        if (creditedMillis <= 0L) {
+            return false;
+        }
+        SectCatalog.SectTaskDefinition task = SectCatalog.task(settings.getActiveSectTaskId());
+        if (task == null) {
+            return false;
+        }
+        long durationMillis = getSectTaskDurationMillis(task);
+        long currentElapsedMillis = Math.min(settings.getActiveSectTaskElapsedMillis(), durationMillis);
+        long nextElapsedMillis = Math.min(durationMillis, currentElapsedMillis + creditedMillis);
+        if (nextElapsedMillis == currentElapsedMillis) {
+            return false;
+        }
+        settings.setActiveSectTaskElapsedMillis(nextElapsedMillis);
+        return true;
+    }
+
+    private long getSectTaskDurationMillis(SectCatalog.SectTaskDefinition task) {
+        return TimeUnit.MINUTES.toMillis(task.durationMinutes());
+    }
+
+    private void grantSectInheritance(NovelReaderSettings settings, SectCatalog.SectInheritanceDefinition inheritance) {
+        switch (inheritance.type()) {
+            case TECHNIQUE -> settings.unlockTechnique(inheritance.rewardId());
+            case SPELL -> settings.unlockSpell(inheritance.rewardId());
+            case ARTIFACT -> settings.unlockArtifact(inheritance.rewardId());
+            case PILL -> settings.addPill(inheritance.rewardId(), 2);
+        }
+    }
+
     private long getTravelDurationMillis(TravelLocationDefinition location) {
         return TimeUnit.MINUTES.toMillis(getTravelDurationMinutes(location));
     }
@@ -1528,7 +1911,9 @@ public final class IdleCultivationManager implements Disposable {
         if (location == null) {
             return 0L;
         }
-        int reductionPercent = getTravelDurationReductionPercent(realmIndex);
+        int reductionPercent = getTravelDurationReductionPercent(realmIndex)
+                + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.TRAVEL_DURATION);
+        reductionPercent = Math.min(MAX_TRAVEL_DURATION_REDUCTION_PERCENT, reductionPercent);
         long reducedMinutes = Math.round(location.durationMinutes() * (100.0 - reductionPercent) / 100.0);
         return Math.max(1L, reducedMinutes);
     }
@@ -1643,14 +2028,17 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long applyQiBonus(long value) {
-        int bonusPercent = getEquippedTechnique().qiBonusPercent() + getArtifactQiBonusPercent();
+        int bonusPercent = getEquippedTechnique().qiBonusPercent()
+                + getArtifactQiBonusPercent()
+                + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.QI);
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
 
     private long applySeclusionQiBonus(long value) {
         int bonusPercent = getEquippedTechnique().qiBonusPercent()
                 + getArtifactQiBonusPercent()
-                + getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID));
+                + getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID))
+                + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.QI);
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
 
@@ -2012,7 +2400,9 @@ public final class IdleCultivationManager implements Disposable {
                                        long stoneReward, String spellRewardId,
                                        String techniqueRewardId, String artifactRewardId) {
         public String name() {
-            return FishToucherBundle.message(nameKey);
+            return nameKey != null && nameKey.startsWith("cultivation.")
+                    ? FishToucherBundle.message(nameKey)
+                    : nameKey;
         }
     }
 
@@ -2113,6 +2503,7 @@ public final class IdleCultivationManager implements Disposable {
         private final CultivatorDefinition cultivator;
         private final CombatStats playerStats;
         private final List<SpellDefinition> spells;
+        private final String sectTrialId;
         private final Map<String, Integer> spellCooldowns = new LinkedHashMap<>();
         private final List<String> logs = new ArrayList<>();
         private long playerHealth;
@@ -2127,9 +2518,14 @@ public final class IdleCultivationManager implements Disposable {
         private boolean victory;
 
         private BattleState(CultivatorDefinition cultivator, CombatStats playerStats, List<SpellDefinition> spells) {
+            this(cultivator, playerStats, spells, "");
+        }
+
+        private BattleState(CultivatorDefinition cultivator, CombatStats playerStats, List<SpellDefinition> spells, String sectTrialId) {
             this.cultivator = cultivator;
             this.playerStats = playerStats;
             this.spells = List.copyOf(spells);
+            this.sectTrialId = sectTrialId != null ? sectTrialId : "";
             this.playerHealth = playerStats.health();
             this.playerMana = playerStats.mana();
             this.enemyHealth = cultivator.maxHealth();

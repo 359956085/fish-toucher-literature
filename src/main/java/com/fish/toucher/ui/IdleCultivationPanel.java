@@ -20,6 +20,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final IdleCultivationTravelTab travelTab;
     private final IdleCultivationAbodeTab abodeTab;
     private final IdleCultivationChallengeTab challengeTab;
+    private final IdleCultivationSectTab sectTab;
     private final IdleCultivationGuideTab guideTab;
     private final Runnable changeListener;
 
@@ -34,6 +35,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         travelTab = new IdleCultivationTravelTab();
         abodeTab = new IdleCultivationAbodeTab();
         challengeTab = new IdleCultivationChallengeTab();
+        sectTab = new IdleCultivationSectTab();
         guideTab = new IdleCultivationGuideTab();
 
         JTabbedPane tabs = new JTabbedPane();
@@ -43,6 +45,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         tabs.addTab(FishToucherBundle.message("cultivation.tab.travel"), travelTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.abode"), abodeTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.challenge"), challengeTab.getComponent());
+        tabs.addTab(FishToucherBundle.message("cultivation.tab.sect"), sectTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.guide"), guideTab.getComponent());
         add(tabs, BorderLayout.CENTER);
 
@@ -91,6 +94,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
             abodeTab.reloadAbodeFacilities(manager);
             challengeTab.reloadCultivatorOptions(manager);
             challengeTab.updateBattleState(manager);
+            sectTab.reloadSectState(manager);
         } finally {
             setTabsRefreshing(false);
         }
@@ -101,6 +105,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         bagTab.setRefreshing(refreshing);
         travelTab.setRefreshing(refreshing);
         challengeTab.setRefreshing(refreshing);
+        sectTab.setRefreshing(refreshing);
     }
 
     private void updateSelectionDescriptions() {

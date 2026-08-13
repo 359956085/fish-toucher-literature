@@ -107,6 +107,19 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public List<String> unlockedArtifactIds = new ArrayList<>();
         public List<String> equippedArtifactIds = new ArrayList<>();
         public List<String> defeatedCultivatorIds = new ArrayList<>();
+
+        // --- Sect gameplay ---
+        public String cultivationSectId = "";
+        public Map<String, Long> sectPrestigeBySectId = new HashMap<>();
+        public Map<String, Long> sectContributionBySectId = new HashMap<>();
+        public Map<String, Integer> sectRankBySectId = new HashMap<>();
+        public String activeSectTaskId = "";
+        public long sectTaskStartMillis = 0L;
+        public long sectTaskEndMillis = 0L;
+        public long activeSectTaskElapsedMillis = 0L;
+        public List<String> defeatedSectTrialIds = new ArrayList<>();
+        public List<String> learnedSectInheritanceIds = new ArrayList<>();
+        public List<String> graduatedSectIds = new ArrayList<>();
     }
 
     private State myState = new State();
@@ -405,6 +418,48 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             state.equippedArtifactIds.remove(state.equippedArtifactIds.size() - 1);
         }
         state.defeatedCultivatorIds = normalizeStringList(state.defeatedCultivatorIds);
+        state.cultivationSectId = state.cultivationSectId == null ? "" : state.cultivationSectId;
+        state.sectPrestigeBySectId = normalizeLongMap(state.sectPrestigeBySectId);
+        state.sectContributionBySectId = normalizeLongMap(state.sectContributionBySectId);
+        state.sectRankBySectId = normalizeIntegerMap(state.sectRankBySectId, 0, 4);
+        state.activeSectTaskId = state.activeSectTaskId == null ? "" : state.activeSectTaskId;
+        state.sectTaskStartMillis = Math.max(0L, state.sectTaskStartMillis);
+        state.sectTaskEndMillis = Math.max(0L, state.sectTaskEndMillis);
+        state.activeSectTaskElapsedMillis = Math.max(0L, state.activeSectTaskElapsedMillis);
+        if (state.activeSectTaskId.isEmpty()) {
+            state.sectTaskStartMillis = 0L;
+            state.sectTaskEndMillis = 0L;
+            state.activeSectTaskElapsedMillis = 0L;
+        }
+        state.defeatedSectTrialIds = normalizeStringList(state.defeatedSectTrialIds);
+        state.learnedSectInheritanceIds = normalizeStringList(state.learnedSectInheritanceIds);
+        state.graduatedSectIds = normalizeStringList(state.graduatedSectIds);
+    }
+
+    private static Map<String, Long> normalizeLongMap(Map<String, Long> values) {
+        Map<String, Long> normalized = new HashMap<>();
+        if (values == null) {
+            return normalized;
+        }
+        for (Map.Entry<String, Long> entry : values.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() >= 0L) {
+                normalized.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return normalized;
+    }
+
+    private static Map<String, Integer> normalizeIntegerMap(Map<String, Integer> values, int minimum, int maximum) {
+        Map<String, Integer> normalized = new HashMap<>();
+        if (values == null) {
+            return normalized;
+        }
+        for (Map.Entry<String, Integer> entry : values.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null) {
+                normalized.put(entry.getKey(), clamp(entry.getValue(), minimum, maximum));
+            }
+        }
+        return normalized;
     }
 
     private static List<String> normalizeStringList(List<String> values) {
@@ -718,6 +773,140 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             return false;
         }
         myState.defeatedCultivatorIds.add(cultivatorId);
+        return true;
+    }
+
+    public String getCultivationSectId() {
+        normalizeCultivationState(myState);
+        return myState.cultivationSectId != null ? myState.cultivationSectId : "";
+    }
+
+    public void setCultivationSectId(String sectId) {
+        normalizeCultivationState(myState);
+        myState.cultivationSectId = sectId != null ? sectId : "";
+    }
+
+    public long getCurrentSectPrestige() {
+        return getSectPrestige(getCultivationSectId());
+    }
+
+    public long getSectPrestige(String sectId) {
+        normalizeCultivationState(myState);
+        return myState.sectPrestigeBySectId.getOrDefault(sectId, 0L);
+    }
+
+    public void addCurrentSectPrestige(long amount) {
+        String sectId = getCultivationSectId();
+        if (!sectId.isEmpty() && amount > 0L) {
+            myState.sectPrestigeBySectId.merge(sectId, amount, Long::sum);
+        }
+    }
+
+    public long getCurrentSectContribution() {
+        return getSectContribution(getCultivationSectId());
+    }
+
+    public long getSectContribution(String sectId) {
+        normalizeCultivationState(myState);
+        return myState.sectContributionBySectId.getOrDefault(sectId, 0L);
+    }
+
+    public void addCurrentSectContribution(long amount) {
+        String sectId = getCultivationSectId();
+        if (!sectId.isEmpty() && amount > 0L) {
+            myState.sectContributionBySectId.merge(sectId, amount, Long::sum);
+        }
+    }
+
+    public boolean spendCurrentSectContribution(long amount) {
+        if (amount < 0L) return false;
+        String sectId = getCultivationSectId();
+        long current = getSectContribution(sectId);
+        if (sectId.isEmpty() || current < amount) {
+            return false;
+        }
+        myState.sectContributionBySectId.put(sectId, current - amount);
+        return true;
+    }
+
+    public void clearCurrentSectContribution() {
+        String sectId = getCultivationSectId();
+        if (!sectId.isEmpty()) {
+            myState.sectContributionBySectId.put(sectId, 0L);
+        }
+    }
+
+    public int getCurrentSectRankIndex() {
+        return getSectRankIndex(getCultivationSectId());
+    }
+
+    public int getSectRankIndex(String sectId) {
+        normalizeCultivationState(myState);
+        return myState.sectRankBySectId.getOrDefault(sectId, 0);
+    }
+
+    public void setCurrentSectRankIndex(int rankIndex) {
+        String sectId = getCultivationSectId();
+        if (!sectId.isEmpty()) {
+            myState.sectRankBySectId.put(sectId, clamp(rankIndex, 0, 4));
+        }
+    }
+
+    public String getActiveSectTaskId() { return myState.activeSectTaskId != null ? myState.activeSectTaskId : ""; }
+    public void setActiveSectTaskId(String taskId) { myState.activeSectTaskId = taskId != null ? taskId : ""; }
+    public long getSectTaskStartMillis() { return Math.max(0L, myState.sectTaskStartMillis); }
+    public void setSectTaskStartMillis(long millis) { myState.sectTaskStartMillis = Math.max(0L, millis); }
+    public long getSectTaskEndMillis() { return Math.max(0L, myState.sectTaskEndMillis); }
+    public void setSectTaskEndMillis(long millis) { myState.sectTaskEndMillis = Math.max(0L, millis); }
+    public long getActiveSectTaskElapsedMillis() { return Math.max(0L, myState.activeSectTaskElapsedMillis); }
+    public void setActiveSectTaskElapsedMillis(long millis) { myState.activeSectTaskElapsedMillis = Math.max(0L, millis); }
+
+    public void clearSectTask() {
+        myState.activeSectTaskId = "";
+        myState.sectTaskStartMillis = 0L;
+        myState.sectTaskEndMillis = 0L;
+        myState.activeSectTaskElapsedMillis = 0L;
+    }
+
+    public boolean isSectTrialDefeated(String trialId) {
+        normalizeCultivationState(myState);
+        return trialId != null && myState.defeatedSectTrialIds.contains(trialId);
+    }
+
+    public boolean markSectTrialDefeated(String trialId) {
+        normalizeCultivationState(myState);
+        if (trialId == null || trialId.isEmpty() || myState.defeatedSectTrialIds.contains(trialId)) {
+            return false;
+        }
+        myState.defeatedSectTrialIds.add(trialId);
+        return true;
+    }
+
+    public boolean isSectInheritanceLearned(String inheritanceId) {
+        normalizeCultivationState(myState);
+        return inheritanceId != null && myState.learnedSectInheritanceIds.contains(inheritanceId);
+    }
+
+    public boolean markSectInheritanceLearned(String inheritanceId) {
+        normalizeCultivationState(myState);
+        if (inheritanceId == null || inheritanceId.isEmpty() || myState.learnedSectInheritanceIds.contains(inheritanceId)) {
+            return false;
+        }
+        myState.learnedSectInheritanceIds.add(inheritanceId);
+        return true;
+    }
+
+    public boolean isSectGraduated(String sectId) {
+        normalizeCultivationState(myState);
+        return sectId != null && myState.graduatedSectIds.contains(sectId);
+    }
+
+    public boolean markSectGraduated(String sectId) {
+        normalizeCultivationState(myState);
+        if (sectId == null || sectId.isEmpty() || myState.graduatedSectIds.contains(sectId)) {
+            return false;
+        }
+        myState.graduatedSectIds.add(sectId);
         return true;
     }
 }
