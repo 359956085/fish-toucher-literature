@@ -85,6 +85,10 @@ public final class IdleCultivationManager implements Disposable {
     private static final int MAX_PENDING_SECT_EVENTS = 3;
     private static final int ABODE_UNLOCK_REALM_INDEX = 2;
     private static final long SECT_SECRET_REALM_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(30);
+    private static final int ASCENSION_REQUIRED_REBIRTH_COUNT = 9;
+    private static final String DEFAULT_OWN_SECT_NAME = "太虚宗";
+    private static final String[] DISCIPLE_SURNAMES = {"陆", "苏", "陈", "林", "顾", "沈", "白", "洛", "姜", "谢"};
+    private static final String[] DISCIPLE_GIVEN_NAMES = {"离", "玄", "清", "照", "微", "云", "衡", "宁", "晏", "真"};
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
             new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
@@ -281,7 +285,7 @@ public final class IdleCultivationManager implements Disposable {
         settleProgress(false);
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
-        if (isMaxRealm(realmIndex)) {
+        if (isCurrentPhaseMaxRealm(settings)) {
             lastMessage = FishToucherBundle.message("cultivation.status.maxRealm");
             fireChange();
             return;
@@ -338,7 +342,7 @@ public final class IdleCultivationManager implements Disposable {
             return;
         }
 
-        long creditedMillis = Math.min(elapsedMillis, OFFLINE_CAP_MILLIS);
+        long creditedMillis = Math.min(elapsedMillis, getOfflineCapMillis(settings));
         int realmIndex = settings.getCultivationRealmIndex();
         boolean offlineCatchUp = showOfflineMessage || elapsedMillis > SECLUSION_ONLINE_WINDOW_MILLIS;
         long passiveSeconds = creditedMillis / 1_000L;
@@ -401,7 +405,7 @@ public final class IdleCultivationManager implements Disposable {
                 long gain = applyQiBonus(Math.max(300L, getRequiredQi(realmIndex) / 45L));
                 long availableGain = getAvailableCultivationQiGain(settings, gain);
                 if (availableGain <= 0L) {
-                    lastMessage = FishToucherBundle.message(isMaxRealm(realmIndex)
+                    lastMessage = FishToucherBundle.message(isCurrentPhaseMaxRealm(settings)
                             ? "cultivation.status.maxRealm"
                             : "cultivation.status.ready");
                     fireChange();
@@ -540,6 +544,7 @@ public final class IdleCultivationManager implements Disposable {
 
         qiGain = addCultivationQi(settings, qiGain);
         settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() + stoneGain);
+        grantAscendedSectResources(settings, stoneGain);
         settings.clearTravel();
         TravelReward reward = new TravelReward(qiGain, stoneGain, pillId, pillCount, techniqueId, duplicateTechnique, spellId, duplicateSpell);
         lastMessage = reward.summary();
@@ -548,7 +553,15 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean canRebirth() {
-        return isMaxRealm(NovelReaderSettings.getInstance().getCultivationRealmIndex());
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended()
+                && CultivationRules.isHumanMaxRealm(settings.getCultivationRealmIndex());
+    }
+
+    public synchronized boolean canShowAscensionButton() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended()
+                && CultivationRules.isHumanMaxRealm(settings.getCultivationRealmIndex());
     }
 
     public synchronized boolean rebirth(String ignoredTechniqueId) {
@@ -671,6 +684,338 @@ public final class IdleCultivationManager implements Disposable {
         }
         NovelReaderSettings.getInstance().setEquippedArtifactIds(validArtifactIds);
         lastMessage = FishToucherBundle.message("cultivation.status.artifactsEquipped", validArtifactIds.size(), MAX_EQUIPPED_ARTIFACT_COUNT);
+        fireChange();
+        return true;
+    }
+
+    public List<AscendedSectCatalog.BuildingDefinition> getOwnSectBuildingDefinitions() {
+        return AscendedSectCatalog.buildings();
+    }
+
+    public List<AscendedSectCatalog.Specialty> getOwnSectSpecialties() {
+        return AscendedSectRules.specialties();
+    }
+
+    public synchronized boolean canCreateOwnSect() {
+        return AscendedSectRules.canCreateOwnSect(NovelReaderSettings.getInstance());
+    }
+
+    public synchronized boolean createOwnSect(String name) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!canCreateOwnSect()) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.createUnavailable");
+            fireChange();
+            return false;
+        }
+        settings.createOwnSect(name == null || name.isBlank() ? DEFAULT_OWN_SECT_NAME : name);
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.created", settings.getOwnSectName());
+        fireChange();
+        return true;
+    }
+
+    public synchronized String getOwnSectOverviewText() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!settings.isCultivationAscended()) {
+            return "";
+        }
+        if (!settings.isOwnSectCreated()) {
+            return FishToucherBundle.message("cultivation.ownSect.notCreated");
+        }
+        AscendedSectCatalog.TierDefinition tier = AscendedSectCatalog.tier(settings.getOwnSectTierIndex());
+        return FishToucherBundle.message(
+                "cultivation.ownSect.overview",
+                settings.getOwnSectName(),
+                tier.name(),
+                settings.getOwnSectDisciples().size(),
+                tier.discipleLimit(),
+                settings.getOwnSectMaterials(),
+                settings.getOwnSectFortune(),
+                AscendedSectRules.totalBuildingLevel(settings)
+        );
+    }
+
+    public synchronized String getOwnSectBonusText() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!settings.isOwnSectCreated()) {
+            return "";
+        }
+        return FishToucherBundle.message(
+                "cultivation.ownSect.bonus",
+                AscendedSectRules.gatheringQiBonusPercent(settings),
+                getOwnSectOfflineBonusHours(settings),
+                AscendedSectRules.alchemyBonusPercent(settings),
+                AscendedSectRules.refiningBonusPercent(settings),
+                AscendedSectRules.scriptureBonusPercent(settings)
+        );
+    }
+
+    public synchronized boolean canUpgradeOwnSectBuilding(String buildingId) {
+        return AscendedSectRules.canUpgradeBuilding(
+                NovelReaderSettings.getInstance(),
+                AscendedSectCatalog.building(buildingId)
+        );
+    }
+
+    public synchronized String getOwnSectBuildingLevelText(String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return FishToucherBundle.message(
+                "cultivation.ownSect.buildingLevel",
+                settings.getOwnSectBuildingLevel(buildingId),
+                AscendedSectRules.buildingLevelLimit(settings)
+        );
+    }
+
+    public synchronized String getOwnSectBuildingEffectText(String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return switch (buildingId) {
+            case AscendedSectCatalog.GATHERING_ARRAY_ID -> FishToucherBundle.message(
+                    "cultivation.ownSect.effect.gathering",
+                    AscendedSectRules.gatheringQiBonusPercent(settings),
+                    getOwnSectOfflineBonusHours(settings)
+            );
+            case AscendedSectCatalog.ALCHEMY_HALL_ID -> FishToucherBundle.message(
+                    "cultivation.ownSect.effect.alchemy",
+                    getClaimableOwnSectAlchemyPillCount(),
+                    AscendedSectRules.alchemyBonusPercent(settings)
+            );
+            case AscendedSectCatalog.REFINING_PAVILION_ID -> FishToucherBundle.message(
+                    "cultivation.ownSect.effect.refining",
+                    AscendedSectRules.refiningBonusPercent(settings)
+            );
+            case AscendedSectCatalog.SCRIPTURE_LIBRARY_ID -> FishToucherBundle.message(
+                    "cultivation.ownSect.effect.scripture",
+                    AscendedSectRules.scriptureBonusPercent(settings)
+            );
+            default -> "";
+        };
+    }
+
+    public synchronized String getOwnSectBuildingCostText(String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        AscendedSectCatalog.BuildingDefinition building = AscendedSectCatalog.building(buildingId);
+        if (building == null) {
+            return "";
+        }
+        if (settings.getOwnSectBuildingLevel(buildingId) >= AscendedSectRules.buildingLevelLimit(settings)) {
+            return FishToucherBundle.message("cultivation.abode.costMax");
+        }
+        return FishToucherBundle.message(
+                "cultivation.ownSect.buildingCost",
+                AscendedSectRules.buildingStoneCost(settings, building),
+                AscendedSectRules.buildingMaterialCost(settings, building)
+        );
+    }
+
+    public synchronized String getOwnSectBuildingAssignedText(String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        List<String> names = new ArrayList<>();
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
+            if (buildingId.equals(disciple.assignedBuildingId)) {
+                names.add(disciple.name + " " + disciple.aptitude);
+            }
+        }
+        int slots = AscendedSectRules.buildingSlotCount(settings.getOwnSectBuildingLevel(buildingId));
+        return FishToucherBundle.message(
+                "cultivation.ownSect.assignedText",
+                names.isEmpty() ? FishToucherBundle.message("cultivation.ownSect.none") : String.join("，", names),
+                names.size(),
+                slots
+        );
+    }
+
+    public synchronized boolean upgradeOwnSectBuilding(String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        AscendedSectCatalog.BuildingDefinition building = AscendedSectCatalog.building(buildingId);
+        if (!AscendedSectRules.canUpgradeBuilding(settings, building)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.upgradeUnavailable");
+            fireChange();
+            return false;
+        }
+        long stoneCost = AscendedSectRules.buildingStoneCost(settings, building);
+        long materialCost = AscendedSectRules.buildingMaterialCost(settings, building);
+        settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() - stoneCost);
+        settings.spendOwnSectMaterials(materialCost);
+        int nextLevel = settings.getOwnSectBuildingLevel(building.id()) + 1;
+        settings.setOwnSectBuildingLevel(building.id(), nextLevel);
+        if (AscendedSectCatalog.ALCHEMY_HALL_ID.equals(building.id())
+                && settings.getAbodeLastClaimMillis(AscendedSectCatalog.ALCHEMY_HALL_ID) <= 0L) {
+            settings.setAbodeLastClaimMillis(AscendedSectCatalog.ALCHEMY_HALL_ID, System.currentTimeMillis());
+        }
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.buildingUpgraded", building.name(), nextLevel);
+        fireChange();
+        return true;
+    }
+
+    public synchronized long getClaimableOwnSectAlchemyPillCount() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!settings.isCultivationAscended() || !settings.isOwnSectCreated()) {
+            return 0L;
+        }
+        int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.ALCHEMY_HALL_ID);
+        if (level <= 0) {
+            return 0L;
+        }
+        long periods = getOwnSectAlchemyPeriods(settings);
+        int bonusPercent = getOwnSectAlchemyBonusPercent(settings);
+        return periods + periods * bonusPercent / 100L;
+    }
+
+    public synchronized boolean canClaimOwnSectAlchemy() {
+        return getClaimableOwnSectAlchemyPillCount() > 0L;
+    }
+
+    public synchronized boolean claimOwnSectAlchemy() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        long pillCount = getClaimableOwnSectAlchemyPillCount();
+        if (pillCount <= 0L) {
+            lastMessage = FishToucherBundle.message("cultivation.status.nothingToClaim");
+            fireChange();
+            return false;
+        }
+        int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.ALCHEMY_HALL_ID);
+        Map<String, Integer> pills = rollAlchemyPills(level, pillCount);
+        for (Map.Entry<String, Integer> entry : pills.entrySet()) {
+            settings.addPill(entry.getKey(), entry.getValue());
+        }
+        advanceAbodeClaimTime(settings, AscendedSectCatalog.ALCHEMY_HALL_ID, ALCHEMY_ROOM_INTERVAL_MILLIS, getOwnSectAlchemyPeriods(settings));
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.claimedAlchemy", new AbodeReward(0L, pills).summary());
+        fireChange();
+        return true;
+    }
+
+    public synchronized void startOwnSectRecruitment(AscendedSectCatalog.Specialty specialty) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!settings.isOwnSectCreated() || specialty == null) {
+            return;
+        }
+        List<NovelReaderSettings.OwnSectDiscipleState> candidates = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            candidates.add(generateOwnSectDisciple(settings, specialty));
+        }
+        settings.setOwnSectRecruitmentCandidates(candidates);
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.recruited", specialty.label());
+        fireChange();
+    }
+
+    public synchronized boolean recruitOwnSectDisciple(String candidateId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (settings.getOwnSectDisciples().size() >= AscendedSectRules.discipleLimit(settings)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleFull");
+            fireChange();
+            return false;
+        }
+        for (NovelReaderSettings.OwnSectDiscipleState candidate : settings.getOwnSectRecruitmentCandidates()) {
+            if (candidate.id.equals(candidateId)) {
+                boolean added = settings.addOwnSectDisciple(candidate);
+                settings.setOwnSectRecruitmentCandidates(Collections.emptyList());
+                lastMessage = added
+                        ? FishToucherBundle.message("cultivation.ownSect.discipleJoined", candidate.name)
+                        : FishToucherBundle.message("cultivation.ownSect.discipleInvalid");
+                fireChange();
+                return added;
+            }
+        }
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleInvalid");
+        fireChange();
+        return false;
+    }
+
+    public synchronized boolean assignOwnSectDisciple(String discipleId, String buildingId) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        NovelReaderSettings.OwnSectDiscipleState disciple = findOwnSectDisciple(settings, discipleId);
+        AscendedSectCatalog.BuildingDefinition building = AscendedSectCatalog.building(buildingId);
+        if (!AscendedSectRules.canAssignDisciple(settings, disciple, building)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.assignUnavailable");
+            fireChange();
+            return false;
+        }
+        settings.assignOwnSectDisciple(discipleId, buildingId);
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.assigned", disciple.name, building.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean unassignOwnSectDisciple(String discipleId) {
+        boolean changed = NovelReaderSettings.getInstance().unassignOwnSectDisciple(discipleId);
+        if (changed) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.unassigned");
+            fireChange();
+        }
+        return changed;
+    }
+
+    public synchronized boolean dismissOwnSectDisciple(String discipleId) {
+        boolean changed = NovelReaderSettings.getInstance().dismissOwnSectDisciple(discipleId);
+        if (changed) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.dismissed");
+            fireChange();
+        }
+        return changed;
+    }
+
+    public synchronized boolean canPromoteOwnSect() {
+        return AscendedSectRules.canPromote(NovelReaderSettings.getInstance());
+    }
+
+    public synchronized boolean promoteOwnSect() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        AscendedSectCatalog.TierDefinition nextTier = AscendedSectCatalog.nextTier(settings.getOwnSectTierIndex());
+        if (nextTier == null || !AscendedSectRules.canPromote(settings)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.promoteUnavailable");
+            fireChange();
+            return false;
+        }
+        settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() - nextTier.promotionStoneCost());
+        settings.spendOwnSectMaterials(nextTier.promotionMaterialCost());
+        settings.setOwnSectTierIndex(nextTier.index());
+        settings.addOwnSectFortune(30L + nextTier.index() * 20L);
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.promoted", nextTier.name());
+        fireChange();
+        return true;
+    }
+
+    public synchronized boolean isAscended() {
+        return NovelReaderSettings.getInstance().isCultivationAscended();
+    }
+
+    public synchronized boolean canAscend() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended()
+                && settings.getCultivationRebirthCount() >= ASCENSION_REQUIRED_REBIRTH_COUNT
+                && CultivationRules.isHumanMaxRealm(settings.getCultivationRealmIndex())
+                && !hasActiveTravel()
+                && !hasActiveBattle()
+                && !hasActiveSectTask()
+                && !hasActiveSectSecretRealm();
+    }
+
+    public synchronized boolean ascend() {
+        settleProgress(false);
+        ensureCultivationDefaults();
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!canAscend()) {
+            lastMessage = FishToucherBundle.message("cultivation.ascension.unavailable", ASCENSION_REQUIRED_REBIRTH_COUNT);
+            fireChange();
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+        settings.setCultivationAscended(true);
+        settings.setAscensionRebirthCount(settings.getCultivationRebirthCount());
+        settings.setAscensionMillis(now);
+        settings.setCultivationRealmIndex(CultivationRules.SPIRIT_START_REALM_INDEX);
+        settings.setCultivationQi(0L);
+        settings.setCultivationBreakthroughFailures(0);
+        settings.setCultivationLastUpdateMillis(now);
+        settings.setCultivationLastMeditationMillis(0L);
+        settings.setBreakthroughPillActive(false);
+        settings.setMeridianPillActive(false);
+        settings.clearTravel();
+        settings.clearSectTask();
+        settings.clearSectSecretRealmProgress();
+        settings.clearAbodeState();
+        settings.setCultivationSectId("");
+        lastMessage = FishToucherBundle.message("cultivation.ascension.success", settings.getAscensionRebirthCount());
         fireChange();
         return true;
     }
@@ -844,7 +1189,8 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean isSectUnlocked() {
-        return SectRules.isSectUnlocked(NovelReaderSettings.getInstance().getCultivationRealmIndex());
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended() && SectRules.isSectUnlocked(settings.getCultivationRealmIndex());
     }
 
     public synchronized SectCatalog.SectDefinition getCurrentSect() {
@@ -1445,7 +1791,8 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized long getRequiredQi() {
-        return getRequiredQi(NovelReaderSettings.getInstance().getCultivationRealmIndex());
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return isCurrentPhaseMaxRealm(settings) ? 0L : getRequiredQi(settings.getCultivationRealmIndex());
     }
 
     public long getRequiredQi(int realmIndex) {
@@ -1460,7 +1807,7 @@ public final class IdleCultivationManager implements Disposable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
         long currentQi = clampCultivationQi(settings);
-        if (isMaxRealm(realmIndex)) {
+        if (isCurrentPhaseMaxRealm(settings)) {
             return 100;
         }
         long requiredQi = getRequiredQi(realmIndex);
@@ -1473,7 +1820,7 @@ public final class IdleCultivationManager implements Disposable {
     public synchronized boolean canBreakthrough() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
-        return !isMaxRealm(realmIndex) && clampCultivationQi(settings) >= getRequiredQi(realmIndex);
+        return !isCurrentPhaseMaxRealm(settings) && clampCultivationQi(settings) >= getRequiredQi(realmIndex);
     }
 
     public synchronized boolean canMeditate() {
@@ -1488,12 +1835,25 @@ public final class IdleCultivationManager implements Disposable {
         return NovelReaderSettings.getInstance().getCultivationRebirthCount();
     }
 
+    public synchronized int getEffectiveRebirthCount() {
+        return getEffectiveRebirthCount(NovelReaderSettings.getInstance());
+    }
+
+    private int getEffectiveRebirthCount(NovelReaderSettings settings) {
+        return settings.isCultivationAscended()
+                ? settings.getAscensionRebirthCount()
+                : settings.getCultivationRebirthCount();
+    }
+
     public synchronized String getRebirthStatusText() {
+        if (NovelReaderSettings.getInstance().isCultivationAscended()) {
+            return FishToucherBundle.message("cultivation.ascension.rebirthFixed", getEffectiveRebirthCount());
+        }
         return FishToucherBundle.message("cultivation.status.rebirthCount", getRebirthCount());
     }
 
     public synchronized String getRebirthTrainingStatusText() {
-        int rebirthCount = getRebirthCount();
+        int rebirthCount = getEffectiveRebirthCount();
         return FishToucherBundle.message(
                 "cultivation.status.rebirthTraining",
                 rebirthCount,
@@ -1525,7 +1885,7 @@ public final class IdleCultivationManager implements Disposable {
         int realmIndex = settings.getCultivationRealmIndex();
         long currentQi = clampCultivationQi(settings);
         String baseStatus;
-        if (isMaxRealm(realmIndex)) {
+        if (isCurrentPhaseMaxRealm(settings)) {
             baseStatus = FishToucherBundle.message(
                     "cultivation.status.format",
                     getRealmName(realmIndex),
@@ -1563,7 +1923,7 @@ public final class IdleCultivationManager implements Disposable {
         if (hasActiveSectSecretRealm()) {
             notices.add(getSectSecretRealmStatusText());
         }
-        if (settings.getCultivationRebirthCount() > 0) {
+        if (getEffectiveRebirthCount(settings) > 0) {
             notices.add(getRebirthStatusText());
         }
         return notices.isEmpty() ? baseStatus : baseStatus + " | " + String.join(" | ", notices);
@@ -1590,7 +1950,7 @@ public final class IdleCultivationManager implements Disposable {
     public synchronized String getChanceText() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
-        if (isMaxRealm(realmIndex)) {
+        if (isCurrentPhaseMaxRealm(settings)) {
             return FishToucherBundle.message("cultivation.status.maxRealm");
         }
         return FishToucherBundle.message(
@@ -1609,7 +1969,7 @@ public final class IdleCultivationManager implements Disposable {
         if (settings.isMeridianPillActive()) {
             effects.add(FishToucherBundle.message("cultivation.effect.meridianPill"));
         }
-        if (settings.getCultivationRebirthCount() > 0) {
+        if (getEffectiveRebirthCount(settings) > 0) {
             effects.add(getRebirthEffectText());
             effects.add(getRebirthBreakthroughEffectText());
         }
@@ -1739,10 +2099,14 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean isAbodeUnlocked() {
-        return NovelReaderSettings.getInstance().getCultivationRealmIndex() >= ABODE_UNLOCK_REALM_INDEX;
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended() && settings.getCultivationRealmIndex() >= ABODE_UNLOCK_REALM_INDEX;
     }
 
     public synchronized String getAbodeLockedText() {
+        if (NovelReaderSettings.getInstance().isCultivationAscended()) {
+            return FishToucherBundle.message("cultivation.abode.ascendedMerged");
+        }
         return FishToucherBundle.message("cultivation.abode.locked", getRealmName(ABODE_UNLOCK_REALM_INDEX));
     }
 
@@ -2131,17 +2495,20 @@ public final class IdleCultivationManager implements Disposable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int realmIndex = settings.getCultivationRealmIndex();
         TechniqueDefinition technique = getEquippedTechnique();
-        int rebirthCount = settings.getCultivationRebirthCount();
+        int rebirthCount = getEffectiveRebirthCount(settings);
         long attack = 120L + Math.max(0, realmIndex) * 80L;
         long defense = 95L + Math.max(0, realmIndex) * 65L;
         long mana = 180L + Math.max(0, realmIndex) * 90L;
+        int ownSectCombatBonus = getOwnSectCombatBonusPercent(settings);
         attack = applyPercent(attack, technique.attackBonusPercent()
                 + getArtifactAttackBonusPercent()
-                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.ATTACK));
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.ATTACK)
+                + ownSectCombatBonus);
         defense = applyPercent(defense, technique.defenseBonusPercent()
                 + getArtifactDefenseBonusPercent()
-                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.DEFENSE));
-        mana = applyPercent(mana, technique.manaBonusPercent() + getArtifactManaBonusPercent());
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.DEFENSE)
+                + ownSectCombatBonus);
+        mana = applyPercent(mana, technique.manaBonusPercent() + getArtifactManaBonusPercent() + ownSectCombatBonus);
         attack = applyPercent(attack, rebirthCount * REBIRTH_ATTACK_BONUS_PERCENT);
         defense = applyPercent(defense, rebirthCount * REBIRTH_DEFENSE_BONUS_PERCENT);
         mana = applyPercent(mana, rebirthCount * REBIRTH_MANA_BONUS_PERCENT);
@@ -2172,6 +2539,94 @@ public final class IdleCultivationManager implements Disposable {
         }
         clampCultivationQi(settings);
         purgeInvalidSectSecretRealm(settings);
+    }
+
+    private NovelReaderSettings.OwnSectDiscipleState generateOwnSectDisciple(
+            NovelReaderSettings settings,
+            AscendedSectCatalog.Specialty specialty
+    ) {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        AscendedSectCatalog.TierDefinition tier = AscendedSectCatalog.tier(settings.getOwnSectTierIndex());
+        int aptitude = random.nextInt(tier.commonAptitudeMin(), tier.commonAptitudeMax() + 1);
+        if (random.nextInt(100) < 8) {
+            aptitude = random.nextInt(tier.commonAptitudeMax(), tier.maxAptitude() + 1);
+        }
+        String name = DISCIPLE_SURNAMES[random.nextInt(DISCIPLE_SURNAMES.length)]
+                + DISCIPLE_GIVEN_NAMES[random.nextInt(DISCIPLE_GIVEN_NAMES.length)];
+        return new NovelReaderSettings.OwnSectDiscipleState(
+                UUID.randomUUID().toString(),
+                name,
+                specialty.name(),
+                aptitude,
+                ""
+        );
+    }
+
+    private NovelReaderSettings.OwnSectDiscipleState findOwnSectDisciple(NovelReaderSettings settings, String discipleId) {
+        if (discipleId == null) {
+            return null;
+        }
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
+            if (discipleId.equals(disciple.id)) {
+                return disciple;
+            }
+        }
+        return null;
+    }
+
+    private int getOwnSectOfflineBonusHours(NovelReaderSettings settings) {
+        int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.GATHERING_ARRAY_ID);
+        if (level >= 10) return 4;
+        if (level >= 7) return 3;
+        if (level >= 5) return 2;
+        if (level >= 3) return 1;
+        return 0;
+    }
+
+    private int getOwnSectQiBonusPercent(NovelReaderSettings settings) {
+        return settings.isCultivationAscended() && settings.isOwnSectCreated()
+                ? AscendedSectRules.gatheringQiBonusPercent(settings) + AscendedSectRules.scriptureBonusPercent(settings)
+                : 0;
+    }
+
+    private int getOwnSectCombatBonusPercent(NovelReaderSettings settings) {
+        return settings.isCultivationAscended() && settings.isOwnSectCreated()
+                ? AscendedSectRules.refiningBonusPercent(settings) + AscendedSectRules.scriptureBonusPercent(settings) / 2
+                : 0;
+    }
+
+    private int getOwnSectAlchemyBonusPercent(NovelReaderSettings settings) {
+        return settings.isCultivationAscended() && settings.isOwnSectCreated()
+                ? AscendedSectRules.alchemyBonusPercent(settings)
+                : 0;
+    }
+
+    private long getOwnSectAlchemyPeriods(NovelReaderSettings settings) {
+        long now = System.currentTimeMillis();
+        long lastClaimMillis = settings.getAbodeLastClaimMillis(AscendedSectCatalog.ALCHEMY_HALL_ID);
+        if (lastClaimMillis <= 0L || lastClaimMillis > now) {
+            settings.setAbodeLastClaimMillis(AscendedSectCatalog.ALCHEMY_HALL_ID, now);
+            return 0L;
+        }
+        long creditedMillis = Math.min(now - lastClaimMillis, getOfflineCapMillis(settings));
+        return creditedMillis / ALCHEMY_ROOM_INTERVAL_MILLIS;
+    }
+
+    private void grantAscendedSectResources(NovelReaderSettings settings, long stoneGain) {
+        if (!settings.isCultivationAscended() || !settings.isOwnSectCreated()) {
+            return;
+        }
+        settings.addOwnSectMaterials(Math.max(8L, stoneGain / 18L));
+        if (ThreadLocalRandom.current().nextInt(100) < 12) {
+            settings.addOwnSectFortune(1L);
+        }
+    }
+
+    private long getOfflineCapMillis(NovelReaderSettings settings) {
+        long bonusHours = settings.isCultivationAscended() && settings.isOwnSectCreated()
+                ? getOwnSectOfflineBonusHours(settings)
+                : 0L;
+        return OFFLINE_CAP_MILLIS + TimeUnit.HOURS.toMillis(bonusHours);
     }
 
     private boolean canMeditate(long now) {
@@ -2580,18 +3035,26 @@ public final class IdleCultivationManager implements Disposable {
         return CultivationRules.isMaxRealm(realmIndex);
     }
 
+    private boolean isCurrentPhaseMaxRealm(NovelReaderSettings settings) {
+        return CultivationRules.isCurrentPhaseMaxRealm(
+                settings.getCultivationRealmIndex(),
+                settings.isCultivationAscended()
+        );
+    }
+
     private int getRealmCount() {
         return CultivationRules.realmCount();
     }
 
-    private long getCultivationQiLimit(int realmIndex) {
-        return isMaxRealm(realmIndex) ? 0L : getRequiredQi(realmIndex);
+    private long getCultivationQiLimit(NovelReaderSettings settings) {
+        int realmIndex = settings.getCultivationRealmIndex();
+        return isCurrentPhaseMaxRealm(settings) ? 0L : getRequiredQi(realmIndex);
     }
 
     private long clampCultivationQi(NovelReaderSettings settings) {
         int realmIndex = settings.getCultivationRealmIndex();
         long currentQi = settings.getCultivationQi();
-        long limit = getCultivationQiLimit(realmIndex);
+        long limit = getCultivationQiLimit(settings);
         long clampedQi = limit <= 0L ? 0L : Math.min(currentQi, limit);
         if (currentQi != clampedQi) {
             settings.setCultivationQi(clampedQi);
@@ -2604,8 +3067,7 @@ public final class IdleCultivationManager implements Disposable {
             clampCultivationQi(settings);
             return 0L;
         }
-        int realmIndex = settings.getCultivationRealmIndex();
-        long limit = getCultivationQiLimit(realmIndex);
+        long limit = getCultivationQiLimit(settings);
         if (limit <= 0L) {
             clampCultivationQi(settings);
             return 0L;
@@ -2631,7 +3093,7 @@ public final class IdleCultivationManager implements Disposable {
         int additiveChance = baseChance + failures * 16 + techniqueBonus + pillBonus + abodeBonus;
         return CultivationRules.finalBreakthroughChance(
                 additiveChance,
-                settings.getCultivationRebirthCount(),
+                getEffectiveRebirthCount(settings),
                 REBIRTH_BREAKTHROUGH_BONUS_PERCENT
         );
     }
@@ -2656,17 +3118,21 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long applyQiBonus(long value) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int bonusPercent = getEquippedTechnique().qiBonusPercent()
                 + getArtifactQiBonusPercent()
-                + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.QI);
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.QI)
+                + getOwnSectQiBonusPercent(settings);
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
 
     private long applySeclusionQiBonus(long value) {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
         int bonusPercent = getEquippedTechnique().qiBonusPercent()
                 + getArtifactQiBonusPercent()
                 + (isAbodeUnlocked() ? getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID)) : 0)
-                + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.QI);
+                + SectRules.currentSectBonus(settings, SectCatalog.BonusType.QI)
+                + getOwnSectQiBonusPercent(settings);
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
 
@@ -2704,16 +3170,16 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long applyRebirthQiBonus(long value) {
-        return applyPercent(value, NovelReaderSettings.getInstance().getCultivationRebirthCount() * REBIRTH_QI_BONUS_PERCENT);
+        return applyPercent(value, getEffectiveRebirthCount(NovelReaderSettings.getInstance()) * REBIRTH_QI_BONUS_PERCENT);
     }
 
     private String getRebirthMultiplierText() {
-        double multiplier = 1.0 + NovelReaderSettings.getInstance().getCultivationRebirthCount() * REBIRTH_QI_BONUS_PERCENT / 100.0;
+        double multiplier = 1.0 + getEffectiveRebirthCount(NovelReaderSettings.getInstance()) * REBIRTH_QI_BONUS_PERCENT / 100.0;
         return String.format(Locale.ROOT, "%.2f", multiplier);
     }
 
     private String getRebirthBreakthroughMultiplierText() {
-        double multiplier = 1.0 + NovelReaderSettings.getInstance().getCultivationRebirthCount() * REBIRTH_BREAKTHROUGH_BONUS_PERCENT / 100.0;
+        double multiplier = 1.0 + getEffectiveRebirthCount(NovelReaderSettings.getInstance()) * REBIRTH_BREAKTHROUGH_BONUS_PERCENT / 100.0;
         return String.format(Locale.ROOT, "%.2f", multiplier);
     }
 

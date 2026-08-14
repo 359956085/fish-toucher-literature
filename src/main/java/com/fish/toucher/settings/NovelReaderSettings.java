@@ -21,8 +21,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     private static final Logger LOG = Logger.getInstance(NovelReaderSettings.class);
     private static final int MAX_RECENT_FILE_PATHS = 10;
-    private static final int MAX_CULTIVATION_REALM_INDEX = 8;
+    private static final int MAX_CULTIVATION_REALM_INDEX = 14;
     private static final int MAX_PENDING_SECT_EVENTS = 3;
+    private static final int MAX_OWN_SECT_DISCIPLES = 16;
+    private static final int MAX_OWN_SECT_CANDIDATES = 3;
+    private static final int MAX_OWN_SECT_NAME_LENGTH = 16;
     private static final Set<String> HOT_SEARCH_SOURCES = Set.of(
             "baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x", "google"
     );
@@ -37,6 +40,12 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     );
     private static final Set<String> CULTIVATION_PILL_IDS = Set.of(
             "qi_pill", "spirit_pill", "breakthrough_pill", "meridian_pill"
+    );
+    private static final Set<String> OWN_SECT_BUILDING_IDS = Set.of(
+            "gathering_array", "alchemy_hall", "refining_pavilion", "scripture_library"
+    );
+    private static final Set<String> OWN_SECT_SPECIALTIES = Set.of(
+            "GATHERING", "ALCHEMY", "REFINING", "SCRIPTURE"
     );
     public static final String MODE_NOVEL = "novel";
     public static final String MODE_HOT_SEARCH = "hotsearch";
@@ -95,6 +104,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public long cultivationLastUpdateMillis = 0L;
         public long cultivationLastMeditationMillis = 0L;
         public int cultivationRebirthCount = 0;
+        public boolean cultivationAscended = false;
+        public int ascensionRebirthCount = 0;
+        public long ascensionMillis = 0L;
         public String equippedTechniqueId = "basic_breathing";
         public List<String> unlockedTechniqueIds = new ArrayList<>();
         public Map<String, Integer> pillInventory = new HashMap<>();
@@ -131,6 +143,16 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public long sectSecretRealmStartedMillis = 0L;
         public long sectSecretRealmCooldownUntilMillis = 0L;
         public List<String> sectSecretRealmResolvedNodeIds = new ArrayList<>();
+
+        // --- Ascended own sect gameplay ---
+        public boolean ownSectCreated = false;
+        public String ownSectName = "";
+        public int ownSectTierIndex = 0;
+        public long ownSectMaterials = 0L;
+        public long ownSectFortune = 0L;
+        public Map<String, Integer> ownSectBuildingLevels = new HashMap<>();
+        public List<OwnSectDiscipleState> ownSectDisciples = new ArrayList<>();
+        public List<OwnSectDiscipleState> ownSectRecruitmentCandidates = new ArrayList<>();
     }
 
     public static class SectPendingEventState {
@@ -146,6 +168,24 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             this.eventId = eventId != null ? eventId : "";
             this.sectId = sectId != null ? sectId : "";
             this.createdMillis = Math.max(0L, createdMillis);
+        }
+    }
+
+    public static class OwnSectDiscipleState {
+        public String id = "";
+        public String name = "";
+        public String specialty = "";
+        public int aptitude = 1;
+        public String assignedBuildingId = "";
+
+        public OwnSectDiscipleState() {}
+
+        public OwnSectDiscipleState(String id, String name, String specialty, int aptitude, String assignedBuildingId) {
+            this.id = id != null ? id : "";
+            this.name = name != null ? name : "";
+            this.specialty = specialty != null ? specialty : "";
+            this.aptitude = aptitude;
+            this.assignedBuildingId = assignedBuildingId != null ? assignedBuildingId : "";
         }
     }
 
@@ -212,6 +252,8 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.cultivationLastUpdateMillis = Math.max(0L, state.cultivationLastUpdateMillis);
         state.cultivationLastMeditationMillis = Math.max(0L, state.cultivationLastMeditationMillis);
         state.cultivationRebirthCount = Math.max(0, state.cultivationRebirthCount);
+        state.ascensionRebirthCount = Math.max(0, state.ascensionRebirthCount);
+        state.ascensionMillis = Math.max(0L, state.ascensionMillis);
         state.activeTravelElapsedMillis = Math.max(0L, state.activeTravelElapsedMillis);
         normalizeCultivationState(state);
         // Migrate legacy dual-progress maps into unified readingProgress
@@ -473,6 +515,66 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             state.sectSecretRealmStartedMillis = 0L;
             state.sectSecretRealmResolvedNodeIds.clear();
         }
+        normalizeOwnSectState(state);
+    }
+
+    private static void normalizeOwnSectState(State state) {
+        state.ownSectName = normalizeOwnSectName(state.ownSectName);
+        if (!state.cultivationAscended) {
+            state.cultivationRealmIndex = Math.min(state.cultivationRealmIndex, 8);
+            state.ascensionRebirthCount = 0;
+            state.ascensionMillis = 0L;
+            state.ownSectCreated = false;
+            state.ownSectName = "";
+        }
+        state.ownSectTierIndex = clamp(state.ownSectTierIndex, 0, 5);
+        state.ownSectMaterials = Math.max(0L, state.ownSectMaterials);
+        state.ownSectFortune = Math.max(0L, state.ownSectFortune);
+        state.ownSectBuildingLevels = normalizeIntegerMap(state.ownSectBuildingLevels, 0, 10, OWN_SECT_BUILDING_IDS);
+        state.ownSectDisciples = normalizeOwnSectDisciples(state.ownSectDisciples, MAX_OWN_SECT_DISCIPLES);
+        state.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(state.ownSectRecruitmentCandidates, MAX_OWN_SECT_CANDIDATES);
+        if (!state.ownSectCreated) {
+            state.ownSectName = "";
+            state.ownSectTierIndex = 0;
+            state.ownSectMaterials = 0L;
+            state.ownSectFortune = 0L;
+            state.ownSectBuildingLevels = new HashMap<>();
+            state.ownSectDisciples = new ArrayList<>();
+            state.ownSectRecruitmentCandidates = new ArrayList<>();
+        }
+    }
+
+    private static String normalizeOwnSectName(String name) {
+        String normalized = name == null ? "" : name.trim();
+        if (normalized.length() > MAX_OWN_SECT_NAME_LENGTH) {
+            normalized = normalized.substring(0, MAX_OWN_SECT_NAME_LENGTH);
+        }
+        return normalized;
+    }
+
+    private static List<OwnSectDiscipleState> normalizeOwnSectDisciples(List<OwnSectDiscipleState> values, int limit) {
+        List<OwnSectDiscipleState> normalized = new ArrayList<>();
+        if (values == null) {
+            return normalized;
+        }
+        Set<String> ids = new LinkedHashSet<>();
+        for (OwnSectDiscipleState value : values) {
+            if (value == null || normalized.size() >= limit) {
+                continue;
+            }
+            String id = value.id != null ? value.id : "";
+            String name = normalizeOwnSectName(value.name);
+            String specialty = value.specialty != null ? value.specialty : "";
+            String buildingId = value.assignedBuildingId != null ? value.assignedBuildingId : "";
+            if (id.isEmpty() || name.isEmpty() || !OWN_SECT_SPECIALTIES.contains(specialty) || !ids.add(id)) {
+                continue;
+            }
+            if (!OWN_SECT_BUILDING_IDS.contains(buildingId)) {
+                buildingId = "";
+            }
+            normalized.add(new OwnSectDiscipleState(id, name, specialty, clamp(value.aptitude, 1, 100), buildingId));
+        }
+        return normalized;
     }
 
     private static List<SectPendingEventState> normalizeSectPendingEvents(List<SectPendingEventState> values) {
@@ -580,13 +682,15 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     // --- Idle cultivation ---
     public int getCultivationRealmIndex() {
-        return clamp(myState.cultivationRealmIndex, 0, MAX_CULTIVATION_REALM_INDEX);
+        int maximumRealmIndex = myState.cultivationAscended ? MAX_CULTIVATION_REALM_INDEX : 8;
+        return clamp(myState.cultivationRealmIndex, 0, maximumRealmIndex);
     }
     public void setCultivationRealmIndex(int realmIndex) {
+        int maximumRealmIndex = myState.cultivationAscended ? MAX_CULTIVATION_REALM_INDEX : 8;
         myState.cultivationRealmIndex = clamp(
                 realmIndex,
                 0,
-                MAX_CULTIVATION_REALM_INDEX
+                maximumRealmIndex
         );
     }
 
@@ -613,6 +717,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     public int getCultivationRebirthCount() { return Math.max(0, myState.cultivationRebirthCount); }
     public void setCultivationRebirthCount(int rebirthCount) { myState.cultivationRebirthCount = Math.max(0, rebirthCount); }
+
+    public boolean isCultivationAscended() { return myState.cultivationAscended; }
+    public void setCultivationAscended(boolean ascended) { myState.cultivationAscended = ascended; normalizeCultivationState(myState); }
+    public int getAscensionRebirthCount() { return Math.max(0, myState.ascensionRebirthCount); }
+    public void setAscensionRebirthCount(int rebirthCount) { myState.ascensionRebirthCount = Math.max(0, rebirthCount); }
+    public long getAscensionMillis() { return Math.max(0L, myState.ascensionMillis); }
+    public void setAscensionMillis(long millis) { myState.ascensionMillis = Math.max(0L, millis); }
 
     public String getEquippedTechniqueId() {
         normalizeCultivationState(myState);
@@ -1107,5 +1218,182 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         myState.sectSecretRealmNodeIndex = 0;
         myState.sectSecretRealmStartedMillis = 0L;
         myState.sectSecretRealmResolvedNodeIds = new ArrayList<>();
+    }
+
+    public boolean isOwnSectCreated() {
+        normalizeCultivationState(myState);
+        return myState.ownSectCreated;
+    }
+
+    public void createOwnSect(String name) {
+        normalizeCultivationState(myState);
+        myState.ownSectCreated = true;
+        myState.ownSectName = normalizeOwnSectName(name);
+        if (myState.ownSectName.isEmpty()) {
+            myState.ownSectName = "太虚宗";
+        }
+        if (myState.ownSectBuildingLevels.isEmpty()) {
+            myState.ownSectBuildingLevels = new HashMap<>();
+        }
+    }
+
+    public String getOwnSectName() {
+        normalizeCultivationState(myState);
+        return myState.ownSectName;
+    }
+
+    public int getOwnSectTierIndex() {
+        normalizeCultivationState(myState);
+        return myState.ownSectTierIndex;
+    }
+
+    public void setOwnSectTierIndex(int tierIndex) {
+        myState.ownSectTierIndex = clamp(tierIndex, 0, 5);
+    }
+
+    public long getOwnSectMaterials() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.ownSectMaterials);
+    }
+
+    public void addOwnSectMaterials(long amount) {
+        if (amount > 0L) {
+            myState.ownSectMaterials = Math.max(0L, myState.ownSectMaterials) + amount;
+        }
+    }
+
+    public boolean spendOwnSectMaterials(long amount) {
+        if (amount < 0L || getOwnSectMaterials() < amount) {
+            return false;
+        }
+        myState.ownSectMaterials -= amount;
+        return true;
+    }
+
+    public long getOwnSectFortune() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.ownSectFortune);
+    }
+
+    public void addOwnSectFortune(long amount) {
+        if (amount > 0L) {
+            myState.ownSectFortune = Math.max(0L, myState.ownSectFortune) + amount;
+        }
+    }
+
+    public boolean spendOwnSectFortune(long amount) {
+        if (amount < 0L || getOwnSectFortune() < amount) {
+            return false;
+        }
+        myState.ownSectFortune -= amount;
+        return true;
+    }
+
+    public Map<String, Integer> getOwnSectBuildingLevels() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableMap(new HashMap<>(myState.ownSectBuildingLevels));
+    }
+
+    public int getOwnSectBuildingLevel(String buildingId) {
+        normalizeCultivationState(myState);
+        return myState.ownSectBuildingLevels.getOrDefault(buildingId, 0);
+    }
+
+    public void setOwnSectBuildingLevel(String buildingId, int level) {
+        if (buildingId == null || !OWN_SECT_BUILDING_IDS.contains(buildingId)) return;
+        normalizeCultivationState(myState);
+        if (level <= 0) {
+            myState.ownSectBuildingLevels.remove(buildingId);
+        } else {
+            myState.ownSectBuildingLevels.put(buildingId, clamp(level, 0, 10));
+        }
+    }
+
+    public List<OwnSectDiscipleState> getOwnSectDisciples() {
+        normalizeCultivationState(myState);
+        List<OwnSectDiscipleState> snapshot = new ArrayList<>();
+        for (OwnSectDiscipleState disciple : myState.ownSectDisciples) {
+            snapshot.add(copyOwnSectDisciple(disciple));
+        }
+        return Collections.unmodifiableList(snapshot);
+    }
+
+    public List<OwnSectDiscipleState> getOwnSectRecruitmentCandidates() {
+        normalizeCultivationState(myState);
+        List<OwnSectDiscipleState> snapshot = new ArrayList<>();
+        for (OwnSectDiscipleState disciple : myState.ownSectRecruitmentCandidates) {
+            snapshot.add(copyOwnSectDisciple(disciple));
+        }
+        return Collections.unmodifiableList(snapshot);
+    }
+
+    public void setOwnSectRecruitmentCandidates(List<OwnSectDiscipleState> candidates) {
+        myState.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(candidates, MAX_OWN_SECT_CANDIDATES);
+    }
+
+    public boolean addOwnSectDisciple(OwnSectDiscipleState disciple) {
+        normalizeCultivationState(myState);
+        if (disciple == null || myState.ownSectDisciples.size() >= MAX_OWN_SECT_DISCIPLES) {
+            return false;
+        }
+        OwnSectDiscipleState normalized = normalizeOwnSectDisciples(List.of(disciple), 1).stream().findFirst().orElse(null);
+        if (normalized == null) {
+            return false;
+        }
+        for (OwnSectDiscipleState existing : myState.ownSectDisciples) {
+            if (existing.id.equals(normalized.id)) {
+                return false;
+            }
+        }
+        myState.ownSectDisciples.add(normalized);
+        return true;
+    }
+
+    public boolean removeOwnSectRecruitmentCandidate(String candidateId) {
+        normalizeCultivationState(myState);
+        return candidateId != null && myState.ownSectRecruitmentCandidates.removeIf(candidate -> candidateId.equals(candidate.id));
+    }
+
+    public boolean assignOwnSectDisciple(String discipleId, String buildingId) {
+        if (discipleId == null || !OWN_SECT_BUILDING_IDS.contains(buildingId)) {
+            return false;
+        }
+        normalizeCultivationState(myState);
+        for (OwnSectDiscipleState disciple : myState.ownSectDisciples) {
+            if (discipleId.equals(disciple.id)) {
+                disciple.assignedBuildingId = buildingId;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean unassignOwnSectDisciple(String discipleId) {
+        if (discipleId == null) {
+            return false;
+        }
+        normalizeCultivationState(myState);
+        for (OwnSectDiscipleState disciple : myState.ownSectDisciples) {
+            if (discipleId.equals(disciple.id)) {
+                disciple.assignedBuildingId = "";
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean dismissOwnSectDisciple(String discipleId) {
+        normalizeCultivationState(myState);
+        return discipleId != null && myState.ownSectDisciples.removeIf(disciple -> discipleId.equals(disciple.id));
+    }
+
+    private static OwnSectDiscipleState copyOwnSectDisciple(OwnSectDiscipleState disciple) {
+        return new OwnSectDiscipleState(
+                disciple.id,
+                disciple.name,
+                disciple.specialty,
+                disciple.aptitude,
+                disciple.assignedBuildingId
+        );
     }
 }

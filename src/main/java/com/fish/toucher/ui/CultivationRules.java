@@ -7,9 +7,14 @@ package com.fish.toucher.ui;
  */
 final class CultivationRules {
 
+    static final int HUMAN_MAX_REALM_INDEX = 8;
+    static final int SPIRIT_START_REALM_INDEX = 9;
+
     private static final long[] REQUIRED_QI = {
             8_000L, 18_000L, 34_000L, 58_000L,
-            90_000L, 130_000L, 180_000L, 245_000L
+            90_000L, 130_000L, 180_000L, 245_000L,
+            380_000L, 560_000L, 820_000L, 1_160_000L,
+            1_620_000L, 2_200_000L
     };
 
     private CultivationRules() {}
@@ -24,6 +29,14 @@ final class CultivationRules {
 
     static boolean isMaxRealm(int realmIndex) {
         return realmIndex >= realmCount() - 1;
+    }
+
+    static boolean isHumanMaxRealm(int realmIndex) {
+        return realmIndex >= HUMAN_MAX_REALM_INDEX;
+    }
+
+    static boolean isCurrentPhaseMaxRealm(int realmIndex, boolean ascended) {
+        return ascended ? isMaxRealm(realmIndex) : isHumanMaxRealm(realmIndex);
     }
 
     static long requiredQi(int realmIndex) {

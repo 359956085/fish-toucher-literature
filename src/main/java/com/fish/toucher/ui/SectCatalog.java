@@ -23,10 +23,10 @@ final class SectCatalog {
 
     private static final List<SectRankDefinition> RANKS = List.of(
             new SectRankDefinition(0, "外门弟子", 0L, 1),
-            new SectRankDefinition(1, "内门弟子", 400L, 2),
-            new SectRankDefinition(2, "真传弟子", 1_500L, 3),
-            new SectRankDefinition(3, "执事", 4_000L, 4),
-            new SectRankDefinition(4, "长老", 10_000L, 6)
+            new SectRankDefinition(1, "内门弟子", 100L, 2),
+            new SectRankDefinition(2, "真传弟子", 375L, 3),
+            new SectRankDefinition(3, "执事", 1_000L, 4),
+            new SectRankDefinition(4, "长老", 2_500L, 6)
     );
 
     private static final List<SectTaskDefinition> TASKS = List.of(

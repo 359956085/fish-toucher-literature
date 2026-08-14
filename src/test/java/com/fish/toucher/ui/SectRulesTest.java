@@ -24,11 +24,19 @@ class SectRulesTest {
 
         assertFalse(SectRules.canPromote(settings));
 
-        settings.addCurrentSectPrestige(400L);
+        settings.addCurrentSectPrestige(100L);
         assertFalse(SectRules.canPromote(settings));
 
         settings.setCultivationRealmIndex(2);
         assertTrue(SectRules.canPromote(settings));
+    }
+
+    @Test
+    void 宗门职位晋升威望门槛应为旧值四分之一() {
+        assertEquals(100L, SectCatalog.rank(1).prestigeRequired());
+        assertEquals(375L, SectCatalog.rank(2).prestigeRequired());
+        assertEquals(1_000L, SectCatalog.rank(3).prestigeRequired());
+        assertEquals(2_500L, SectCatalog.rank(4).prestigeRequired());
     }
 
     @Test
@@ -132,5 +140,30 @@ class SectRulesTest {
 
         settings.setCultivationRealmIndex(8);
         assertEquals(15L, manager.getSectTaskDurationMinutes(task, settings));
+    }
+
+    @Test
+    void 飞升宗门建筑应按弟子资质统一放大() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+        settings.setCultivationAscended(true);
+        settings.createOwnSect("太虚宗");
+        settings.setOwnSectBuildingLevel(AscendedSectCatalog.GATHERING_ARRAY_ID, 3);
+        settings.addOwnSectDisciple(new NovelReaderSettings.OwnSectDiscipleState(
+                "a",
+                "陆离",
+                AscendedSectCatalog.Specialty.GATHERING.name(),
+                80,
+                AscendedSectCatalog.GATHERING_ARRAY_ID
+        ));
+        settings.addOwnSectDisciple(new NovelReaderSettings.OwnSectDiscipleState(
+                "b",
+                "苏玄",
+                AscendedSectCatalog.Specialty.GATHERING.name(),
+                70,
+                AscendedSectCatalog.GATHERING_ARRAY_ID
+        ));
+
+        assertEquals(21, AscendedSectRules.gatheringQiBonusPercent(settings));
+        assertEquals(2, AscendedSectRules.assignedDiscipleCount(settings, AscendedSectCatalog.GATHERING_ARRAY_ID));
     }
 }

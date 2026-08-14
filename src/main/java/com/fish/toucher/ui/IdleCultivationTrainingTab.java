@@ -33,6 +33,7 @@ final class IdleCultivationTrainingTab {
     private final JButton koiBlessingButton;
     private final JButton breakthroughButton;
     private final JButton rebirthButton;
+    private final JButton ascendButton;
 
     IdleCultivationTrainingTab(Component dialogParent) {
         realmValue = new JLabel();
@@ -57,6 +58,7 @@ final class IdleCultivationTrainingTab {
         koiBlessingButton = new JButton(FishToucherBundle.message("cultivation.button.koiBlessing"));
         breakthroughButton = new JButton(FishToucherBundle.message("cultivation.button.breakthrough"));
         rebirthButton = new JButton(FishToucherBundle.message("cultivation.button.rebirth"));
+        ascendButton = new JButton(FishToucherBundle.message("cultivation.ascension.button"));
         component = createContent();
     }
 
@@ -101,6 +103,7 @@ final class IdleCultivationTrainingTab {
         setProgressTextIfChanged(progressBar, percent, requiredQi > 0L ? percent + "%" : FishToucherBundle.message("cultivation.status.max"));
         updateMeditationButton(manager);
         updateRebirthControls(manager);
+        updateAscensionControls(manager);
         breakthroughButton.setEnabled(manager.canBreakthrough());
     }
 
@@ -159,6 +162,11 @@ final class IdleCultivationTrainingTab {
         rebirthButton.addActionListener(e -> performRebirth());
         actions.add(rebirthButton);
 
+        ascendButton.setFocusable(false);
+        ascendButton.setToolTipText(FishToucherBundle.message("cultivation.ascension.tooltip"));
+        ascendButton.addActionListener(e -> performAscension());
+        actions.add(ascendButton);
+
         row = addActionRow(panel, gbc, row, actions);
         addBottomGlue(panel, gbc, row);
         return createScrollableTab(panel);
@@ -187,11 +195,36 @@ final class IdleCultivationTrainingTab {
         rebirthButton.setEnabled(canRebirth);
     }
 
+    private void updateAscensionControls(IdleCultivationManager manager) {
+        boolean showAscend = manager.canShowAscensionButton();
+        boolean canAscend = manager.canAscend();
+        ascendButton.setVisible(showAscend);
+        ascendButton.setEnabled(canAscend);
+        ascendButton.setToolTipText(FishToucherBundle.message("cultivation.ascension.tooltip"));
+    }
+
     private void performRebirth() {
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
         if (!manager.canRebirth()) {
             return;
         }
         manager.rebirth("");
+    }
+
+    private void performAscension() {
+        IdleCultivationManager manager = IdleCultivationManager.getInstance();
+        if (!manager.canAscend()) {
+            return;
+        }
+        int result = JOptionPane.showConfirmDialog(
+                component,
+                FishToucherBundle.message("cultivation.ascension.confirm"),
+                FishToucherBundle.message("cultivation.ascension.confirmTitle"),
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (result == JOptionPane.OK_OPTION) {
+            manager.ascend();
+        }
     }
 }

@@ -8,12 +8,15 @@ class CultivationRulesTest {
 
     @Test
     void 应限制境界并返回突破需求() {
-        assertEquals(9, CultivationRules.realmCount());
+        assertEquals(15, CultivationRules.realmCount());
         assertEquals(0, CultivationRules.clampRealm(-1));
-        assertEquals(8, CultivationRules.clampRealm(99));
+        assertEquals(14, CultivationRules.clampRealm(99));
         assertEquals(8_000L, CultivationRules.requiredQi(0));
-        assertEquals(0L, CultivationRules.requiredQi(8));
-        assertTrue(CultivationRules.isMaxRealm(8));
+        assertEquals(380_000L, CultivationRules.requiredQi(8));
+        assertEquals(0L, CultivationRules.requiredQi(14));
+        assertTrue(CultivationRules.isHumanMaxRealm(8));
+        assertFalse(CultivationRules.isCurrentPhaseMaxRealm(9, true));
+        assertTrue(CultivationRules.isMaxRealm(14));
     }
 
     @Test

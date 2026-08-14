@@ -11,7 +11,9 @@ import static com.fish.toucher.ui.IdleCultivationUiSupport.*;
 final class IdleCultivationSectTab {
 
     private final JComponent component;
+    private final JPanel contentPanel = createFormPanel();
     private final JPanel unlockedPanel = createFormPanel();
+    private final JPanel ownSectPanel = createFormPanel();
     private final JComboBox<SectOption> sectComboBox = new JComboBox<>();
     private final JComboBox<TaskOption> taskComboBox = new JComboBox<>();
     private final JComboBox<SecretRealmOption> secretRealmComboBox = new JComboBox<>();
@@ -55,6 +57,14 @@ final class IdleCultivationSectTab {
     void reloadSectState(IdleCultivationManager manager) {
         refreshing = true;
         try {
+            if (manager.isAscended()) {
+                unlockedPanel.setVisible(false);
+                ownSectPanel.setVisible(true);
+                reloadOwnSectState(manager);
+                setWrappingText(statusText, manager.getOwnSectOverviewText());
+                return;
+            }
+            ownSectPanel.setVisible(false);
             unlockedPanel.setVisible(manager.isSectUnlocked());
             reloadSects(manager);
             reloadTasks(manager);
@@ -76,13 +86,13 @@ final class IdleCultivationSectTab {
     }
 
     private JComponent createContent() {
-        JPanel contentPanel = createFormPanel();
         GridBagConstraints gbc = createConstraints();
         int row = 0;
 
         row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.title")));
         row = addFullWidthRow(contentPanel, gbc, row, statusText);
         row = addFullWidthRow(contentPanel, gbc, row, unlockedPanel);
+        row = addFullWidthRow(contentPanel, gbc, row, ownSectPanel);
 
         GridBagConstraints unlockedGbc = createConstraints();
         int unlockedRow = 0;
@@ -173,6 +183,144 @@ final class IdleCultivationSectTab {
         inheritanceComboBox.addActionListener(e -> updateDescriptions());
         trialComboBox.addActionListener(e -> updateDescriptions());
         return createScrollableTab(contentPanel);
+    }
+
+    private void reloadOwnSectState(IdleCultivationManager manager) {
+        ownSectPanel.removeAll();
+        GridBagConstraints gbc = createConstraints();
+        int row = 0;
+        if (manager.canCreateOwnSect()) {
+            row = addFullWidthRow(ownSectPanel, gbc, row, createGuideTextArea(FishToucherBundle.message("cultivation.ownSect.createHint")));
+            JButton createButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.create"));
+            createButton.addActionListener(e -> createOwnSect());
+            JPanel actions = createActionPanel();
+            actions.add(createButton);
+            row = addActionRow(ownSectPanel, gbc, row, actions);
+            addBottomGlue(ownSectPanel, gbc, row);
+            refreshOwnSectPanel();
+            return;
+        }
+
+        row = addFullWidthRow(ownSectPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.ownSect.section.overview")));
+        row = addFullWidthRow(ownSectPanel, gbc, row, createHintTextArea(manager.getOwnSectBonusText()));
+        JButton promoteButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.promote"));
+        promoteButton.setEnabled(manager.canPromoteOwnSect());
+        promoteButton.addActionListener(e -> IdleCultivationManager.getInstance().promoteOwnSect());
+        JPanel promoteActions = createActionPanel();
+        promoteActions.add(promoteButton);
+        row = addActionRow(ownSectPanel, gbc, row, promoteActions);
+
+        row = addSeparatorRow(ownSectPanel, gbc, row);
+        row = addFullWidthRow(ownSectPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.ownSect.section.recruit")));
+        JComboBox<SpecialtyOption> specialtyComboBox = new JComboBox<>();
+        for (AscendedSectCatalog.Specialty specialty : manager.getOwnSectSpecialties()) {
+            specialtyComboBox.addItem(new SpecialtyOption(specialty));
+        }
+        addLabelRow(ownSectPanel, gbc, row++, FishToucherBundle.message("cultivation.ownSect.label.specialty"), specialtyComboBox);
+        JButton recruitButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.recruit"));
+        recruitButton.addActionListener(e -> {
+            SpecialtyOption option = (SpecialtyOption) specialtyComboBox.getSelectedItem();
+            if (option != null) IdleCultivationManager.getInstance().startOwnSectRecruitment(option.specialty);
+        });
+        JPanel recruitActions = createActionPanel();
+        recruitActions.add(recruitButton);
+        row = addActionRow(ownSectPanel, gbc, row, recruitActions);
+        for (NovelReaderSettings.OwnSectDiscipleState candidate : NovelReaderSettings.getInstance().getOwnSectRecruitmentCandidates()) {
+            JPanel candidateActions = createActionPanel();
+            candidateActions.add(createHintTextArea(formatOwnSectDisciple(candidate)));
+            JButton chooseButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.chooseDisciple"));
+            chooseButton.addActionListener(e -> IdleCultivationManager.getInstance().recruitOwnSectDisciple(candidate.id));
+            candidateActions.add(chooseButton);
+            row = addActionRow(ownSectPanel, gbc, row, candidateActions);
+        }
+
+        row = addSeparatorRow(ownSectPanel, gbc, row);
+        row = addFullWidthRow(ownSectPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.ownSect.section.buildings")));
+        for (AscendedSectCatalog.BuildingDefinition building : manager.getOwnSectBuildingDefinitions()) {
+            row = addFullWidthRow(ownSectPanel, gbc, row, createSectionTextArea(building.name() + "  " + manager.getOwnSectBuildingLevelText(building.id())));
+            row = addFullWidthRow(ownSectPanel, gbc, row, createHintTextArea(building.description()));
+            addLabelRow(ownSectPanel, gbc, row++, FishToucherBundle.message("cultivation.label.effect"), createHintTextArea(manager.getOwnSectBuildingEffectText(building.id())));
+            addLabelRow(ownSectPanel, gbc, row++, FishToucherBundle.message("cultivation.label.upgradeCost"), createHintTextArea(manager.getOwnSectBuildingCostText(building.id())));
+            addLabelRow(ownSectPanel, gbc, row++, FishToucherBundle.message("cultivation.ownSect.label.assigned"), createHintTextArea(manager.getOwnSectBuildingAssignedText(building.id())));
+            JPanel actions = createActionPanel();
+            JButton upgradeButton = new JButton(FishToucherBundle.message("cultivation.button.upgradeFacility"));
+            upgradeButton.setEnabled(manager.canUpgradeOwnSectBuilding(building.id()));
+            upgradeButton.addActionListener(e -> IdleCultivationManager.getInstance().upgradeOwnSectBuilding(building.id()));
+            actions.add(upgradeButton);
+            if (AscendedSectCatalog.ALCHEMY_HALL_ID.equals(building.id())) {
+                JButton claimButton = new JButton(FishToucherBundle.message("cultivation.button.claimAbode"));
+                claimButton.setEnabled(manager.canClaimOwnSectAlchemy());
+                claimButton.addActionListener(e -> IdleCultivationManager.getInstance().claimOwnSectAlchemy());
+                actions.add(claimButton);
+            }
+            JComboBox<DiscipleOption> discipleComboBox = new JComboBox<>();
+            for (NovelReaderSettings.OwnSectDiscipleState disciple : NovelReaderSettings.getInstance().getOwnSectDisciples()) {
+                if (building.specialty().name().equals(disciple.specialty) && disciple.assignedBuildingId.isEmpty()) {
+                    discipleComboBox.addItem(new DiscipleOption(disciple));
+                }
+            }
+            JButton assignButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.assign"));
+            assignButton.setEnabled(discipleComboBox.getItemCount() > 0);
+            assignButton.addActionListener(e -> {
+                DiscipleOption option = (DiscipleOption) discipleComboBox.getSelectedItem();
+                if (option != null) IdleCultivationManager.getInstance().assignOwnSectDisciple(option.disciple.id, building.id());
+            });
+            actions.add(discipleComboBox);
+            actions.add(assignButton);
+            row = addActionRow(ownSectPanel, gbc, row, actions);
+            row = addSeparatorRow(ownSectPanel, gbc, row);
+        }
+
+        row = addFullWidthRow(ownSectPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.ownSect.section.disciples")));
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : NovelReaderSettings.getInstance().getOwnSectDisciples()) {
+            JPanel discipleActions = createActionPanel();
+            discipleActions.add(createHintTextArea(formatOwnSectDisciple(disciple)));
+            JButton unassignButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.unassign"));
+            unassignButton.setEnabled(!disciple.assignedBuildingId.isEmpty());
+            unassignButton.addActionListener(e -> IdleCultivationManager.getInstance().unassignOwnSectDisciple(disciple.id));
+            JButton dismissButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.dismiss"));
+            dismissButton.addActionListener(e -> IdleCultivationManager.getInstance().dismissOwnSectDisciple(disciple.id));
+            discipleActions.add(unassignButton);
+            discipleActions.add(dismissButton);
+            row = addActionRow(ownSectPanel, gbc, row, discipleActions);
+        }
+        addBottomGlue(ownSectPanel, gbc, row);
+        refreshOwnSectPanel();
+    }
+
+    private void createOwnSect() {
+        String name = JOptionPane.showInputDialog(
+                component,
+                FishToucherBundle.message("cultivation.ownSect.createPrompt"),
+                FishToucherBundle.message("cultivation.ownSect.createTitle"),
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (name != null) {
+            IdleCultivationManager.getInstance().createOwnSect(name);
+            reloadSectState(IdleCultivationManager.getInstance());
+        }
+    }
+
+    private void refreshOwnSectPanel() {
+        ownSectPanel.revalidate();
+        ownSectPanel.repaint();
+        contentPanel.revalidate();
+        contentPanel.repaint();
+    }
+
+    private String formatOwnSectDisciple(NovelReaderSettings.OwnSectDiscipleState disciple) {
+        String assigned = disciple.assignedBuildingId == null || disciple.assignedBuildingId.isEmpty()
+                ? FishToucherBundle.message("cultivation.ownSect.unassigned")
+                : disciple.assignedBuildingId;
+        return FishToucherBundle.message("cultivation.ownSect.discipleText", disciple.name, formatSpecialty(disciple.specialty), disciple.aptitude, assigned);
+    }
+
+    private String formatSpecialty(String specialty) {
+        try {
+            return AscendedSectCatalog.Specialty.valueOf(specialty).label();
+        } catch (RuntimeException ignored) {
+            return specialty == null ? "" : specialty;
+        }
     }
 
     private void reloadSects(IdleCultivationManager manager) {
@@ -438,6 +586,20 @@ final class IdleCultivationSectTab {
         @Override
         public String toString() {
             return "第 " + trial.floor() + " 层 · " + trial.enemyName();
+        }
+    }
+
+    private record SpecialtyOption(AscendedSectCatalog.Specialty specialty) {
+        @Override
+        public String toString() {
+            return specialty.label();
+        }
+    }
+
+    private record DiscipleOption(NovelReaderSettings.OwnSectDiscipleState disciple) {
+        @Override
+        public String toString() {
+            return disciple.name + " · " + disciple.aptitude;
         }
     }
 }
