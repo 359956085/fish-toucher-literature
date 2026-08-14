@@ -604,20 +604,6 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         return true;
     }
 
-    public void resetUnlockedTechniquesForRebirth(String retainedTechniqueId) {
-        List<String> rebirthTechniques = new ArrayList<>();
-        rebirthTechniques.add("basic_breathing");
-        if (retainedTechniqueId != null && !retainedTechniqueId.isEmpty()
-                && !"basic_breathing".equals(retainedTechniqueId)) {
-            rebirthTechniques.add(retainedTechniqueId);
-        }
-        myState.unlockedTechniqueIds = rebirthTechniques;
-        myState.equippedTechniqueId = rebirthTechniques.contains(retainedTechniqueId)
-                ? retainedTechniqueId
-                : "basic_breathing";
-        normalizeCultivationState(myState);
-    }
-
     public Map<String, Integer> getPillInventory() {
         normalizeCultivationState(myState);
         return Collections.unmodifiableMap(new HashMap<>(myState.pillInventory));

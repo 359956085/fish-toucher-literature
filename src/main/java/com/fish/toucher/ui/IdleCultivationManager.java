@@ -40,6 +40,11 @@ public final class IdleCultivationManager implements Disposable {
     private static final String MYSTIC_ORTHODOX_TECHNIQUE_ID = "mystic_orthodox";
     private static final String SWORD_HEART_TECHNIQUE_ID = "sword_heart";
     private static final String GOLDEN_BODY_TECHNIQUE_ID = "golden_body";
+    private static final String QINGYUN_SECT_TECHNIQUE_ID = "qingyun_sword_method";
+    private static final String DANXIA_SECT_TECHNIQUE_ID = "danxia_herb_method";
+    private static final String XUANWU_SECT_TECHNIQUE_ID = "xuanwu_guard_method";
+    private static final String TIANJI_SECT_TECHNIQUE_ID = "tianji_star_method";
+    private static final String TAIQING_SECT_TECHNIQUE_ID = "taiqing_clear_method";
     private static final String FIRE_SWORD_SPELL_ID = "fire_sword";
     private static final String PALM_THUNDER_SPELL_ID = "palm_thunder";
     private static final String FROST_BIND_SPELL_ID = "frost_bind";
@@ -78,6 +83,7 @@ public final class IdleCultivationManager implements Disposable {
     private static final long SPIRIT_VEIN_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final long ALCHEMY_ROOM_INTERVAL_MILLIS = TimeUnit.HOURS.toMillis(3);
     private static final int MAX_PENDING_SECT_EVENTS = 3;
+    private static final int ABODE_UNLOCK_REALM_INDEX = 2;
 
     private static final List<TechniqueDefinition> TECHNIQUES = List.of(
             new TechniqueDefinition(BASIC_TECHNIQUE_ID, "cultivation.technique.basic.name", "cultivation.technique.basic.desc", 0, 0, 0, 0, 0, 0),
@@ -85,7 +91,12 @@ public final class IdleCultivationManager implements Disposable {
             new TechniqueDefinition(STONE_GATHERING_TECHNIQUE_ID, "cultivation.technique.stone.name", "cultivation.technique.stone.desc", 0, 25, 0, 0, 0, 0),
             new TechniqueDefinition(MYSTIC_ORTHODOX_TECHNIQUE_ID, "cultivation.technique.mystic.name", "cultivation.technique.mystic.desc", 12, 12, 6, 0, 0, 0),
             new TechniqueDefinition(SWORD_HEART_TECHNIQUE_ID, "cultivation.technique.swordHeart.name", "cultivation.technique.swordHeart.desc", 8, 0, 0, 16, 0, 8),
-            new TechniqueDefinition(GOLDEN_BODY_TECHNIQUE_ID, "cultivation.technique.goldenBody.name", "cultivation.technique.goldenBody.desc", 0, 0, 4, 0, 18, 12)
+            new TechniqueDefinition(GOLDEN_BODY_TECHNIQUE_ID, "cultivation.technique.goldenBody.name", "cultivation.technique.goldenBody.desc", 0, 0, 4, 0, 18, 12),
+            new TechniqueDefinition(QINGYUN_SECT_TECHNIQUE_ID, "cultivation.technique.qingyunSect.name", "cultivation.technique.qingyunSect.desc", 10, 0, 0, 22, 0, 10),
+            new TechniqueDefinition(DANXIA_SECT_TECHNIQUE_ID, "cultivation.technique.danxiaSect.name", "cultivation.technique.danxiaSect.desc", 24, 6, 0, 0, 0, 0),
+            new TechniqueDefinition(XUANWU_SECT_TECHNIQUE_ID, "cultivation.technique.xuanwuSect.name", "cultivation.technique.xuanwuSect.desc", 0, 0, 6, 0, 24, 16),
+            new TechniqueDefinition(TIANJI_SECT_TECHNIQUE_ID, "cultivation.technique.tianjiSect.name", "cultivation.technique.tianjiSect.desc", 6, 32, 0, 0, 0, 0),
+            new TechniqueDefinition(TAIQING_SECT_TECHNIQUE_ID, "cultivation.technique.taiqingSect.name", "cultivation.technique.taiqingSect.desc", 18, 16, 8, 0, 0, 0)
     );
     private static final Map<String, TechniqueDefinition> TECHNIQUE_BY_ID = indexTechniques();
 
@@ -529,18 +540,11 @@ public final class IdleCultivationManager implements Disposable {
         return isMaxRealm(NovelReaderSettings.getInstance().getCultivationRealmIndex());
     }
 
-    public synchronized boolean rebirth(String retainedTechniqueId) {
+    public synchronized boolean rebirth(String ignoredTechniqueId) {
         settleProgress(false);
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (!canRebirth()) {
             lastMessage = FishToucherBundle.message("cultivation.status.rebirthUnavailable");
-            fireChange();
-            return false;
-        }
-
-        TechniqueDefinition retainedTechnique = TECHNIQUE_BY_ID.get(retainedTechniqueId);
-        if (retainedTechnique == null || !settings.isTechniqueUnlocked(retainedTechnique.id())) {
-            lastMessage = FishToucherBundle.message("cultivation.status.rebirthTechniqueInvalid");
             fireChange();
             return false;
         }
@@ -561,13 +565,11 @@ public final class IdleCultivationManager implements Disposable {
         settings.clearTravel();
         settings.clearPillInventory();
         settings.clearAbodeState();
-        settings.resetUnlockedTechniquesForRebirth(retainedTechnique.id());
         ensureCultivationDefaults();
 
         lastMessage = FishToucherBundle.message(
                 "cultivation.status.rebirthSuccess",
-                nextRebirthCount,
-                retainedTechnique.name()
+                nextRebirthCount
         );
         fireChange();
         return true;
@@ -1542,6 +1544,14 @@ public final class IdleCultivationManager implements Disposable {
         return ABODE_BY_ID.get(id);
     }
 
+    public synchronized boolean isAbodeUnlocked() {
+        return NovelReaderSettings.getInstance().getCultivationRealmIndex() >= ABODE_UNLOCK_REALM_INDEX;
+    }
+
+    public synchronized String getAbodeLockedText() {
+        return FishToucherBundle.message("cultivation.abode.locked", getRealmName(ABODE_UNLOCK_REALM_INDEX));
+    }
+
     public synchronized int getAbodeFacilityLevel(String facilityId) {
         int level = NovelReaderSettings.getInstance().getAbodeFacilityLevel(facilityId);
         return Math.max(0, Math.min(MAX_ABODE_LEVEL, level));
@@ -1575,6 +1585,9 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean canUpgradeAbodeFacility(String facilityId) {
+        if (!isAbodeUnlocked()) {
+            return false;
+        }
         AbodeFacilityDefinition facility = getAbodeFacility(facilityId);
         if (facility == null || getAbodeFacilityLevel(facilityId) >= MAX_ABODE_LEVEL) {
             return false;
@@ -1586,6 +1599,11 @@ public final class IdleCultivationManager implements Disposable {
         settleProgress(false);
         ensureCultivationDefaults();
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (!isAbodeUnlocked()) {
+            lastMessage = getAbodeLockedText();
+            fireChange();
+            return false;
+        }
         AbodeFacilityDefinition facility = getAbodeFacility(facilityId);
         if (facility == null) {
             lastMessage = FishToucherBundle.message("cultivation.status.facilityUnknown");
@@ -1654,6 +1672,9 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean canClaimAbodeFacility(String facilityId) {
+        if (!isAbodeUnlocked()) {
+            return false;
+        }
         return switch (facilityId) {
             case SPIRIT_VEIN_ID -> getClaimableSpiritVeinStones() > 0L;
             case ALCHEMY_ROOM_ID -> getClaimableAlchemyPillCount() > 0L;
@@ -1666,11 +1687,19 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean hasClaimableAbodeReward() {
+        if (!isAbodeUnlocked()) {
+            return false;
+        }
         return getClaimableSpiritVeinStones() > 0L || getClaimableAlchemyPillCount() > 0L;
     }
 
     public synchronized AbodeReward claimAbodeFacility(String facilityId) {
         settleProgress(false);
+        if (!isAbodeUnlocked()) {
+            lastMessage = getAbodeLockedText();
+            fireChange();
+            return AbodeReward.empty();
+        }
         AbodeReward reward = claimAbodeFacilityInternal(facilityId, true);
         fireChange();
         return reward;
@@ -1931,7 +1960,10 @@ public final class IdleCultivationManager implements Disposable {
         }
         long now = System.currentTimeMillis();
         for (AbodeFacilityDefinition facility : ABODE_FACILITIES) {
-            if (settings.getAbodeLastClaimMillis(facility.id()) <= 0L) {
+            if (!isAbodeUnlocked() && isProductionAbodeFacility(facility.id())) {
+                settings.setAbodeLastClaimMillis(facility.id(), 0L);
+            }
+            if (isAbodeUnlocked() && isProductionAbodeFacility(facility.id()) && settings.getAbodeLastClaimMillis(facility.id()) <= 0L) {
                 settings.setAbodeLastClaimMillis(facility.id(), now);
             }
             int level = getAbodeFacilityLevel(facility.id());
@@ -2205,7 +2237,7 @@ public final class IdleCultivationManager implements Disposable {
         int baseChance = CultivationRules.baseBreakthroughChance(realmIndex);
         int techniqueBonus = getEquippedTechnique().breakthroughBonus();
         int pillBonus = settings.isBreakthroughPillActive() ? 18 : 0;
-        int abodeBonus = getInsightRoomBreakthroughBonusPercent(getAbodeFacilityLevel(INSIGHT_ROOM_ID));
+        int abodeBonus = isAbodeUnlocked() ? getInsightRoomBreakthroughBonusPercent(getAbodeFacilityLevel(INSIGHT_ROOM_ID)) : 0;
         int additiveChance = baseChance + failures * 16 + techniqueBonus + pillBonus + abodeBonus;
         return CultivationRules.finalBreakthroughChance(
                 additiveChance,
@@ -2243,7 +2275,7 @@ public final class IdleCultivationManager implements Disposable {
     private long applySeclusionQiBonus(long value) {
         int bonusPercent = getEquippedTechnique().qiBonusPercent()
                 + getArtifactQiBonusPercent()
-                + getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID))
+                + (isAbodeUnlocked() ? getSpiritGatheringBonusPercent(getAbodeFacilityLevel(SPIRIT_GATHERING_ARRAY_ID)) : 0)
                 + SectRules.currentSectBonus(NovelReaderSettings.getInstance(), SectCatalog.BonusType.QI);
         return applyRebirthQiBonus(applyPercent(value, bonusPercent));
     }
@@ -2312,6 +2344,9 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long getClaimableSpiritVeinStones() {
+        if (!isAbodeUnlocked()) {
+            return 0L;
+        }
         int level = getAbodeFacilityLevel(SPIRIT_VEIN_ID);
         if (level <= 0) {
             return 0L;
@@ -2321,6 +2356,9 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long getClaimableAlchemyPillCount() {
+        if (!isAbodeUnlocked()) {
+            return 0L;
+        }
         int level = getAbodeFacilityLevel(ALCHEMY_ROOM_ID);
         if (level <= 0) {
             return 0L;
@@ -2329,10 +2367,14 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private long getClaimableAbodePeriods(String facilityId, long intervalMillis) {
+        if (!isAbodeUnlocked()) {
+            return 0L;
+        }
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         long now = System.currentTimeMillis();
         long lastClaimMillis = settings.getAbodeLastClaimMillis(facilityId);
         if (lastClaimMillis <= 0L || lastClaimMillis > now) {
+            settings.setAbodeLastClaimMillis(facilityId, now);
             return 0L;
         }
         long creditedMillis = Math.min(now - lastClaimMillis, OFFLINE_CAP_MILLIS);

@@ -83,9 +83,15 @@ final class IdleCultivationSectTab {
         JPanel sectActions = createActionPanel();
         joinButton.addActionListener(e -> {
             SectOption option = (SectOption) sectComboBox.getSelectedItem();
-            if (option != null) IdleCultivationManager.getInstance().joinSect(option.sect.id());
+            if (option != null && confirmSectAction(FishToucherBundle.message("cultivation.sect.confirm.join", option.sect.name()))) {
+                IdleCultivationManager.getInstance().joinSect(option.sect.id());
+            }
         });
-        leaveButton.addActionListener(e -> IdleCultivationManager.getInstance().leaveSect());
+        leaveButton.addActionListener(e -> {
+            if (confirmSectAction(FishToucherBundle.message("cultivation.sect.confirm.leave"))) {
+                IdleCultivationManager.getInstance().leaveSect();
+            }
+        });
         promoteButton.addActionListener(e -> IdleCultivationManager.getInstance().promoteSectRank());
         sectActions.add(joinButton);
         sectActions.add(leaveButton);
@@ -137,7 +143,7 @@ final class IdleCultivationSectTab {
         addActionRow(unlockedPanel, unlockedGbc, unlockedRow, trialActions);
 
         addBottomGlue(contentPanel, gbc, row);
-        sectComboBox.addActionListener(e -> updateDescriptions());
+        sectComboBox.addActionListener(e -> onSectSelectionChanged());
         taskComboBox.addActionListener(e -> updateDescriptions());
         inheritanceComboBox.addActionListener(e -> updateDescriptions());
         trialComboBox.addActionListener(e -> updateDescriptions());
@@ -171,34 +177,55 @@ final class IdleCultivationSectTab {
 
     private void reloadInheritances(IdleCultivationManager manager) {
         inheritanceComboBox.removeAllItems();
-        SectCatalog.SectDefinition currentSect = manager.getCurrentSect();
-        if (currentSect == null) {
+        SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
+        if (displaySect == null) {
             return;
         }
         for (SectCatalog.SectInheritanceDefinition inheritance : manager.getSectInheritanceDefinitions()) {
-            if (currentSect.name().equals(inheritance.sectName())) {
+            if (displaySect.name().equals(inheritance.sectName())) {
                 inheritanceComboBox.addItem(new InheritanceOption(inheritance));
             }
         }
     }
 
     private void reloadTrials(IdleCultivationManager manager) {
-        String currentSectId = NovelReaderSettings.getInstance().getCultivationSectId();
+        SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
         trialComboBox.removeAllItems();
-        if (currentSectId.isEmpty()) {
+        if (displaySect == null) {
             return;
         }
         for (SectCatalog.SectTrialDefinition trial : manager.getSectTrialDefinitions()) {
-            if (currentSectId.equals(trial.sectId())) {
+            if (displaySect.id().equals(trial.sectId())) {
                 trialComboBox.addItem(new TrialOption(trial));
             }
         }
     }
 
+    private SectCatalog.SectDefinition getDisplaySect(IdleCultivationManager manager) {
+        SectCatalog.SectDefinition currentSect = manager.getCurrentSect();
+        if (currentSect != null) {
+            return currentSect;
+        }
+        if (!manager.isSectUnlocked()) {
+            return null;
+        }
+        SectOption selected = (SectOption) sectComboBox.getSelectedItem();
+        return selected != null ? selected.sect : null;
+    }
+
+    private void onSectSelectionChanged() {
+        if (refreshing) return;
+        IdleCultivationManager manager = IdleCultivationManager.getInstance();
+        reloadInheritances(manager);
+        reloadTrials(manager);
+        updateButtons(manager);
+        updateDescriptions();
+    }
+
     private void updateButtons(IdleCultivationManager manager) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         boolean joined = manager.getCurrentSect() != null;
-        joinButton.setEnabled(manager.isSectUnlocked());
+        joinButton.setEnabled(manager.isSectUnlocked() && !joined);
         leaveButton.setEnabled(joined);
         promoteButton.setEnabled(manager.canPromoteSectRank());
         startTaskButton.setEnabled(joined && !manager.hasActiveSectTask());
@@ -212,6 +239,16 @@ final class IdleCultivationSectTab {
                 && !settings.isSectTrialDefeated(trial.trial.id())
                 && !manager.hasActiveBattle()
                 && !manager.hasActiveTravel());
+    }
+
+    private boolean confirmSectAction(String message) {
+        return JOptionPane.showConfirmDialog(
+                component,
+                message,
+                FishToucherBundle.message("cultivation.sect.confirm.title"),
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        ) == JOptionPane.OK_OPTION;
     }
 
     private void updateEventState(IdleCultivationManager manager) {

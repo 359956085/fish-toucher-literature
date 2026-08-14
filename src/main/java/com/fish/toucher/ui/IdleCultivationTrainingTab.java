@@ -1,20 +1,17 @@
 package com.fish.toucher.ui;
 
 import com.fish.toucher.FishToucherBundle;
-import com.fish.toucher.settings.NovelReaderSettings;
 import com.intellij.ui.JBColor;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.List;
 
 import static com.fish.toucher.ui.IdleCultivationUiSupport.*;
 
 final class IdleCultivationTrainingTab {
 
-    private final Component dialogParent;
     private final JComponent component;
     private final JLabel realmValue;
     private final JLabel techniqueValue;
@@ -38,7 +35,6 @@ final class IdleCultivationTrainingTab {
     private final JButton rebirthButton;
 
     IdleCultivationTrainingTab(Component dialogParent) {
-        this.dialogParent = dialogParent;
         realmValue = new JLabel();
         techniqueValue = new JLabel();
         qiValue = new JLabel();
@@ -160,7 +156,7 @@ final class IdleCultivationTrainingTab {
         actions.add(breakthroughButton);
 
         rebirthButton.setFocusable(false);
-        rebirthButton.addActionListener(e -> showRebirthDialog());
+        rebirthButton.addActionListener(e -> performRebirth());
         actions.add(rebirthButton);
 
         row = addActionRow(panel, gbc, row, actions);
@@ -191,50 +187,11 @@ final class IdleCultivationTrainingTab {
         rebirthButton.setEnabled(canRebirth);
     }
 
-    private void showRebirthDialog() {
+    private void performRebirth() {
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
         if (!manager.canRebirth()) {
             return;
         }
-
-        List<IdleCultivationManager.TechniqueDefinition> techniques = manager.getRetainableTechniqueDefinitions();
-        if (techniques.isEmpty()) {
-            return;
-        }
-
-        RebirthTechniqueOption[] options = techniques.stream()
-                .map(RebirthTechniqueOption::new)
-                .toArray(RebirthTechniqueOption[]::new);
-        JComboBox<RebirthTechniqueOption> comboBox = new JComboBox<>(options);
-        String equippedTechniqueId = NovelReaderSettings.getInstance().getEquippedTechniqueId();
-        for (RebirthTechniqueOption option : options) {
-            if (option.technique.id().equals(equippedTechniqueId)) {
-                comboBox.setSelectedItem(option);
-                break;
-            }
-        }
-
-        int result = JOptionPane.showConfirmDialog(
-                dialogParent,
-                comboBox,
-                FishToucherBundle.message("cultivation.rebirth.dialog.title"),
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        RebirthTechniqueOption selected = (RebirthTechniqueOption) comboBox.getSelectedItem();
-        if (selected != null) {
-            manager.rebirth(selected.technique.id());
-        }
-    }
-
-    record RebirthTechniqueOption(IdleCultivationManager.TechniqueDefinition technique) {
-        @Override
-        public String toString() {
-            return technique.name();
-        }
+        manager.rebirth("");
     }
 }

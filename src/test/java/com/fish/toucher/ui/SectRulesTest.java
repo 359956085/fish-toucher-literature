@@ -70,4 +70,13 @@ class SectRulesTest {
             }
         }
     }
+
+    @Test
+    void 宗门基础功法应使用独立功法避免弱于游历功法() {
+        assertEquals("qingyun_sword_method", SectCatalog.inheritance("qingyun_basic").rewardId());
+        assertEquals("danxia_herb_method", SectCatalog.inheritance("danxia_basic").rewardId());
+        assertEquals("xuanwu_guard_method", SectCatalog.inheritance("xuanwu_basic").rewardId());
+        assertEquals("tianji_star_method", SectCatalog.inheritance("tianji_basic").rewardId());
+        assertEquals("taiqing_clear_method", SectCatalog.inheritance("taiqing_basic").rewardId());
+    }
 }

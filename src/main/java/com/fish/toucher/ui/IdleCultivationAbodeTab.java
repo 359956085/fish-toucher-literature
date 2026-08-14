@@ -31,6 +31,12 @@ final class IdleCultivationAbodeTab {
 
         addLabelRow(contentPanel, gbc, row++, FishToucherBundle.message("cultivation.label.spiritStones"), stonesValue);
         row = addSeparatorRow(contentPanel, gbc, row);
+        if (!manager.isAbodeUnlocked()) {
+            row = addFullWidthRow(contentPanel, gbc, row, createSectionTextArea(manager.getAbodeLockedText()));
+            addBottomGlue(contentPanel, gbc, row);
+            refreshContent();
+            return;
+        }
 
         for (IdleCultivationManager.AbodeFacilityDefinition facility : manager.getAbodeFacilityDefinitions()) {
             JTextArea title = createSectionTextArea(facility.name() + "  " + manager.getAbodeFacilityLevelText(facility.id()));
@@ -67,6 +73,10 @@ final class IdleCultivationAbodeTab {
             row = addSeparatorRow(contentPanel, gbc, row);
         }
         addBottomGlue(contentPanel, gbc, row);
+        refreshContent();
+    }
+
+    private void refreshContent() {
         contentPanel.revalidate();
         contentPanel.repaint();
         Container parent = contentPanel.getParent();
