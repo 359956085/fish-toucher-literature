@@ -14,27 +14,33 @@ final class IdleCultivationSectTab {
     private final JPanel unlockedPanel = createFormPanel();
     private final JComboBox<SectOption> sectComboBox = new JComboBox<>();
     private final JComboBox<TaskOption> taskComboBox = new JComboBox<>();
+    private final JComboBox<SecretRealmOption> secretRealmComboBox = new JComboBox<>();
     private final JComboBox<InheritanceOption> inheritanceComboBox = new JComboBox<>();
     private final JComboBox<TrialOption> trialComboBox = new JComboBox<>();
     private final JTextArea statusText = createSectionTextArea("");
     private final JTextArea sectDescText = createHintTextArea();
     private final JTextArea taskDescText = createHintTextArea();
+    private final JTextArea taskStatusText = createHintTextArea();
     private final JTextArea eventDescText = createHintTextArea();
+    private final JTextArea secretRealmDescText = createHintTextArea();
     private final JTextArea inheritanceDescText = createHintTextArea();
     private final JTextArea trialDescText = createHintTextArea();
     private final JPanel eventActions = createActionPanel();
+    private final JPanel secretRealmActions = createActionPanel();
     private final JProgressBar taskProgressBar = new JProgressBar(0, 100);
     private final JButton joinButton = new JButton(FishToucherBundle.message("cultivation.sect.button.join"));
     private final JButton leaveButton = new JButton(FishToucherBundle.message("cultivation.sect.button.leave"));
     private final JButton promoteButton = new JButton(FishToucherBundle.message("cultivation.sect.button.promote"));
     private final JButton startTaskButton = new JButton(FishToucherBundle.message("cultivation.sect.button.startTask"));
     private final JButton claimTaskButton = new JButton(FishToucherBundle.message("cultivation.sect.button.claimTask"));
+    private final JButton startSecretRealmButton = new JButton(FishToucherBundle.message("cultivation.sect.button.startSecretRealm"));
     private final JButton purchaseButton = new JButton(FishToucherBundle.message("cultivation.sect.button.purchase"));
     private final JButton startTrialButton = new JButton(FishToucherBundle.message("cultivation.sect.button.startTrial"));
     private boolean refreshing;
 
     IdleCultivationSectTab() {
         taskProgressBar.setStringPainted(true);
+        taskProgressBar.setForeground(UIManager.getColor("Label.foreground"));
         component = createContent();
     }
 
@@ -52,14 +58,17 @@ final class IdleCultivationSectTab {
             unlockedPanel.setVisible(manager.isSectUnlocked());
             reloadSects(manager);
             reloadTasks(manager);
+            reloadSecretRealms(manager);
             reloadInheritances(manager);
             reloadTrials(manager);
             updateButtons(manager);
             updateEventState(manager);
+            updateSecretRealmState(manager);
             setWrappingText(statusText, manager.isSectUnlocked()
                     ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
                     : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
             setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
+            setWrappingText(taskStatusText, manager.getSectTaskRemainingText());
         } finally {
             refreshing = false;
         }
@@ -103,6 +112,7 @@ final class IdleCultivationSectTab {
         addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.task"), taskComboBox);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, taskDescText);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, taskProgressBar);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, taskStatusText);
         JPanel taskActions = createActionPanel();
         startTaskButton.addActionListener(e -> {
             TaskOption option = (TaskOption) taskComboBox.getSelectedItem();
@@ -117,6 +127,17 @@ final class IdleCultivationSectTab {
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.event")));
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, eventDescText);
         unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, eventActions);
+
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.secretRealm")));
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.secretRealm"), secretRealmComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmDescText);
+        startSecretRealmButton.addActionListener(e -> {
+            SecretRealmOption option = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+            if (option != null) IdleCultivationManager.getInstance().startSectSecretRealm(option.secretRealm.id());
+        });
+        secretRealmActions.add(startSecretRealmButton);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmActions);
 
         unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.inheritance")));
@@ -144,7 +165,11 @@ final class IdleCultivationSectTab {
 
         addBottomGlue(contentPanel, gbc, row);
         sectComboBox.addActionListener(e -> onSectSelectionChanged());
-        taskComboBox.addActionListener(e -> updateDescriptions());
+        taskComboBox.addActionListener(e -> {
+            updateButtons(IdleCultivationManager.getInstance());
+            updateDescriptions();
+        });
+        secretRealmComboBox.addActionListener(e -> updateDescriptions());
         inheritanceComboBox.addActionListener(e -> updateDescriptions());
         trialComboBox.addActionListener(e -> updateDescriptions());
         return createScrollableTab(contentPanel);
@@ -171,6 +196,19 @@ final class IdleCultivationSectTab {
             taskComboBox.addItem(option);
             if (task.id().equals(selectedId)) {
                 taskComboBox.setSelectedItem(option);
+            }
+        }
+    }
+
+    private void reloadSecretRealms(IdleCultivationManager manager) {
+        Object selected = secretRealmComboBox.getSelectedItem();
+        String selectedId = selected instanceof SecretRealmOption option ? option.secretRealm.id() : "";
+        secretRealmComboBox.removeAllItems();
+        for (SectCatalog.SectSecretRealmDefinition secretRealm : manager.getCurrentSectSecretRealmDefinitions()) {
+            SecretRealmOption option = new SecretRealmOption(secretRealm);
+            secretRealmComboBox.addItem(option);
+            if (secretRealm.id().equals(selectedId)) {
+                secretRealmComboBox.setSelectedItem(option);
             }
         }
     }
@@ -218,7 +256,9 @@ final class IdleCultivationSectTab {
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
         reloadInheritances(manager);
         reloadTrials(manager);
+        reloadSecretRealms(manager);
         updateButtons(manager);
+        updateSecretRealmState(manager);
         updateDescriptions();
     }
 
@@ -228,8 +268,17 @@ final class IdleCultivationSectTab {
         joinButton.setEnabled(manager.isSectUnlocked() && !joined);
         leaveButton.setEnabled(joined);
         promoteButton.setEnabled(manager.canPromoteSectRank());
-        startTaskButton.setEnabled(joined && !manager.hasActiveSectTask());
+        TaskOption task = (TaskOption) taskComboBox.getSelectedItem();
+        startTaskButton.setEnabled(joined
+                && task != null
+                && SectRules.isTaskUnlocked(settings, task.task)
+                && !manager.hasActiveSectTask()
+                && !manager.hasActiveSectSecretRealm());
         claimTaskButton.setEnabled(manager.isSectTaskReady());
+        SecretRealmOption secretRealm = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+        startSecretRealmButton.setEnabled(joined
+                && secretRealm != null
+                && manager.canStartSectSecretRealm(secretRealm.secretRealm.id()));
         InheritanceOption inheritance = (InheritanceOption) inheritanceComboBox.getSelectedItem();
         purchaseButton.setEnabled(joined && inheritance != null && manager.canPurchaseSectInheritance(inheritance.inheritance));
         TrialOption trial = (TrialOption) trialComboBox.getSelectedItem();
@@ -238,7 +287,8 @@ final class IdleCultivationSectTab {
                 && SectRules.isTrialUnlocked(settings, trial.trial)
                 && !settings.isSectTrialDefeated(trial.trial.id())
                 && !manager.hasActiveBattle()
-                && !manager.hasActiveTravel());
+                && !manager.hasActiveTravel()
+                && !manager.hasActiveSectSecretRealm());
     }
 
     private boolean confirmSectAction(String message) {
@@ -284,12 +334,37 @@ final class IdleCultivationSectTab {
         eventActions.repaint();
     }
 
+    private void updateSecretRealmState(IdleCultivationManager manager) {
+        secretRealmActions.removeAll();
+        SecretRealmOption selected = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+        SectCatalog.SectSecretRealmNodeDefinition node = manager.getSectSecretRealmCurrentNode();
+        setWrappingText(secretRealmDescText, formatSecretRealm(manager, selected, node));
+        if (node == null) {
+            secretRealmActions.add(startSecretRealmButton);
+        } else if (node.type() == SectCatalog.SecretRealmNodeType.CHOICE) {
+            for (SectCatalog.SectSecretRealmOptionDefinition option : node.options()) {
+                JButton button = new JButton(option.label());
+                button.setToolTipText(option.description());
+                button.addActionListener(e -> IdleCultivationManager.getInstance().resolveSectSecretRealmNode(option.id()));
+                secretRealmActions.add(button);
+            }
+        } else {
+            JButton button = new JButton(FishToucherBundle.message("cultivation.sect.button.resolveSecretRealmNode"));
+            button.addActionListener(e -> IdleCultivationManager.getInstance().resolveSectSecretRealmNode(""));
+            secretRealmActions.add(button);
+        }
+        secretRealmActions.revalidate();
+        secretRealmActions.repaint();
+    }
+
     private void updateDescriptions() {
         if (refreshing) return;
         SectOption sect = (SectOption) sectComboBox.getSelectedItem();
         setWrappingText(sectDescText, sect == null ? "" : sect.sect.style() + "；" + sect.sect.bonusText());
         TaskOption task = (TaskOption) taskComboBox.getSelectedItem();
         setWrappingText(taskDescText, task == null ? "" : IdleCultivationManager.getInstance().getSectTaskDescription(task.task));
+        SecretRealmOption secretRealm = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+        setWrappingText(secretRealmDescText, formatSecretRealm(IdleCultivationManager.getInstance(), secretRealm, IdleCultivationManager.getInstance().getSectSecretRealmCurrentNode()));
         InheritanceOption inheritance = (InheritanceOption) inheritanceComboBox.getSelectedItem();
         setWrappingText(inheritanceDescText, inheritance == null ? "" : formatInheritance(inheritance.inheritance));
         TrialOption trial = (TrialOption) trialComboBox.getSelectedItem();
@@ -313,6 +388,24 @@ final class IdleCultivationSectTab {
                 + defeated;
     }
 
+    private String formatSecretRealm(IdleCultivationManager manager, SecretRealmOption option,
+                                     SectCatalog.SectSecretRealmNodeDefinition node) {
+        if (manager.getCurrentSect() == null) {
+            return "";
+        }
+        String status = manager.getSectSecretRealmStatusText();
+        if (option == null) {
+            return status;
+        }
+        if (node == null) {
+            return option.secretRealm.description() + "；" + status;
+        }
+        String chance = node.type() == SectCatalog.SecretRealmNodeType.BATTLE || node.type() == SectCatalog.SecretRealmNodeType.BOSS
+                ? "；" + FishToucherBundle.message("cultivation.sect.secretRealmBuildRequired")
+                : "";
+        return status + "\n" + node.description() + chance;
+    }
+
     private record SectOption(SectCatalog.SectDefinition sect) {
         @Override
         public String toString() {
@@ -324,6 +417,13 @@ final class IdleCultivationSectTab {
         @Override
         public String toString() {
             return task.name();
+        }
+    }
+
+    private record SecretRealmOption(SectCatalog.SectSecretRealmDefinition secretRealm) {
+        @Override
+        public String toString() {
+            return secretRealm.name();
         }
     }
 

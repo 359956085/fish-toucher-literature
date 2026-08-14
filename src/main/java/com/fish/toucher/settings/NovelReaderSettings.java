@@ -35,6 +35,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             "US", "JP", "KR", "RU", "FR", "DE", "IT", "ES", "BR",
             "IN", "ID", "TH", "VN", "SA", "PT", "GB", "AU", "CA", "MX"
     );
+    private static final Set<String> CULTIVATION_PILL_IDS = Set.of(
+            "qi_pill", "spirit_pill", "breakthrough_pill", "meridian_pill"
+    );
     public static final String MODE_NOVEL = "novel";
     public static final String MODE_HOT_SEARCH = "hotsearch";
     public static final String MODE_CULTIVATION = "cultivation";
@@ -103,6 +106,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public long activeTravelElapsedMillis = 0L;
         public Map<String, Integer> abodeFacilityLevels = new HashMap<>();
         public Map<String, Long> abodeLastClaimMillis = new HashMap<>();
+        public Map<String, Integer> pendingAlchemyPills = new HashMap<>();
         public List<String> unlockedSpellIds = new ArrayList<>();
         public List<String> equippedSpellIds = new ArrayList<>();
         public List<String> unlockedArtifactIds = new ArrayList<>();
@@ -122,6 +126,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public List<String> learnedSectInheritanceIds = new ArrayList<>();
         public List<String> graduatedSectIds = new ArrayList<>();
         public List<SectPendingEventState> pendingSectEvents = new ArrayList<>();
+        public String activeSectSecretRealmId = "";
+        public int sectSecretRealmNodeIndex = 0;
+        public long sectSecretRealmStartedMillis = 0L;
+        public long sectSecretRealmCooldownUntilMillis = 0L;
+        public List<String> sectSecretRealmResolvedNodeIds = new ArrayList<>();
     }
 
     public static class SectPendingEventState {
@@ -423,6 +432,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             }
         }
         state.abodeLastClaimMillis = normalizedClaimMillis;
+        state.pendingAlchemyPills = normalizeIntegerMap(state.pendingAlchemyPills, 1, Integer.MAX_VALUE, CULTIVATION_PILL_IDS);
         state.unlockedSpellIds = normalizeStringList(state.unlockedSpellIds);
         state.equippedSpellIds = normalizeStringList(state.equippedSpellIds);
         state.equippedSpellIds.removeIf(spellId -> !state.unlockedSpellIds.contains(spellId));
@@ -453,6 +463,16 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.learnedSectInheritanceIds = normalizeStringList(state.learnedSectInheritanceIds);
         state.graduatedSectIds = normalizeStringList(state.graduatedSectIds);
         state.pendingSectEvents = normalizeSectPendingEvents(state.pendingSectEvents);
+        state.activeSectSecretRealmId = state.activeSectSecretRealmId == null ? "" : state.activeSectSecretRealmId;
+        state.sectSecretRealmNodeIndex = Math.max(0, state.sectSecretRealmNodeIndex);
+        state.sectSecretRealmStartedMillis = Math.max(0L, state.sectSecretRealmStartedMillis);
+        state.sectSecretRealmCooldownUntilMillis = Math.max(0L, state.sectSecretRealmCooldownUntilMillis);
+        state.sectSecretRealmResolvedNodeIds = normalizeStringList(state.sectSecretRealmResolvedNodeIds);
+        if (state.activeSectSecretRealmId.isEmpty()) {
+            state.sectSecretRealmNodeIndex = 0;
+            state.sectSecretRealmStartedMillis = 0L;
+            state.sectSecretRealmResolvedNodeIds.clear();
+        }
     }
 
     private static List<SectPendingEventState> normalizeSectPendingEvents(List<SectPendingEventState> values) {
@@ -499,6 +519,27 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         }
         for (Map.Entry<String, Integer> entry : values.entrySet()) {
             if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null) {
+                normalized.put(entry.getKey(), clamp(entry.getValue(), minimum, maximum));
+            }
+        }
+        return normalized;
+    }
+
+    private static Map<String, Integer> normalizeIntegerMap(
+            Map<String, Integer> values,
+            int minimum,
+            int maximum,
+            Set<String> allowedKeys
+    ) {
+        Map<String, Integer> normalized = new HashMap<>();
+        if (values == null) {
+            return normalized;
+        }
+        for (Map.Entry<String, Integer> entry : values.entrySet()) {
+            if (entry.getKey() != null
+                    && allowedKeys.contains(entry.getKey())
+                    && entry.getValue() != null
+                    && entry.getValue() >= minimum) {
                 normalized.put(entry.getKey(), clamp(entry.getValue(), minimum, maximum));
             }
         }
@@ -686,6 +727,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public void clearAbodeState() {
         myState.abodeFacilityLevels = new HashMap<>();
         myState.abodeLastClaimMillis = new HashMap<>();
+        myState.pendingAlchemyPills = new HashMap<>();
     }
 
     public long getAbodeLastClaimMillis(String facilityId) {
@@ -701,6 +743,39 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         } else {
             myState.abodeLastClaimMillis.put(facilityId, millis);
         }
+    }
+
+    public Map<String, Integer> getPendingAlchemyPills() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableMap(new HashMap<>(myState.pendingAlchemyPills));
+    }
+
+    public int getPendingAlchemyPillCount() {
+        normalizeCultivationState(myState);
+        int total = 0;
+        for (Integer count : myState.pendingAlchemyPills.values()) {
+            if (count != null && count > 0) {
+                total += count;
+            }
+        }
+        return total;
+    }
+
+    public void addPendingAlchemyPills(Map<String, Integer> pills) {
+        if (pills == null || pills.isEmpty()) return;
+        normalizeCultivationState(myState);
+        for (Map.Entry<String, Integer> entry : pills.entrySet()) {
+            if (entry.getKey() != null
+                    && CULTIVATION_PILL_IDS.contains(entry.getKey())
+                    && entry.getValue() != null
+                    && entry.getValue() > 0) {
+                myState.pendingAlchemyPills.merge(entry.getKey(), entry.getValue(), Integer::sum);
+            }
+        }
+    }
+
+    public void clearPendingAlchemyPills() {
+        myState.pendingAlchemyPills = new HashMap<>();
     }
 
     public List<String> getUnlockedSpellIds() {
@@ -972,5 +1047,65 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             return false;
         }
         return myState.pendingSectEvents.removeIf(event -> instanceId.equals(event.instanceId));
+    }
+
+    public String getActiveSectSecretRealmId() {
+        normalizeCultivationState(myState);
+        return myState.activeSectSecretRealmId != null ? myState.activeSectSecretRealmId : "";
+    }
+
+    public void setActiveSectSecretRealmId(String secretRealmId) {
+        normalizeCultivationState(myState);
+        myState.activeSectSecretRealmId = secretRealmId != null ? secretRealmId : "";
+    }
+
+    public int getSectSecretRealmNodeIndex() {
+        normalizeCultivationState(myState);
+        return Math.max(0, myState.sectSecretRealmNodeIndex);
+    }
+
+    public void setSectSecretRealmNodeIndex(int nodeIndex) {
+        normalizeCultivationState(myState);
+        myState.sectSecretRealmNodeIndex = Math.max(0, nodeIndex);
+    }
+
+    public long getSectSecretRealmStartedMillis() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.sectSecretRealmStartedMillis);
+    }
+
+    public void setSectSecretRealmStartedMillis(long millis) {
+        normalizeCultivationState(myState);
+        myState.sectSecretRealmStartedMillis = Math.max(0L, millis);
+    }
+
+    public long getSectSecretRealmCooldownUntilMillis() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.sectSecretRealmCooldownUntilMillis);
+    }
+
+    public void setSectSecretRealmCooldownUntilMillis(long millis) {
+        normalizeCultivationState(myState);
+        myState.sectSecretRealmCooldownUntilMillis = Math.max(0L, millis);
+    }
+
+    public List<String> getSectSecretRealmResolvedNodeIds() {
+        normalizeCultivationState(myState);
+        return Collections.unmodifiableList(new ArrayList<>(myState.sectSecretRealmResolvedNodeIds));
+    }
+
+    public void markSectSecretRealmNodeResolved(String nodeId) {
+        if (nodeId == null || nodeId.isEmpty()) return;
+        normalizeCultivationState(myState);
+        if (!myState.sectSecretRealmResolvedNodeIds.contains(nodeId)) {
+            myState.sectSecretRealmResolvedNodeIds.add(nodeId);
+        }
+    }
+
+    public void clearSectSecretRealmProgress() {
+        myState.activeSectSecretRealmId = "";
+        myState.sectSecretRealmNodeIndex = 0;
+        myState.sectSecretRealmStartedMillis = 0L;
+        myState.sectSecretRealmResolvedNodeIds = new ArrayList<>();
     }
 }

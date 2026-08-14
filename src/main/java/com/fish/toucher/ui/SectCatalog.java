@@ -106,11 +106,55 @@ final class SectCatalog {
                     option("submit", "上交宗门", "获得宗门贡献。"))
     );
 
+    private static final List<SectSecretRealmDefinition> SECRET_REALMS = List.of(
+            secretRealm("qingyun_secret_realm", "qingyun_sword", "青云秘境", "青云剑宗封存的剑道秘境，适合攻击 Build。",
+                    secretNode("qingyun_enter", SecretRealmNodeType.ENTRY, "进入青云秘境", "山门令牌亮起，云海中现出一条剑气石阶。", 0L, 0L, 0L, 0L),
+                    secretNode("qingyun_puppet", SecretRealmNodeType.BATTLE, "第 1 层剑傀战斗", "剑傀持残剑守路，考验基础攻防。", 7_800L, 760L, 500L, 420L),
+                    secretNode("qingyun_tablet", SecretRealmNodeType.CHOICE, "第 2 层残碑", "残碑留有剑痕，可参悟片刻，也可保存状态直接前进。", 0L, 0L, 0L, 0L,
+                            secretOption("study", "参悟", "获得修为后前进。"),
+                            secretOption("advance", "前进", "不额外停留，直接前进。")),
+                    secretNode("qingyun_chest", SecretRealmNodeType.CHEST, "第 3 层剑匣宝箱", "旧剑匣尚有灵光，开启后获得秘境资源。", 0L, 0L, 0L, 0L),
+                    secretNode("qingyun_boss", SecretRealmNodeType.BOSS, "第 4 层剑魂 BOSS", "青云剑魂镇守终点，只认可足够完整的战斗 Build。", 13_500L, 1_180L, 760L, 780L)),
+            secretRealm("danxia_secret_realm", "danxia_valley", "丹霞秘境", "丹霞谷药火秘境，资源收益高但守关火灵危险。",
+                    secretNode("danxia_enter", SecretRealmNodeType.ENTRY, "进入丹霞秘境", "丹雾散开，药香与火气从石门内涌出。", 0L, 0L, 0L, 0L),
+                    secretNode("danxia_guard", SecretRealmNodeType.BATTLE, "第 1 层药园火灵", "火灵盘踞药园，先稳住身法才能深入。", 8_200L, 690L, 570L, 560L),
+                    secretNode("danxia_cauldron", SecretRealmNodeType.CHOICE, "第 2 层旧丹炉", "旧丹炉余温未散，可参悟丹诀，也可继续深入。", 0L, 0L, 0L, 0L,
+                            secretOption("study", "参悟", "获得修为后前进。"),
+                            secretOption("advance", "前进", "不额外停留，直接前进。")),
+                    secretNode("danxia_chest", SecretRealmNodeType.CHEST, "第 3 层药柜宝箱", "药柜中封着几份尚可使用的灵材。", 0L, 0L, 0L, 0L),
+                    secretNode("danxia_boss", SecretRealmNodeType.BOSS, "第 4 层丹火 BOSS", "丹火凝形，攻势不急却极耗法力。", 14_200L, 1_060L, 850L, 960L)),
+            secretRealm("xuanwu_secret_realm", "xuanwu_gate", "玄武秘境", "玄武门护山秘境，偏重防御与持久战。",
+                    secretNode("xuanwu_enter", SecretRealmNodeType.ENTRY, "进入玄武秘境", "黑水石门开启，沉重灵压落在肩头。", 0L, 0L, 0L, 0L),
+                    secretNode("xuanwu_guard", SecretRealmNodeType.BATTLE, "第 1 层玄甲卫", "玄甲卫以盾阵拦路，硬碰硬难以取巧。", 9_000L, 640L, 760L, 440L),
+                    secretNode("xuanwu_stele", SecretRealmNodeType.CHOICE, "第 2 层龟甲碑", "龟甲碑记录护体法门，可参悟，也可继续前进。", 0L, 0L, 0L, 0L,
+                            secretOption("study", "参悟", "获得修为后前进。"),
+                            secretOption("advance", "前进", "不额外停留，直接前进。")),
+                    secretNode("xuanwu_chest", SecretRealmNodeType.CHEST, "第 3 层水府宝箱", "水府宝箱被玄光包裹，开启后获得秘境资源。", 0L, 0L, 0L, 0L),
+                    secretNode("xuanwu_boss", SecretRealmNodeType.BOSS, "第 4 层玄武 BOSS", "玄武残影厚重如山，需要足够攻防才能破局。", 15_800L, 980L, 1_150L, 760L)),
+            secretRealm("tianji_secret_realm", "tianji_pavilion", "天机秘境", "天机阁星盘秘境，重视法力与综合属性。",
+                    secretNode("tianji_enter", SecretRealmNodeType.ENTRY, "进入天机秘境", "星盘转动，脚下阵纹铺成通路。", 0L, 0L, 0L, 0L),
+                    secretNode("tianji_guard", SecretRealmNodeType.BATTLE, "第 1 层星盘守卫", "守卫借阵法变换方位，考验综合战力。", 7_600L, 740L, 480L, 680L),
+                    secretNode("tianji_scroll", SecretRealmNodeType.CHOICE, "第 2 层星图残卷", "残卷上星象未灭，可参悟，也可继续追踪机缘。", 0L, 0L, 0L, 0L,
+                            secretOption("study", "参悟", "获得修为后前进。"),
+                            secretOption("advance", "前进", "不额外停留，直接前进。")),
+                    secretNode("tianji_chest", SecretRealmNodeType.CHEST, "第 3 层星匣宝箱", "星匣内有秘境凝结的灵物。", 0L, 0L, 0L, 0L),
+                    secretNode("tianji_boss", SecretRealmNodeType.BOSS, "第 4 层星魂 BOSS", "星魂借天机阵压制来者，法力不足会迅速失势。", 13_000L, 1_130L, 720L, 1_050L)),
+            secretRealm("taiqing_secret_realm", "taiqing_dao", "太清秘境", "太清道宗清气秘境，收益均衡，BOSS 要求全面 Build。",
+                    secretNode("taiqing_enter", SecretRealmNodeType.ENTRY, "进入太清秘境", "清气化桥，秘境深处传来钟声。", 0L, 0L, 0L, 0L),
+                    secretNode("taiqing_guard", SecretRealmNodeType.BATTLE, "第 1 层清气道兵", "道兵以清气化刃，攻守平衡。", 8_000L, 710L, 610L, 620L),
+                    secretNode("taiqing_wall", SecretRealmNodeType.CHOICE, "第 2 层道纹石壁", "石壁上道纹流转，可参悟，也可继续前进。", 0L, 0L, 0L, 0L,
+                            secretOption("study", "参悟", "获得修为后前进。"),
+                            secretOption("advance", "前进", "不额外停留，直接前进。")),
+                    secretNode("taiqing_chest", SecretRealmNodeType.CHEST, "第 3 层清光宝箱", "宝箱内清光未散，可得秘境资源。", 0L, 0L, 0L, 0L),
+                    secretNode("taiqing_boss", SecretRealmNodeType.BOSS, "第 4 层太清 BOSS", "太清残影攻防法俱全，偏科 Build 难以通过。", 14_600L, 1_100L, 900L, 980L))
+    );
+
     private static final Map<String, SectDefinition> SECT_BY_ID = index(SECTS);
     private static final Map<String, SectTaskDefinition> TASK_BY_ID = index(TASKS);
     private static final Map<String, SectInheritanceDefinition> INHERITANCE_BY_ID = index(INHERITANCES);
     private static final Map<String, SectTrialDefinition> TRIAL_BY_ID = index(TRIALS);
     private static final Map<String, SectEventDefinition> EVENT_BY_ID = index(EVENTS);
+    private static final Map<String, SectSecretRealmDefinition> SECRET_REALM_BY_ID = index(SECRET_REALMS);
 
     private SectCatalog() {}
 
@@ -120,12 +164,30 @@ final class SectCatalog {
     static List<SectInheritanceDefinition> inheritances() { return INHERITANCES; }
     static List<SectTrialDefinition> trials() { return TRIALS; }
     static List<SectEventDefinition> events() { return EVENTS; }
+    static List<SectSecretRealmDefinition> secretRealms() { return SECRET_REALMS; }
     static SectDefinition sect(String id) { return SECT_BY_ID.get(id); }
     static SectTaskDefinition task(String id) { return TASK_BY_ID.get(id); }
     static SectInheritanceDefinition inheritance(String id) { return INHERITANCE_BY_ID.get(id); }
     static SectTrialDefinition trial(String id) { return TRIAL_BY_ID.get(id); }
     static SectEventDefinition event(String id) { return EVENT_BY_ID.get(id); }
+    static SectSecretRealmDefinition secretRealm(String id) { return SECRET_REALM_BY_ID.get(id); }
     static SectRankDefinition rank(int rankIndex) { return RANKS.get(Math.max(0, Math.min(RANKS.size() - 1, rankIndex))); }
+
+    private static SectSecretRealmDefinition secretRealm(String id, String sectId, String name, String description,
+                                                        SectSecretRealmNodeDefinition... nodes) {
+        return new SectSecretRealmDefinition(id, sectId, name, description, 3, List.of(nodes));
+    }
+
+    private static SectSecretRealmNodeDefinition secretNode(String id, SecretRealmNodeType type, String title,
+                                                           String description, long maxHealth, long attack,
+                                                           long defense, long mana,
+                                                           SectSecretRealmOptionDefinition... options) {
+        return new SectSecretRealmNodeDefinition(id, type, title, description, maxHealth, attack, defense, mana, List.of(options));
+    }
+
+    private static SectSecretRealmOptionDefinition secretOption(String id, String label, String description) {
+        return new SectSecretRealmOptionDefinition(id, label, description);
+    }
 
     private static SectEventDefinition event(String id, String title, String description, SectEventOptionDefinition... options) {
         return new SectEventDefinition(id, title, description, List.of(options));
@@ -160,6 +222,10 @@ final class SectCatalog {
         TECHNIQUE, SPELL, ARTIFACT, PILL
     }
 
+    enum SecretRealmNodeType {
+        ENTRY, BATTLE, CHOICE, CHEST, BOSS
+    }
+
     record SectDefinition(String id, String name, String style, String bonusText,
                           BonusType bonusType, int bonusPercent) implements Identified {}
 
@@ -182,4 +248,13 @@ final class SectCatalog {
                                List<SectEventOptionDefinition> options) implements Identified {}
 
     record SectEventOptionDefinition(String id, String label, String description) implements Identified {}
+
+    record SectSecretRealmDefinition(String id, String sectId, String name, String description,
+                                     int minRankIndex, List<SectSecretRealmNodeDefinition> nodes) implements Identified {}
+
+    record SectSecretRealmNodeDefinition(String id, SecretRealmNodeType type, String title, String description,
+                                         long maxHealth, long attack, long defense, long mana,
+                                         List<SectSecretRealmOptionDefinition> options) implements Identified {}
+
+    record SectSecretRealmOptionDefinition(String id, String label, String description) implements Identified {}
 }

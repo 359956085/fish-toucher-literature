@@ -141,6 +141,9 @@ final class IdleCultivationTravelTab {
         if (manager.hasActiveTravel()) {
             return FishToucherBundle.message("cultivation.status.travelBusy");
         }
+        if (manager.hasActiveSectSecretRealm()) {
+            return FishToucherBundle.message("cultivation.sect.secretRealmBusy");
+        }
         return "";
     }
 

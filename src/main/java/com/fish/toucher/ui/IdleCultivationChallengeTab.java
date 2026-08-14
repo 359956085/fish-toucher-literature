@@ -207,6 +207,9 @@ final class IdleCultivationChallengeTab {
         if (manager.hasActiveTravel()) {
             return FishToucherBundle.message("cultivation.status.challengeBlockedByTravel");
         }
+        if (manager.hasActiveSectSecretRealm()) {
+            return FishToucherBundle.message("cultivation.sect.secretRealmBusy");
+        }
         return "";
     }
 

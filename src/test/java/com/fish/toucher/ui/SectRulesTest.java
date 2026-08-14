@@ -79,4 +79,58 @@ class SectRulesTest {
         assertEquals("tianji_star_method", SectCatalog.inheritance("tianji_basic").rewardId());
         assertEquals("taiqing_clear_method", SectCatalog.inheritance("taiqing_basic").rewardId());
     }
+
+    @Test
+    void 宗门秘境需要当前宗门执事职位() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+        SectCatalog.SectSecretRealmDefinition qingyun = SectCatalog.secretRealm("qingyun_secret_realm");
+        SectCatalog.SectSecretRealmDefinition danxia = SectCatalog.secretRealm("danxia_secret_realm");
+
+        assertFalse(SectRules.isSecretRealmUnlocked(settings, qingyun));
+
+        settings.setCultivationSectId("qingyun_sword");
+        settings.setCurrentSectRankIndex(2);
+        assertFalse(SectRules.isSecretRealmUnlocked(settings, qingyun));
+
+        settings.setCurrentSectRankIndex(3);
+        assertTrue(SectRules.isSecretRealmUnlocked(settings, qingyun));
+        assertFalse(SectRules.isSecretRealmUnlocked(settings, danxia));
+    }
+
+    @Test
+    void 每个宗门应配置一个文字节点秘境() {
+        assertEquals(SectCatalog.sects().size(), SectCatalog.secretRealms().size());
+        for (SectCatalog.SectSecretRealmDefinition secretRealm : SectCatalog.secretRealms()) {
+            assertNotNull(SectCatalog.sect(secretRealm.sectId()));
+            assertEquals(3, secretRealm.minRankIndex());
+            assertTrue(secretRealm.nodes().size() >= 3);
+            assertTrue(secretRealm.nodes().size() <= 5);
+            assertEquals(SectCatalog.SecretRealmNodeType.ENTRY, secretRealm.nodes().get(0).type());
+            assertEquals(SectCatalog.SecretRealmNodeType.BOSS, secretRealm.nodes().get(secretRealm.nodes().size() - 1).type());
+        }
+    }
+
+    @Test
+    void 宗门任务耗时应复用境界和天机阁减免() {
+        IdleCultivationManager manager = new IdleCultivationManager();
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        SectCatalog.SectTaskDefinition task = SectCatalog.task("sort_library");
+
+        settings.setCultivationRealmIndex(0);
+        settings.setCultivationSectId("qingyun_sword");
+        assertEquals(30L, manager.getSectTaskDurationMinutes(task, settings));
+
+        settings.setCultivationRealmIndex(8);
+        assertEquals(15L, manager.getSectTaskDurationMinutes(task, settings));
+
+        settings.setCultivationRealmIndex(4);
+        settings.setCultivationSectId("qingyun_sword");
+        assertEquals(23L, manager.getSectTaskDurationMinutes(task, settings));
+
+        settings.setCultivationSectId("tianji_pavilion");
+        assertEquals(21L, manager.getSectTaskDurationMinutes(task, settings));
+
+        settings.setCultivationRealmIndex(8);
+        assertEquals(15L, manager.getSectTaskDurationMinutes(task, settings));
+    }
 }

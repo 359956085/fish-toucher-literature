@@ -119,6 +119,7 @@ final class IdleCultivationUiSupport {
 
     static JTextArea createGuideTextArea(String text) {
         JTextArea textArea = new WrappingTextArea(text);
+        textArea.setForeground(UIManager.getColor("Label.foreground"));
         allowHorizontalShrink(textArea);
         return textArea;
     }
@@ -132,7 +133,7 @@ final class IdleCultivationUiSupport {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
         JLabel labelComponent = new JLabel(label);
-        labelComponent.setForeground(JBColor.GRAY);
+        labelComponent.setForeground(UIManager.getColor("Label.foreground"));
         panel.add(labelComponent, gbc);
 
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0; gbc.weighty = 0;

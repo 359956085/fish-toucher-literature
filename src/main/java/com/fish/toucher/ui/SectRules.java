@@ -73,6 +73,13 @@ final class SectRules {
         return settings.getCurrentSectRankIndex() >= requiredRank;
     }
 
+    static boolean isSecretRealmUnlocked(NovelReaderSettings settings, SectCatalog.SectSecretRealmDefinition secretRealm) {
+        return secretRealm != null
+                && !settings.getCultivationSectId().isEmpty()
+                && secretRealm.sectId().equals(settings.getCultivationSectId())
+                && settings.getCurrentSectRankIndex() >= secretRealm.minRankIndex();
+    }
+
     static int currentSectBonus(NovelReaderSettings settings, SectCatalog.BonusType bonusType) {
         SectCatalog.SectDefinition sect = SectCatalog.sect(settings.getCultivationSectId());
         if (sect == null || sect.bonusType() != bonusType) {

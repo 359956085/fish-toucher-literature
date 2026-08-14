@@ -25,6 +25,11 @@ class NovelReaderSettingsTest {
         state.sectPrestigeBySectId = new HashMap<>(Map.of("qingyun_sword", -1L, "taiqing_dao", 20L));
         state.sectContributionBySectId = new HashMap<>(Map.of("qingyun_sword", -2L, "taiqing_dao", 30L));
         state.sectRankBySectId = new HashMap<>(Map.of("taiqing_dao", 99));
+        state.pendingAlchemyPills = new HashMap<>();
+        state.pendingAlchemyPills.put("qi_pill", 2);
+        state.pendingAlchemyPills.put("unknown_pill", 3);
+        state.pendingAlchemyPills.put("", 4);
+        state.pendingAlchemyPills.put("spirit_pill", -1);
         state.activeSectTaskId = "";
         state.activeSectTaskElapsedMillis = -1L;
         state.pendingSectEvents = new ArrayList<>(List.of(
@@ -52,6 +57,9 @@ class NovelReaderSettingsTest {
         assertEquals(20L, settings.getSectPrestige("taiqing_dao"));
         assertEquals(30L, settings.getSectContribution("taiqing_dao"));
         assertEquals(4, settings.getSectRankIndex("taiqing_dao"));
+        assertEquals(2, settings.getPendingAlchemyPillCount());
+        assertEquals(2, settings.getPendingAlchemyPills().get("qi_pill"));
+        assertFalse(settings.getPendingAlchemyPills().containsKey("unknown_pill"));
         assertEquals(0L, settings.getActiveSectTaskElapsedMillis());
         assertEquals(3, settings.getPendingSectEvents().size());
         assertEquals(0L, settings.getPendingSectEvents().get(0).createdMillis);
@@ -86,5 +94,21 @@ class NovelReaderSettingsTest {
         assertEquals(3, settings.getPendingSectEvents().size());
         assertTrue(settings.removePendingSectEvent("b"));
         assertEquals(2, settings.getPendingSectEvents().size());
+    }
+
+    @Test
+    void 丹房待领取丹药应累加并随洞府状态清空() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+
+        settings.addPendingAlchemyPills(new HashMap<>(Map.of("qi_pill", 1)));
+        settings.addPendingAlchemyPills(new HashMap<>(Map.of("qi_pill", 2, "", 3, "spirit_pill", -1)));
+
+        assertEquals(3, settings.getPendingAlchemyPillCount());
+        assertEquals(3, settings.getPendingAlchemyPills().get("qi_pill"));
+
+        settings.clearAbodeState();
+
+        assertEquals(0, settings.getPendingAlchemyPillCount());
+        assertTrue(settings.getPendingAlchemyPills().isEmpty());
     }
 }
