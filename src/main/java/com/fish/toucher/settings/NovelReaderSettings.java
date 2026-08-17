@@ -124,6 +124,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public List<String> unlockedArtifactIds = new ArrayList<>();
         public List<String> equippedArtifactIds = new ArrayList<>();
         public List<String> defeatedCultivatorIds = new ArrayList<>();
+        public String selectedCultivationPillId = "";
+        public String selectedTravelLocationId = "";
+        public String selectedCultivatorId = "";
+        public String selectedSectPreviewId = "";
+        public String selectedSectTaskId = "";
+        public String selectedSectSecretRealmId = "";
+        public String selectedSectInheritanceId = "";
+        public String selectedSectTrialId = "";
 
         // --- Sect gameplay ---
         public String cultivationSectId = "";
@@ -255,6 +263,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.ascensionRebirthCount = Math.max(0, state.ascensionRebirthCount);
         state.ascensionMillis = Math.max(0L, state.ascensionMillis);
         state.activeTravelElapsedMillis = Math.max(0L, state.activeTravelElapsedMillis);
+        normalizeCultivationUiSelections(state);
         normalizeCultivationState(state);
         // Migrate legacy dual-progress maps into unified readingProgress
         if (!state.stealthReadingProgress.isEmpty() || !state.normalReadingProgress.isEmpty()) {
@@ -375,6 +384,31 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public String getUiLanguage() { return normalizeUiLanguage(myState.uiLanguage); }
     public void setUiLanguage(String language) { myState.uiLanguage = normalizeUiLanguage(language); }
 
+    // --- Idle cultivation UI selections ---
+    public String getSelectedCultivationPillId() { return normalizeUiSelectionId(myState.selectedCultivationPillId); }
+    public void setSelectedCultivationPillId(String id) { myState.selectedCultivationPillId = normalizeUiSelectionId(id); }
+
+    public String getSelectedTravelLocationId() { return normalizeUiSelectionId(myState.selectedTravelLocationId); }
+    public void setSelectedTravelLocationId(String id) { myState.selectedTravelLocationId = normalizeUiSelectionId(id); }
+
+    public String getSelectedCultivatorId() { return normalizeUiSelectionId(myState.selectedCultivatorId); }
+    public void setSelectedCultivatorId(String id) { myState.selectedCultivatorId = normalizeUiSelectionId(id); }
+
+    public String getSelectedSectPreviewId() { return normalizeUiSelectionId(myState.selectedSectPreviewId); }
+    public void setSelectedSectPreviewId(String id) { myState.selectedSectPreviewId = normalizeUiSelectionId(id); }
+
+    public String getSelectedSectTaskId() { return normalizeUiSelectionId(myState.selectedSectTaskId); }
+    public void setSelectedSectTaskId(String id) { myState.selectedSectTaskId = normalizeUiSelectionId(id); }
+
+    public String getSelectedSectSecretRealmId() { return normalizeUiSelectionId(myState.selectedSectSecretRealmId); }
+    public void setSelectedSectSecretRealmId(String id) { myState.selectedSectSecretRealmId = normalizeUiSelectionId(id); }
+
+    public String getSelectedSectInheritanceId() { return normalizeUiSelectionId(myState.selectedSectInheritanceId); }
+    public void setSelectedSectInheritanceId(String id) { myState.selectedSectInheritanceId = normalizeUiSelectionId(id); }
+
+    public String getSelectedSectTrialId() { return normalizeUiSelectionId(myState.selectedSectTrialId); }
+    public void setSelectedSectTrialId(String id) { myState.selectedSectTrialId = normalizeUiSelectionId(id); }
+
     private static int clamp(int value, int minimum, int maximum) {
         return Math.max(minimum, Math.min(maximum, value));
     }
@@ -420,6 +454,21 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             return language;
         }
         return LANGUAGE_AUTO;
+    }
+
+    private static void normalizeCultivationUiSelections(State state) {
+        state.selectedCultivationPillId = normalizeUiSelectionId(state.selectedCultivationPillId);
+        state.selectedTravelLocationId = normalizeUiSelectionId(state.selectedTravelLocationId);
+        state.selectedCultivatorId = normalizeUiSelectionId(state.selectedCultivatorId);
+        state.selectedSectPreviewId = normalizeUiSelectionId(state.selectedSectPreviewId);
+        state.selectedSectTaskId = normalizeUiSelectionId(state.selectedSectTaskId);
+        state.selectedSectSecretRealmId = normalizeUiSelectionId(state.selectedSectSecretRealmId);
+        state.selectedSectInheritanceId = normalizeUiSelectionId(state.selectedSectInheritanceId);
+        state.selectedSectTrialId = normalizeUiSelectionId(state.selectedSectTrialId);
+    }
+
+    private static String normalizeUiSelectionId(String id) {
+        return id == null ? "" : id.trim();
     }
 
     private static void normalizeCultivationState(State state) {

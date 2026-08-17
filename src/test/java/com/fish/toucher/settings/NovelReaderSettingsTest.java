@@ -82,6 +82,42 @@ class NovelReaderSettingsTest {
     }
 
     @Test
+    void 修仙下拉框选择默认空且应清洗空值() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+
+        assertEquals("", settings.getSelectedCultivationPillId());
+        assertEquals("", settings.getSelectedTravelLocationId());
+        assertEquals("", settings.getSelectedCultivatorId());
+        assertEquals("", settings.getSelectedSectPreviewId());
+
+        settings.setSelectedCultivationPillId(" qi_pill ");
+        settings.setSelectedTravelLocationId(" forest_edge ");
+        assertEquals("qi_pill", settings.getSelectedCultivationPillId());
+        assertEquals("forest_edge", settings.getSelectedTravelLocationId());
+
+        NovelReaderSettings.State state = new NovelReaderSettings.State();
+        state.selectedCultivationPillId = null;
+        state.selectedTravelLocationId = null;
+        state.selectedCultivatorId = null;
+        state.selectedSectPreviewId = null;
+        state.selectedSectTaskId = null;
+        state.selectedSectSecretRealmId = null;
+        state.selectedSectInheritanceId = null;
+        state.selectedSectTrialId = null;
+
+        settings.loadState(state);
+
+        assertEquals("", settings.getSelectedCultivationPillId());
+        assertEquals("", settings.getSelectedTravelLocationId());
+        assertEquals("", settings.getSelectedCultivatorId());
+        assertEquals("", settings.getSelectedSectPreviewId());
+        assertEquals("", settings.getSelectedSectTaskId());
+        assertEquals("", settings.getSelectedSectSecretRealmId());
+        assertEquals("", settings.getSelectedSectInheritanceId());
+        assertEquals("", settings.getSelectedSectTrialId());
+    }
+
+    @Test
     void 宗门事件队列限制最多三条且不允许重复实例() {
         NovelReaderSettings settings = new NovelReaderSettings();
 

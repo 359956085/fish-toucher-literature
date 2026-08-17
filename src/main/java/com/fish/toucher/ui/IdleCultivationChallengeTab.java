@@ -1,6 +1,7 @@
 package com.fish.toucher.ui;
 
 import com.fish.toucher.FishToucherBundle;
+import com.fish.toucher.settings.NovelReaderSettings;
 import com.intellij.ui.JBColor;
 
 import javax.swing.*;
@@ -53,11 +54,7 @@ final class IdleCultivationChallengeTab {
     }
 
     void reloadCultivatorOptions(IdleCultivationManager manager) {
-        String selectedId = null;
-        CultivatorOption selected = (CultivatorOption) cultivatorComboBox.getSelectedItem();
-        if (selected != null) {
-            selectedId = selected.cultivator.id();
-        }
+        String selectedId = NovelReaderSettings.getInstance().getSelectedCultivatorId();
         cultivatorComboBox.removeAllItems();
         for (IdleCultivationManager.CultivatorDefinition cultivator : manager.getCultivatorDefinitions()) {
             CultivatorOption option = new CultivatorOption(
@@ -161,7 +158,15 @@ final class IdleCultivationChallengeTab {
         gbc.weighty = 0;
 
         addBottomGlue(contentPanel, gbc, row);
-        cultivatorComboBox.addActionListener(e -> updateCultivatorDescription());
+        cultivatorComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                CultivatorOption option = (CultivatorOption) cultivatorComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedCultivatorId(option.cultivator.id());
+                }
+            }
+            updateCultivatorDescription();
+        });
         return createScrollableTab(contentPanel);
     }
 

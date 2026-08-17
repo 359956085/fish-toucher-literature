@@ -982,11 +982,7 @@ public final class IdleCultivationManager implements Disposable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         return !settings.isCultivationAscended()
                 && settings.getCultivationRebirthCount() >= ASCENSION_REQUIRED_REBIRTH_COUNT
-                && CultivationRules.isHumanMaxRealm(settings.getCultivationRealmIndex())
-                && !hasActiveTravel()
-                && !hasActiveBattle()
-                && !hasActiveSectTask()
-                && !hasActiveSectSecretRealm();
+                && CultivationRules.isHumanMaxRealm(settings.getCultivationRealmIndex());
     }
 
     public synchronized boolean ascend() {

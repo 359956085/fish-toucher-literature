@@ -143,7 +143,15 @@ final class IdleCultivationBagTab {
         row = addActionRow(panel, gbc, row, saveArtifactSetupButton);
 
         techniqueComboBox.addActionListener(e -> updateTechniqueDescription());
-        pillComboBox.addActionListener(e -> updatePillDescription());
+        pillComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                PillOption option = (PillOption) pillComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedCultivationPillId(option.pill.id());
+                }
+            }
+            updatePillDescription();
+        });
         addBottomGlue(panel, gbc, row);
         return createScrollableTab(panel);
     }
@@ -162,11 +170,7 @@ final class IdleCultivationBagTab {
     }
 
     private void reloadPillOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
-        String selectedId = null;
-        PillOption selected = (PillOption) pillComboBox.getSelectedItem();
-        if (selected != null) {
-            selectedId = selected.pill.id();
-        }
+        String selectedId = settings.getSelectedCultivationPillId();
         pillComboBox.removeAllItems();
         for (IdleCultivationManager.PillDefinition pill : manager.getPillDefinitions()) {
             PillOption option = new PillOption(pill, settings.getPillCount(pill.id()));
@@ -250,6 +254,7 @@ final class IdleCultivationBagTab {
     }
 
     private void updatePillDescription() {
+        if (refreshing) return;
         PillOption option = (PillOption) pillComboBox.getSelectedItem();
         if (option == null) return;
         setWrappingText(pillDescriptionLabel, option.pill.description());

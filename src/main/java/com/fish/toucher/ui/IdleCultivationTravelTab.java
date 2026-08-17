@@ -1,6 +1,7 @@
 package com.fish.toucher.ui;
 
 import com.fish.toucher.FishToucherBundle;
+import com.fish.toucher.settings.NovelReaderSettings;
 
 import javax.swing.*;
 import java.awt.*;
@@ -39,11 +40,7 @@ final class IdleCultivationTravelTab {
     }
 
     void reloadTravelOptions(IdleCultivationManager manager) {
-        String selectedId = null;
-        TravelOption selected = (TravelOption) travelComboBox.getSelectedItem();
-        if (selected != null) {
-            selectedId = selected.location.id();
-        }
+        String selectedId = NovelReaderSettings.getInstance().getSelectedTravelLocationId();
         travelComboBox.removeAllItems();
         List<IdleCultivationManager.TravelLocationDefinition> locations = manager.getTravelLocationDefinitions();
         for (IdleCultivationManager.TravelLocationDefinition location : locations) {
@@ -104,7 +101,15 @@ final class IdleCultivationTravelTab {
 
         row = addActionRow(panel, gbc, row, actions);
 
-        travelComboBox.addActionListener(e -> updateTravelDescription());
+        travelComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                TravelOption option = (TravelOption) travelComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedTravelLocationId(option.location.id());
+                }
+            }
+            updateTravelDescription();
+        });
         addBottomGlue(panel, gbc, row);
         return createScrollableTab(panel);
     }

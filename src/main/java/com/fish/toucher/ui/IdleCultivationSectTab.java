@@ -78,7 +78,7 @@ final class IdleCultivationSectTab {
                     ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
                     : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
             setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
-            setWrappingText(taskStatusText, manager.getSectTaskRemainingText());
+            setWrappingText(taskStatusText, getTaskStatusText(manager));
         } finally {
             refreshing = false;
         }
@@ -139,17 +139,6 @@ final class IdleCultivationSectTab {
         unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, eventActions);
 
         unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
-        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.secretRealm")));
-        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.secretRealm"), secretRealmComboBox);
-        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmDescText);
-        startSecretRealmButton.addActionListener(e -> {
-            SecretRealmOption option = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
-            if (option != null) IdleCultivationManager.getInstance().startSectSecretRealm(option.secretRealm.id());
-        });
-        secretRealmActions.add(startSecretRealmButton);
-        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmActions);
-
-        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.inheritance")));
         addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.inheritance"), inheritanceComboBox);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, inheritanceDescText);
@@ -171,17 +160,61 @@ final class IdleCultivationSectTab {
             if (option != null) IdleCultivationManager.getInstance().startSectTrial(option.trial.id());
         });
         trialActions.add(startTrialButton);
-        addActionRow(unlockedPanel, unlockedGbc, unlockedRow, trialActions);
+        unlockedRow = addActionRow(unlockedPanel, unlockedGbc, unlockedRow, trialActions);
+
+        unlockedRow = addSeparatorRow(unlockedPanel, unlockedGbc, unlockedRow);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.secretRealm")));
+        addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.secretRealm"), secretRealmComboBox);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmDescText);
+        startSecretRealmButton.addActionListener(e -> {
+            SecretRealmOption option = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+            if (option != null) IdleCultivationManager.getInstance().startSectSecretRealm(option.secretRealm.id());
+        });
+        secretRealmActions.add(startSecretRealmButton);
+        addActionRow(unlockedPanel, unlockedGbc, unlockedRow, secretRealmActions);
 
         addBottomGlue(contentPanel, gbc, row);
         sectComboBox.addActionListener(e -> onSectSelectionChanged());
         taskComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                TaskOption option = (TaskOption) taskComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedSectTaskId(option.task.id());
+                }
+            }
             updateButtons(IdleCultivationManager.getInstance());
             updateDescriptions();
         });
-        secretRealmComboBox.addActionListener(e -> updateDescriptions());
-        inheritanceComboBox.addActionListener(e -> updateDescriptions());
-        trialComboBox.addActionListener(e -> updateDescriptions());
+        secretRealmComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                SecretRealmOption option = (SecretRealmOption) secretRealmComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedSectSecretRealmId(option.secretRealm.id());
+                }
+            }
+            updateButtons(IdleCultivationManager.getInstance());
+            updateDescriptions();
+        });
+        inheritanceComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                InheritanceOption option = (InheritanceOption) inheritanceComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedSectInheritanceId(option.inheritance.id());
+                }
+            }
+            updateButtons(IdleCultivationManager.getInstance());
+            updateDescriptions();
+        });
+        trialComboBox.addActionListener(e -> {
+            if (!refreshing) {
+                TrialOption option = (TrialOption) trialComboBox.getSelectedItem();
+                if (option != null) {
+                    NovelReaderSettings.getInstance().setSelectedSectTrialId(option.trial.id());
+                }
+            }
+            updateButtons(IdleCultivationManager.getInstance());
+            updateDescriptions();
+        });
         return createScrollableTab(contentPanel);
     }
 
@@ -325,19 +358,24 @@ final class IdleCultivationSectTab {
 
     private void reloadSects(IdleCultivationManager manager) {
         String currentSectId = NovelReaderSettings.getInstance().getCultivationSectId();
+        String selectedId = currentSectId.isEmpty()
+                ? NovelReaderSettings.getInstance().getSelectedSectPreviewId()
+                : currentSectId;
         sectComboBox.removeAllItems();
         for (SectCatalog.SectDefinition sect : manager.getSectDefinitions()) {
             SectOption option = new SectOption(sect);
             sectComboBox.addItem(option);
-            if (sect.id().equals(currentSectId)) {
+            if (sect.id().equals(selectedId)) {
                 sectComboBox.setSelectedItem(option);
             }
         }
     }
 
     private void reloadTasks(IdleCultivationManager manager) {
-        Object selected = taskComboBox.getSelectedItem();
-        String selectedId = selected instanceof TaskOption option ? option.task.id() : "";
+        SectCatalog.SectTaskDefinition activeTask = manager.getActiveSectTask();
+        String selectedId = activeTask != null
+                ? activeTask.id()
+                : NovelReaderSettings.getInstance().getSelectedSectTaskId();
         taskComboBox.removeAllItems();
         for (SectCatalog.SectTaskDefinition task : manager.getSectTaskDefinitions()) {
             TaskOption option = new TaskOption(task);
@@ -349,8 +387,7 @@ final class IdleCultivationSectTab {
     }
 
     private void reloadSecretRealms(IdleCultivationManager manager) {
-        Object selected = secretRealmComboBox.getSelectedItem();
-        String selectedId = selected instanceof SecretRealmOption option ? option.secretRealm.id() : "";
+        String selectedId = NovelReaderSettings.getInstance().getSelectedSectSecretRealmId();
         secretRealmComboBox.removeAllItems();
         for (SectCatalog.SectSecretRealmDefinition secretRealm : manager.getCurrentSectSecretRealmDefinitions()) {
             SecretRealmOption option = new SecretRealmOption(secretRealm);
@@ -362,6 +399,7 @@ final class IdleCultivationSectTab {
     }
 
     private void reloadInheritances(IdleCultivationManager manager) {
+        String selectedId = NovelReaderSettings.getInstance().getSelectedSectInheritanceId();
         inheritanceComboBox.removeAllItems();
         SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
         if (displaySect == null) {
@@ -369,20 +407,29 @@ final class IdleCultivationSectTab {
         }
         for (SectCatalog.SectInheritanceDefinition inheritance : manager.getSectInheritanceDefinitions()) {
             if (displaySect.name().equals(inheritance.sectName())) {
-                inheritanceComboBox.addItem(new InheritanceOption(inheritance));
+                InheritanceOption option = new InheritanceOption(inheritance);
+                inheritanceComboBox.addItem(option);
+                if (inheritance.id().equals(selectedId)) {
+                    inheritanceComboBox.setSelectedItem(option);
+                }
             }
         }
     }
 
     private void reloadTrials(IdleCultivationManager manager) {
         SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
+        String selectedId = NovelReaderSettings.getInstance().getSelectedSectTrialId();
         trialComboBox.removeAllItems();
         if (displaySect == null) {
             return;
         }
         for (SectCatalog.SectTrialDefinition trial : manager.getSectTrialDefinitions()) {
             if (displaySect.id().equals(trial.sectId())) {
-                trialComboBox.addItem(new TrialOption(trial));
+                TrialOption option = new TrialOption(trial);
+                trialComboBox.addItem(option);
+                if (trial.id().equals(selectedId)) {
+                    trialComboBox.setSelectedItem(option);
+                }
             }
         }
     }
@@ -402,6 +449,10 @@ final class IdleCultivationSectTab {
     private void onSectSelectionChanged() {
         if (refreshing) return;
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
+        SectOption selected = (SectOption) sectComboBox.getSelectedItem();
+        if (manager.getCurrentSect() == null && selected != null) {
+            NovelReaderSettings.getInstance().setSelectedSectPreviewId(selected.sect.id());
+        }
         reloadInheritances(manager);
         reloadTrials(manager);
         reloadSecretRealms(manager);
@@ -430,13 +481,45 @@ final class IdleCultivationSectTab {
         InheritanceOption inheritance = (InheritanceOption) inheritanceComboBox.getSelectedItem();
         purchaseButton.setEnabled(joined && inheritance != null && manager.canPurchaseSectInheritance(inheritance.inheritance));
         TrialOption trial = (TrialOption) trialComboBox.getSelectedItem();
-        startTrialButton.setEnabled(joined
-                && trial != null
-                && SectRules.isTrialUnlocked(settings, trial.trial)
-                && !settings.isSectTrialDefeated(trial.trial.id())
-                && !manager.hasActiveBattle()
-                && !manager.hasActiveTravel()
-                && !manager.hasActiveSectSecretRealm());
+        String trialBlockReason = getTrialBlockReason(manager, settings, joined, trial);
+        startTrialButton.setEnabled(trialBlockReason.isEmpty());
+        startTrialButton.setToolTipText(trialBlockReason.isEmpty() ? null : trialBlockReason);
+    }
+
+    private String getTrialBlockReason(IdleCultivationManager manager,
+                                       NovelReaderSettings settings,
+                                       boolean joined,
+                                       TrialOption trial) {
+        if (!joined) {
+            return FishToucherBundle.message("cultivation.sect.needJoin");
+        }
+        if (trial == null) {
+            return FishToucherBundle.message("cultivation.sect.trialUnknown");
+        }
+        if (!SectRules.isTrialUnlocked(settings, trial.trial)) {
+            return FishToucherBundle.message("cultivation.sect.trialLocked");
+        }
+        if (settings.isSectTrialDefeated(trial.trial.id())) {
+            return FishToucherBundle.message("cultivation.sect.trialDefeatedHint");
+        }
+        if (manager.hasActiveBattle()) {
+            return FishToucherBundle.message("cultivation.status.challengeBusy");
+        }
+        if (manager.hasActiveTravel()) {
+            return FishToucherBundle.message("cultivation.status.challengeBlockedByTravel");
+        }
+        if (manager.hasActiveSectSecretRealm()) {
+            return FishToucherBundle.message("cultivation.sect.secretRealmBusy");
+        }
+        return "";
+    }
+
+    private String getTaskStatusText(IdleCultivationManager manager) {
+        SectCatalog.SectTaskDefinition activeTask = manager.getActiveSectTask();
+        String remainingText = manager.getSectTaskRemainingText();
+        return activeTask == null
+                ? remainingText
+                : FishToucherBundle.message("cultivation.sect.taskActiveStatus", activeTask.name(), remainingText);
     }
 
     private boolean confirmSectAction(String message) {
