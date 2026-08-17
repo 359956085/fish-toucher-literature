@@ -85,7 +85,8 @@ public final class IdleCultivationManager implements Disposable {
     private static final int MAX_PENDING_SECT_EVENTS = 3;
     private static final int ABODE_UNLOCK_REALM_INDEX = 2;
     private static final long SECT_SECRET_REALM_COOLDOWN_MILLIS = TimeUnit.MINUTES.toMillis(30);
-    private static final int ASCENSION_REQUIRED_REBIRTH_COUNT = 9;
+    private static final long OWN_SECT_RECRUITMENT_DURATION_MILLIS = TimeUnit.HOURS.toMillis(2);
+    static final int ASCENSION_REQUIRED_REBIRTH_COUNT = 9;
     private static final String DEFAULT_OWN_SECT_NAME = "太虚宗";
     private static final String[] DISCIPLE_SURNAMES = {"陆", "苏", "陈", "林", "顾", "沈", "白", "洛", "姜", "谢"};
     private static final String[] DISCIPLE_GIVEN_NAMES = {"离", "玄", "清", "照", "微", "云", "衡", "宁", "晏", "真"};
@@ -355,6 +356,7 @@ public final class IdleCultivationManager implements Disposable {
         settings.setCultivationSpiritStoneRemainderSeconds(0L);
         boolean travelProgressed = advanceActiveTravel(settings, creditedMillis);
         boolean sectTaskProgressed = advanceActiveSectTask(settings, creditedMillis);
+        boolean ownSectRecruitmentProgressed = advanceOwnSectRecruitment(settings, creditedMillis);
 
         long actualQiGain = 0L;
         if (qiGain > 0L) {
@@ -362,7 +364,7 @@ public final class IdleCultivationManager implements Disposable {
         }
         settings.setCultivationLastUpdateMillis(now);
 
-        if (actualQiGain > 0L || travelProgressed || sectTaskProgressed) {
+        if (actualQiGain > 0L || travelProgressed || sectTaskProgressed || ownSectRecruitmentProgressed) {
             if (showOfflineMessage && elapsedMillis > TICK_SECONDS * 1_000L) {
                 lastMessage = FishToucherBundle.message(
                         "cultivation.status.offline",
@@ -883,31 +885,57 @@ public final class IdleCultivationManager implements Disposable {
         return true;
     }
 
+    public synchronized boolean canStartOwnSectRecruitment() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return settings.isOwnSectCreated()
+                && settings.getOwnSectRecruitmentCandidates().isEmpty()
+                && !hasActiveOwnSectRecruitment()
+                && settings.getOwnSectDisciples().size() < AscendedSectRules.discipleLimit(settings);
+    }
+
     public synchronized void startOwnSectRecruitment(AscendedSectCatalog.Specialty specialty) {
+        settleProgress(false);
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (!settings.isOwnSectCreated() || specialty == null) {
             return;
         }
-        List<NovelReaderSettings.OwnSectDiscipleState> candidates = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            candidates.add(generateOwnSectDisciple(settings, specialty));
+        if (!settings.getOwnSectRecruitmentCandidates().isEmpty()) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.recruitmentPending");
+            fireChange();
+            return;
         }
-        settings.setOwnSectRecruitmentCandidates(candidates);
-        lastMessage = FishToucherBundle.message("cultivation.ownSect.recruited", specialty.label());
+        if (hasActiveOwnSectRecruitment()) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.recruitmentBusy");
+            fireChange();
+            return;
+        }
+        if (settings.getOwnSectDisciples().size() >= AscendedSectRules.discipleLimit(settings)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleFull");
+            fireChange();
+            return;
+        }
+        settings.startOwnSectRecruitment(specialty.name(), System.currentTimeMillis());
+        lastMessage = FishToucherBundle.message("cultivation.ownSect.recruitmentStarted", specialty.label());
         fireChange();
     }
 
     public synchronized boolean recruitOwnSectDisciple(String candidateId) {
+        settleProgress(false);
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (settings.getOwnSectDisciples().size() >= AscendedSectRules.discipleLimit(settings)) {
             lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleFull");
             fireChange();
             return false;
         }
+        if (!canCompleteOwnSectRecruitment(candidateId)) {
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleInvalid");
+            fireChange();
+            return false;
+        }
         for (NovelReaderSettings.OwnSectDiscipleState candidate : settings.getOwnSectRecruitmentCandidates()) {
             if (candidate.id.equals(candidateId)) {
                 boolean added = settings.addOwnSectDisciple(candidate);
-                settings.setOwnSectRecruitmentCandidates(Collections.emptyList());
+                settings.clearOwnSectRecruitment();
                 lastMessage = added
                         ? FishToucherBundle.message("cultivation.ownSect.discipleJoined", candidate.name)
                         : FishToucherBundle.message("cultivation.ownSect.discipleInvalid");
@@ -917,6 +945,60 @@ public final class IdleCultivationManager implements Disposable {
         }
         lastMessage = FishToucherBundle.message("cultivation.ownSect.discipleInvalid");
         fireChange();
+        return false;
+    }
+
+    public synchronized boolean hasActiveOwnSectRecruitment() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.getOwnSectRecruitmentSpecialty().isEmpty()
+                && settings.getOwnSectRecruitmentCandidates().isEmpty()
+                && settings.getOwnSectRecruitmentElapsedMillis() < OWN_SECT_RECRUITMENT_DURATION_MILLIS;
+    }
+
+    public synchronized boolean isOwnSectRecruitmentReady() {
+        return !NovelReaderSettings.getInstance().getOwnSectRecruitmentCandidates().isEmpty();
+    }
+
+    public synchronized int getOwnSectRecruitmentProgressPercent() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (isOwnSectRecruitmentReady()) {
+            return 100;
+        }
+        if (settings.getOwnSectRecruitmentSpecialty().isEmpty()) {
+            return 0;
+        }
+        return (int) Math.min(100L, settings.getOwnSectRecruitmentElapsedMillis() * 100L / OWN_SECT_RECRUITMENT_DURATION_MILLIS);
+    }
+
+    public synchronized String getOwnSectRecruitmentRemainingText() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        long remainingMillis = OWN_SECT_RECRUITMENT_DURATION_MILLIS - settings.getOwnSectRecruitmentElapsedMillis();
+        return formatRemainingDuration(remainingMillis);
+    }
+
+    public synchronized String getOwnSectRecruitmentStatusText() {
+        if (isOwnSectRecruitmentReady()) {
+            return FishToucherBundle.message("cultivation.ownSect.recruitmentReady");
+        }
+        if (hasActiveOwnSectRecruitment()) {
+            return FishToucherBundle.message("cultivation.ownSect.recruitmentRunning", getOwnSectRecruitmentRemainingText());
+        }
+        return FishToucherBundle.message("cultivation.ownSect.noRecruitmentCandidates");
+    }
+
+    public synchronized boolean canCompleteOwnSectRecruitment(String candidateId) {
+        if (candidateId == null || candidateId.isEmpty() || !isOwnSectRecruitmentReady()) {
+            return false;
+        }
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if (settings.getOwnSectDisciples().size() >= AscendedSectRules.discipleLimit(settings)) {
+            return false;
+        }
+        for (NovelReaderSettings.OwnSectDiscipleState candidate : settings.getOwnSectRecruitmentCandidates()) {
+            if (candidateId.equals(candidate.id)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -2677,6 +2759,31 @@ public final class IdleCultivationManager implements Disposable {
             return false;
         }
         settings.setActiveSectTaskElapsedMillis(nextElapsedMillis);
+        return true;
+    }
+
+    private boolean advanceOwnSectRecruitment(NovelReaderSettings settings, long creditedMillis) {
+        if (creditedMillis <= 0L
+                || !settings.isOwnSectCreated()
+                || settings.getOwnSectRecruitmentSpecialty().isEmpty()
+                || !settings.getOwnSectRecruitmentCandidates().isEmpty()) {
+            return false;
+        }
+        long currentElapsedMillis = Math.min(settings.getOwnSectRecruitmentElapsedMillis(), OWN_SECT_RECRUITMENT_DURATION_MILLIS);
+        long nextElapsedMillis = Math.min(OWN_SECT_RECRUITMENT_DURATION_MILLIS, currentElapsedMillis + creditedMillis);
+        if (nextElapsedMillis == currentElapsedMillis) {
+            return false;
+        }
+        settings.setOwnSectRecruitmentElapsedMillis(nextElapsedMillis);
+        if (nextElapsedMillis >= OWN_SECT_RECRUITMENT_DURATION_MILLIS) {
+            AscendedSectCatalog.Specialty specialty = AscendedSectCatalog.Specialty.valueOf(settings.getOwnSectRecruitmentSpecialty());
+            List<NovelReaderSettings.OwnSectDiscipleState> candidates = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                candidates.add(generateOwnSectDisciple(settings, specialty));
+            }
+            settings.setOwnSectRecruitmentCandidates(candidates);
+            lastMessage = FishToucherBundle.message("cultivation.ownSect.recruitmentReady");
+        }
         return true;
     }
 

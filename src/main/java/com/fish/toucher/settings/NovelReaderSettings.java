@@ -161,6 +161,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public Map<String, Integer> ownSectBuildingLevels = new HashMap<>();
         public List<OwnSectDiscipleState> ownSectDisciples = new ArrayList<>();
         public List<OwnSectDiscipleState> ownSectRecruitmentCandidates = new ArrayList<>();
+        public String ownSectRecruitmentSpecialty = "";
+        public long ownSectRecruitmentStartMillis = 0L;
+        public long ownSectRecruitmentElapsedMillis = 0L;
     }
 
     public static class SectPendingEventState {
@@ -582,6 +585,13 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.ownSectBuildingLevels = normalizeIntegerMap(state.ownSectBuildingLevels, 0, 10, OWN_SECT_BUILDING_IDS);
         state.ownSectDisciples = normalizeOwnSectDisciples(state.ownSectDisciples, MAX_OWN_SECT_DISCIPLES);
         state.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(state.ownSectRecruitmentCandidates, MAX_OWN_SECT_CANDIDATES);
+        state.ownSectRecruitmentSpecialty = normalizeOwnSectSpecialty(state.ownSectRecruitmentSpecialty);
+        state.ownSectRecruitmentStartMillis = Math.max(0L, state.ownSectRecruitmentStartMillis);
+        state.ownSectRecruitmentElapsedMillis = Math.max(0L, state.ownSectRecruitmentElapsedMillis);
+        if (state.ownSectRecruitmentSpecialty.isEmpty()) {
+            state.ownSectRecruitmentStartMillis = 0L;
+            state.ownSectRecruitmentElapsedMillis = 0L;
+        }
         if (!state.ownSectCreated) {
             state.ownSectName = "";
             state.ownSectTierIndex = 0;
@@ -590,6 +600,9 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             state.ownSectBuildingLevels = new HashMap<>();
             state.ownSectDisciples = new ArrayList<>();
             state.ownSectRecruitmentCandidates = new ArrayList<>();
+            state.ownSectRecruitmentSpecialty = "";
+            state.ownSectRecruitmentStartMillis = 0L;
+            state.ownSectRecruitmentElapsedMillis = 0L;
         }
     }
 
@@ -599,6 +612,11 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             normalized = normalized.substring(0, MAX_OWN_SECT_NAME_LENGTH);
         }
         return normalized;
+    }
+
+    private static String normalizeOwnSectSpecialty(String specialty) {
+        String normalized = specialty == null ? "" : specialty.trim();
+        return OWN_SECT_SPECIALTIES.contains(normalized) ? normalized : "";
     }
 
     private static List<OwnSectDiscipleState> normalizeOwnSectDisciples(List<OwnSectDiscipleState> values, int limit) {
@@ -1378,6 +1396,40 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
 
     public void setOwnSectRecruitmentCandidates(List<OwnSectDiscipleState> candidates) {
         myState.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(candidates, MAX_OWN_SECT_CANDIDATES);
+    }
+
+    public String getOwnSectRecruitmentSpecialty() {
+        normalizeCultivationState(myState);
+        return myState.ownSectRecruitmentSpecialty;
+    }
+
+    public long getOwnSectRecruitmentStartMillis() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.ownSectRecruitmentStartMillis);
+    }
+
+    public long getOwnSectRecruitmentElapsedMillis() {
+        normalizeCultivationState(myState);
+        return Math.max(0L, myState.ownSectRecruitmentElapsedMillis);
+    }
+
+    public void startOwnSectRecruitment(String specialty, long now) {
+        normalizeCultivationState(myState);
+        myState.ownSectRecruitmentSpecialty = normalizeOwnSectSpecialty(specialty);
+        myState.ownSectRecruitmentStartMillis = myState.ownSectRecruitmentSpecialty.isEmpty() ? 0L : Math.max(0L, now);
+        myState.ownSectRecruitmentElapsedMillis = 0L;
+    }
+
+    public void setOwnSectRecruitmentElapsedMillis(long elapsedMillis) {
+        normalizeCultivationState(myState);
+        myState.ownSectRecruitmentElapsedMillis = Math.max(0L, elapsedMillis);
+    }
+
+    public void clearOwnSectRecruitment() {
+        myState.ownSectRecruitmentSpecialty = "";
+        myState.ownSectRecruitmentStartMillis = 0L;
+        myState.ownSectRecruitmentElapsedMillis = 0L;
+        myState.ownSectRecruitmentCandidates = new ArrayList<>();
     }
 
     public boolean addOwnSectDisciple(OwnSectDiscipleState disciple) {

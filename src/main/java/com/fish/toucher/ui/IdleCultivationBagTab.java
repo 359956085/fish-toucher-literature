@@ -250,7 +250,15 @@ final class IdleCultivationBagTab {
         if (option == null) return;
         IdleCultivationManager.TechniqueDefinition technique = option.technique;
         setWrappingText(techniqueDescriptionLabel, technique.description());
-        equipTechniqueButton.setEnabled(option.unlocked && !technique.id().equals(NovelReaderSettings.getInstance().getEquippedTechniqueId()));
+        boolean equipped = technique.id().equals(NovelReaderSettings.getInstance().getEquippedTechniqueId());
+        setButtonEnabledWithReason(
+                equipTechniqueButton,
+                option.unlocked && !equipped,
+                null,
+                option.unlocked
+                        ? FishToucherBundle.message("cultivation.status.equipped")
+                        : FishToucherBundle.message("cultivation.status.techniqueLocked")
+        );
     }
 
     private void updatePillDescription() {
@@ -258,7 +266,12 @@ final class IdleCultivationBagTab {
         PillOption option = (PillOption) pillComboBox.getSelectedItem();
         if (option == null) return;
         setWrappingText(pillDescriptionLabel, option.pill.description());
-        usePillButton.setEnabled(option.count > 0);
+        setButtonEnabledWithReason(
+                usePillButton,
+                option.count > 0,
+                null,
+                FishToucherBundle.message("cultivation.status.noPill")
+        );
     }
 
     private void updateSpellDescription() {

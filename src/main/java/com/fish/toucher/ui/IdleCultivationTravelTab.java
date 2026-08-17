@@ -59,14 +59,30 @@ final class IdleCultivationTravelTab {
             setProgressTextIfChanged(travelProgressBar, 0, FishToucherBundle.message("cultivation.travel.none"));
             TravelOption option = (TravelOption) travelComboBox.getSelectedItem();
             updateStartTravelButton(manager, option);
-            claimTravelButton.setEnabled(false);
+            setButtonEnabledWithReason(
+                    claimTravelButton,
+                    false,
+                    null,
+                    FishToucherBundle.message("cultivation.status.travelNone")
+            );
             return;
         }
         setWrappingText(activeTravelLabel, active.name() + " | " + manager.getTravelRemainingText());
         int percent = manager.getTravelProgressPercent();
         setProgressTextIfChanged(travelProgressBar, percent, manager.isTravelReady() ? FishToucherBundle.message("cultivation.status.travelClaimReady") : percent + "%");
-        startTravelButton.setEnabled(false);
-        claimTravelButton.setEnabled(manager.isTravelReady());
+        setButtonEnabledWithReason(
+                startTravelButton,
+                false,
+                null,
+                FishToucherBundle.message("cultivation.status.travelBusy")
+        );
+        boolean travelReady = manager.isTravelReady();
+        setButtonEnabledWithReason(
+                claimTravelButton,
+                travelReady,
+                null,
+                FishToucherBundle.message("cultivation.status.travelNotReady", manager.getTravelRemainingText())
+        );
     }
 
     void updateSelectionDescriptions() {
@@ -129,8 +145,7 @@ final class IdleCultivationTravelTab {
 
     private void updateStartTravelButton(IdleCultivationManager manager, TravelOption option) {
         String blockReason = getTravelBlockReason(manager, option);
-        startTravelButton.setEnabled(blockReason.isEmpty());
-        startTravelButton.setToolTipText(blockReason.isEmpty() ? null : blockReason);
+        setButtonEnabledWithReason(startTravelButton, blockReason.isEmpty(), null, blockReason);
     }
 
     private String getTravelBlockReason(IdleCultivationManager manager, TravelOption option) {

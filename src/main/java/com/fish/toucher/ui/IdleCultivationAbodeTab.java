@@ -56,14 +56,26 @@ final class IdleCultivationAbodeTab {
             JPanel actions = createActionPanel();
             JButton upgradeButton = new JButton(FishToucherBundle.message("cultivation.button.upgradeFacility"));
             upgradeButton.setFocusable(false);
-            upgradeButton.setEnabled(manager.canUpgradeAbodeFacility(facility.id()));
+            boolean canUpgrade = manager.canUpgradeAbodeFacility(facility.id());
+            setButtonEnabledWithReason(
+                    upgradeButton,
+                    canUpgrade,
+                    null,
+                    getAbodeUpgradeBlockReason(manager, facility.id())
+            );
             upgradeButton.addActionListener(e -> IdleCultivationManager.getInstance().upgradeAbodeFacility(facility.id()));
             actions.add(upgradeButton);
 
             if (productionFacility) {
                 JButton claimButton = new JButton(FishToucherBundle.message("cultivation.button.claimAbode"));
                 claimButton.setFocusable(false);
-                claimButton.setEnabled(manager.canClaimAbodeFacility(facility.id()));
+                boolean canClaim = manager.canClaimAbodeFacility(facility.id());
+                setButtonEnabledWithReason(
+                        claimButton,
+                        canClaim,
+                        null,
+                        getAbodeClaimBlockReason(manager)
+                );
                 claimButton.addActionListener(e -> IdleCultivationManager.getInstance().claimAbodeFacility(facility.id()));
                 actions.add(claimButton);
             }
@@ -84,5 +96,21 @@ final class IdleCultivationAbodeTab {
             parent.revalidate();
             parent.repaint();
         }
+    }
+
+    private String getAbodeUpgradeBlockReason(IdleCultivationManager manager, String facilityId) {
+        if (!manager.isAbodeUnlocked()) {
+            return manager.getAbodeLockedText();
+        }
+        if (FishToucherBundle.message("cultivation.abode.costMax").equals(manager.getAbodeUpgradeCostText(facilityId))) {
+            return FishToucherBundle.message("cultivation.status.facilityMaxLevel");
+        }
+        return FishToucherBundle.message("cultivation.status.insufficientStones", manager.getAbodeUpgradeCost(facilityId));
+    }
+
+    private String getAbodeClaimBlockReason(IdleCultivationManager manager) {
+        return manager.isAbodeUnlocked()
+                ? FishToucherBundle.message("cultivation.status.nothingToClaim")
+                : manager.getAbodeLockedText();
     }
 }

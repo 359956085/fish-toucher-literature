@@ -104,7 +104,15 @@ final class IdleCultivationTrainingTab {
         updateMeditationButton(manager);
         updateRebirthControls(manager);
         updateAscensionControls(manager);
-        breakthroughButton.setEnabled(manager.canBreakthrough());
+        boolean canBreakthrough = manager.canBreakthrough();
+        setButtonEnabledWithReason(
+                breakthroughButton,
+                canBreakthrough,
+                FishToucherBundle.message("cultivation.tooltip.breakthrough"),
+                manager.getRequiredQi() <= 0L
+                        ? FishToucherBundle.message("cultivation.status.maxRealm")
+                        : FishToucherBundle.message("cultivation.status.needMore", manager.getRequiredQi() - manager.getCurrentQi())
+        );
     }
 
     private JComponent createContent() {
@@ -175,11 +183,13 @@ final class IdleCultivationTrainingTab {
     private void updateMeditationButton(IdleCultivationManager manager) {
         boolean canMeditate = manager.canMeditate();
         String baseText = FishToucherBundle.message("cultivation.button.meditate");
-        meditateButton.setEnabled(canMeditate);
+        setButtonEnabledWithReason(
+                meditateButton,
+                canMeditate,
+                FishToucherBundle.message("cultivation.tooltip.meditate"),
+                FishToucherBundle.message("cultivation.tooltip.meditateCooldown", manager.getMeditationRemainingText())
+        );
         setButtonTextIfChanged(meditateButton, canMeditate ? baseText : baseText + " (" + manager.getMeditationRemainingText() + ")");
-        meditateButton.setToolTipText(canMeditate
-                ? FishToucherBundle.message("cultivation.tooltip.meditate")
-                : FishToucherBundle.message("cultivation.tooltip.meditateCooldown", manager.getMeditationRemainingText()));
     }
 
     private void updateRebirthControls(IdleCultivationManager manager) {
@@ -199,8 +209,12 @@ final class IdleCultivationTrainingTab {
         boolean showAscend = manager.canShowAscensionButton();
         boolean canAscend = manager.canAscend();
         ascendButton.setVisible(showAscend);
-        ascendButton.setEnabled(canAscend);
-        ascendButton.setToolTipText(FishToucherBundle.message("cultivation.ascension.tooltip"));
+        setButtonEnabledWithReason(
+                ascendButton,
+                canAscend,
+                FishToucherBundle.message("cultivation.ascension.tooltip"),
+                FishToucherBundle.message("cultivation.ascension.unavailable", IdleCultivationManager.ASCENSION_REQUIRED_REBIRTH_COUNT)
+        );
     }
 
     private void performRebirth() {

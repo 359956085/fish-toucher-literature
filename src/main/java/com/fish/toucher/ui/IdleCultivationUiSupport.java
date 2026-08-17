@@ -58,6 +58,22 @@ final class IdleCultivationUiSupport {
         return panel;
     }
 
+    static JPanel createRightActionPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        allowHorizontalShrink(panel);
+        return panel;
+    }
+
+    static JPanel createInlineActionPanel(JComponent content, JComponent actions) {
+        JPanel panel = new JPanel(new BorderLayout(8, 0));
+        allowHorizontalShrink(content);
+        allowHorizontalShrink(actions);
+        panel.add(content, BorderLayout.CENTER);
+        panel.add(actions, BorderLayout.EAST);
+        allowHorizontalShrink(panel);
+        return panel;
+    }
+
     static GridBagConstraints createConstraints() {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 4, 5, 4);
@@ -185,6 +201,11 @@ final class IdleCultivationUiSupport {
         if (!normalizedText.equals(button.getText())) {
             button.setText(normalizedText);
         }
+    }
+
+    static void setButtonEnabledWithReason(AbstractButton button, boolean enabled, String enabledTooltip, String disabledReason) {
+        button.setEnabled(enabled);
+        button.setToolTipText(enabled ? enabledTooltip : disabledReason);
     }
 
     static void setProgressTextIfChanged(JProgressBar progressBar, int value, String text) {

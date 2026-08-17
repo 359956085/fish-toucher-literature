@@ -81,7 +81,12 @@ final class IdleCultivationChallengeTab {
             setProgressTextIfChanged(battleManaBar, 100, FishToucherBundle.message("cultivation.battle.mana", stats.mana(), stats.mana()));
             setWrappingText(battleLogArea, "");
             updateStartChallengeButton(manager);
-            endChallengeButton.setEnabled(false);
+            setButtonEnabledWithReason(
+                    endChallengeButton,
+                    false,
+                    null,
+                    FishToucherBundle.message("cultivation.status.challengeNone")
+            );
             return;
         }
 
@@ -95,7 +100,12 @@ final class IdleCultivationChallengeTab {
         setWrappingText(battleLogArea, String.join("\n", snapshot.logs()));
         battleLogArea.setCaretPosition(battleLogArea.getDocument().getLength());
         updateStartChallengeButton(manager);
-        endChallengeButton.setEnabled(manager.hasActiveBattle());
+        setButtonEnabledWithReason(
+                endChallengeButton,
+                manager.hasActiveBattle(),
+                null,
+                FishToucherBundle.message("cultivation.status.challengeNone")
+        );
     }
 
     void updateSelectionDescriptions() {
@@ -192,8 +202,7 @@ final class IdleCultivationChallengeTab {
     private void updateStartChallengeButton(IdleCultivationManager manager) {
         CultivatorOption option = (CultivatorOption) cultivatorComboBox.getSelectedItem();
         String blockReason = getChallengeBlockReason(manager, option);
-        startChallengeButton.setEnabled(blockReason.isEmpty());
-        startChallengeButton.setToolTipText(blockReason.isEmpty() ? null : blockReason);
+        setButtonEnabledWithReason(startChallengeButton, blockReason.isEmpty(), null, blockReason);
     }
 
     private String getChallengeBlockReason(IdleCultivationManager manager, CultivatorOption option) {
