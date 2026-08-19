@@ -6,6 +6,7 @@ import com.intellij.ui.JBColor;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicHTML;
+import javax.swing.plaf.basic.BasicProgressBarUI;
 import javax.swing.text.View;
 import java.awt.*;
 import java.util.ArrayList;
@@ -53,15 +54,28 @@ final class IdleCultivationUiSupport {
     }
 
     static JPanel createActionPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        allowHorizontalShrink(panel);
-        return panel;
+        return new FlowActionPanel(FlowLayout.LEFT);
     }
 
     static JPanel createRightActionPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        allowHorizontalShrink(panel);
-        return panel;
+        return new FlowActionPanel(FlowLayout.RIGHT);
+    }
+
+    /**
+     * 流式操作面板。最小高度跟随内容（=首选高度）：
+     * GridBagLayout 在容器比首选尺寸窄时会走 MINSIZE 分支、按各组件的“最小尺寸”布局，
+     * 最小高度为 0 的行会被整体 setBounds(0,0,0,0) 卸载（弟子操作行曾因此消失）。
+     * 保持最小高度 = 首选高度后，MINSIZE 分支与 PREFERRED 分支渲染一致，不再卸载。
+     */
+    private static class FlowActionPanel extends JPanel {
+        private FlowActionPanel(int alignment) {
+            super(new FlowLayout(alignment, 6, 0));
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return new Dimension(0, getPreferredSize().height);
+        }
     }
 
     static JPanel createInlineActionPanel(JComponent content, JComponent actions) {
@@ -144,6 +158,13 @@ final class IdleCultivationUiSupport {
         return new GuideHtmlLabel(text);
     }
 
+    static JProgressBar createReadableProgressBar() {
+        JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+        progressBar.setUI(new ReadableProgressBarUi());
+        return progressBar;
+    }
+
     static void addLabelRow(JPanel panel, GridBagConstraints gbc, int row, String label, JComponent value) {
         gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1; gbc.weightx = 0; gbc.weighty = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -182,6 +203,10 @@ final class IdleCultivationUiSupport {
 
     static void allowHorizontalShrink(JComponent component) {
         if (component instanceof WrappingTextArea || component instanceof JLabel) {
+            return;
+        }
+        if (component.isMinimumSizeSet()) {
+            // 已显式设置最小尺寸（如子容器的最小宽度）时不覆盖，避免后续被 GridBagLayout 压成 0 宽而消失。
             return;
         }
         Dimension minimumSize = component.getMinimumSize();
@@ -281,25 +306,9 @@ final class IdleCultivationUiSupport {
         if (width >= MIN_EFFECTIVE_WRAP_WIDTH) {
             return width;
         }
-
-        int availableWidth = resolveAvailableWidth(component);
-        if (availableWidth >= MIN_EFFECTIVE_WRAP_WIDTH) {
-            return availableWidth;
-        }
+        // 未布局或宽度未知时用固定最小宽度，避免从祖先容器推算宽度导致首选宽度超宽、
+        // 进而被 GridBagLayout 压缩塌缩（弟子列表曾因此整体 0x0）。
         return CULTIVATION_MIN_WIDTH;
-    }
-
-    private static int resolveAvailableWidth(Component component) {
-        Container parent = component.getParent();
-        while (parent != null) {
-            int parentWidth = parent.getWidth();
-            if (parentWidth > 0) {
-                Insets insets = parent.getInsets();
-                return Math.max(1, parentWidth - Math.max(0, component.getX()) - insets.right);
-            }
-            parent = parent.getParent();
-        }
-        return 0;
     }
 
     private static String toGuideHtml(String text) {
@@ -326,6 +335,59 @@ final class IdleCultivationUiSupport {
     }
 
     private record ScrollPosition(JScrollPane scrollPane, Point viewPosition) {
+    }
+
+    private static class ReadableProgressBarUi extends BasicProgressBarUI {
+        @Override
+        protected void paintString(Graphics g,
+                                   int x,
+                                   int y,
+                                   int width,
+                                   int height,
+                                   int amountFull,
+                                   Insets b) {
+            String text = progressBar.getString();
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setFont(progressBar.getFont());
+                FontMetrics metrics = g2.getFontMetrics();
+                int textWidth = metrics.stringWidth(text);
+                int textX = x + Math.round((width - textWidth) / 2f);
+                int textY = y + Math.round((height + metrics.getAscent() - metrics.getDescent()) / 2f);
+                if (progressBar.getOrientation() != JProgressBar.HORIZONTAL) {
+                    g2.setColor(normalProgressTextColor());
+                    g2.drawString(text, textX, textY);
+                    return;
+                }
+
+                // 深色主题下原生进度条字符串可能落在低对比色上，这里按填充区分别绘制。
+                Shape oldClip = g2.getClip();
+                int filledWidth = Math.max(0, Math.min(width, amountFull));
+                g2.setClip(x, y, filledWidth, height);
+                g2.setColor(filledProgressTextColor());
+                g2.drawString(text, textX, textY);
+
+                g2.setClip(x + filledWidth, y, Math.max(0, width - filledWidth), height);
+                g2.setColor(normalProgressTextColor());
+                g2.drawString(text, textX, textY);
+                g2.setClip(oldClip);
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        private Color normalProgressTextColor() {
+            Color color = UIManager.getColor("Label.foreground");
+            return color != null ? color : new JBColor(Color.BLACK, Color.WHITE);
+        }
+
+        private Color filledProgressTextColor() {
+            Color color = UIManager.getColor("ProgressBar.selectionForeground");
+            return color != null ? color : new JBColor(Color.WHITE, Color.WHITE);
+        }
     }
 
     private static class CultivationFormPanel extends JPanel implements Scrollable {
@@ -393,7 +455,7 @@ final class IdleCultivationUiSupport {
 
         @Override
         public Dimension getMinimumSize() {
-            return new Dimension(0, getPreferredSize().height);
+            return new Dimension(CULTIVATION_MIN_WIDTH, getPreferredSize().height);
         }
 
         @Override
@@ -432,7 +494,7 @@ final class IdleCultivationUiSupport {
 
         @Override
         public Dimension getMinimumSize() {
-            return new Dimension(0, getPreferredSize().height);
+            return new Dimension(CULTIVATION_MIN_WIDTH, getPreferredSize().height);
         }
 
         private int calculateWrappedHeight(int width) {

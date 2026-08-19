@@ -2,10 +2,12 @@ package com.fish.toucher.ui;
 
 import com.fish.toucher.FishToucherBundle;
 import com.fish.toucher.settings.NovelReaderSettings;
+import com.intellij.openapi.diagnostic.Logger;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -13,9 +15,16 @@ import static com.fish.toucher.ui.IdleCultivationUiSupport.*;
 
 final class IdleCultivationSectTab {
 
+    private static final Logger LOG = Logger.getInstance(IdleCultivationSectTab.class);
+    private static final boolean DEBUG_LAYOUT = false;
+    private static final String LAYOUT_LOG_PREFIX = "[CultivationLayout] ";
+    private static final String CARD_NORMAL = "normal";
+    private static final String CARD_ASCENDED = "ascended";
     private final JComponent component;
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel cardPanel = new JPanel(cardLayout);
     private final JPanel contentPanel = createFormPanel();
-    private final JPanel unlockedPanel = createFormPanel();
+    private final JPanel unlockedPanel = createNestedFormPanel();
     private final JPanel ownSectPanel = createFormPanel();
     private final JComboBox<SectOption> sectComboBox = new JComboBox<>();
     private final JComboBox<TaskOption> taskComboBox = new JComboBox<>();
@@ -32,10 +41,9 @@ final class IdleCultivationSectTab {
     private final JTextArea trialDescText = createHintTextArea();
     private final JTextArea ascendedOverviewText = createSectionTextArea("");
     private final JTextArea ascendedBonusText = createHintTextArea();
-    private final JPanel ascendedStatusPanel = new JPanel(new GridBagLayout());
     private final JPanel eventActions = createActionPanel();
     private final JPanel secretRealmActions = createActionPanel();
-    private final JProgressBar taskProgressBar = new JProgressBar(0, 100);
+    private final JProgressBar taskProgressBar = createReadableProgressBar();
     private final JButton joinButton = new JButton(FishToucherBundle.message("cultivation.sect.button.join"));
     private final JButton leaveButton = new JButton(FishToucherBundle.message("cultivation.sect.button.leave"));
     private final JButton promoteButton = new JButton(FishToucherBundle.message("cultivation.sect.button.promote"));
@@ -49,11 +57,11 @@ final class IdleCultivationSectTab {
     private String ownSectLayoutSignature = "";
     private String ownSectDiscipleSignature;
     private boolean ascendedVisible;
+    private String activeCard = CARD_NORMAL;
     private JButton ownSectPromoteButton;
     private JButton ownSectRecruitButton;
     private JPanel ownSectRecruitmentActionsPanel;
-    private JProgressBar ownSectRecruitmentProgressBar;
-    private JTextArea ownSectNoCandidateText;
+    private JTextArea ownSectRecruitmentStatusText;
     private JPanel ownSectCandidateControlsPanel;
     private JComboBox<DiscipleOption> ownSectCandidateComboBox;
     private JButton ownSectCompleteRecruitmentButton;
@@ -61,18 +69,6 @@ final class IdleCultivationSectTab {
     private boolean refreshing;
 
     IdleCultivationSectTab() {
-        taskProgressBar.setStringPainted(true);
-        taskProgressBar.setForeground(UIManager.getColor("Label.foreground"));
-        GridBagConstraints ascendedGbc = createConstraints();
-        ascendedGbc.gridx = 0;
-        ascendedGbc.gridy = 0;
-        ascendedGbc.weightx = 0.5;
-        ascendedGbc.fill = GridBagConstraints.HORIZONTAL;
-        ascendedStatusPanel.add(ascendedOverviewText, ascendedGbc);
-        ascendedGbc.gridx = 1;
-        ascendedStatusPanel.add(ascendedBonusText, ascendedGbc);
-        ascendedStatusPanel.setVisible(false);
-        allowHorizontalShrink(ascendedStatusPanel);
         component = createContent();
     }
 
@@ -86,40 +82,42 @@ final class IdleCultivationSectTab {
 
     void reloadSectState(IdleCultivationManager manager) {
         refreshing = true;
+        boolean ascendedState = false;
         try {
             if (manager.isAscended()) {
+                ascendedState = true;
                 boolean firstAscendedRefresh = !ascendedVisible;
                 ascendedVisible = true;
-                statusText.setVisible(false);
-                ascendedStatusPanel.setVisible(true);
-                unlockedPanel.setVisible(false);
+                showSectCard(CARD_ASCENDED);
                 ownSectPanel.setVisible(true);
                 reloadOwnSectState(manager, firstAscendedRefresh);
-                return;
+                debugSectLayout("reloadSectState.ascended");
+            } else {
+                ascendedVisible = false;
+                showSectCard(CARD_NORMAL);
+                statusText.setVisible(true);
+                ownSectLayoutSignature = "";
+                unlockedPanel.setVisible(manager.isSectUnlocked());
+                reloadSects(manager);
+                reloadTasks(manager);
+                reloadSecretRealms(manager);
+                reloadInheritances(manager);
+                reloadTrials(manager);
+                updateButtons(manager);
+                updateEventState(manager);
+                updateSecretRealmState(manager);
+                setWrappingText(statusText, manager.isSectUnlocked()
+                        ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
+                        : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
+                setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
+                setWrappingText(taskStatusText, getTaskStatusText(manager));
             }
-            ascendedVisible = false;
-            statusText.setVisible(true);
-            ascendedStatusPanel.setVisible(false);
-            ownSectLayoutSignature = "";
-            ownSectPanel.setVisible(false);
-            unlockedPanel.setVisible(manager.isSectUnlocked());
-            reloadSects(manager);
-            reloadTasks(manager);
-            reloadSecretRealms(manager);
-            reloadInheritances(manager);
-            reloadTrials(manager);
-            updateButtons(manager);
-            updateEventState(manager);
-            updateSecretRealmState(manager);
-            setWrappingText(statusText, manager.isSectUnlocked()
-                    ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
-                    : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
-            setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
-            setWrappingText(taskStatusText, getTaskStatusText(manager));
         } finally {
             refreshing = false;
         }
-        updateDescriptions();
+        if (!ascendedState) {
+            updateDescriptions();
+        }
     }
 
     private JComponent createContent() {
@@ -128,9 +126,7 @@ final class IdleCultivationSectTab {
 
         row = addFullWidthRow(contentPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.title")));
         row = addFullWidthRow(contentPanel, gbc, row, statusText);
-        row = addFullWidthRow(contentPanel, gbc, row, ascendedStatusPanel);
         row = addFullWidthRow(contentPanel, gbc, row, unlockedPanel);
-        row = addFullWidthRow(contentPanel, gbc, row, ownSectPanel);
 
         GridBagConstraints unlockedGbc = createConstraints();
         int unlockedRow = 0;
@@ -253,7 +249,10 @@ final class IdleCultivationSectTab {
             updateButtons(IdleCultivationManager.getInstance());
             updateDescriptions();
         });
-        return createScrollableTab(contentPanel);
+        cardPanel.add(createScrollableTab(contentPanel), CARD_NORMAL);
+        cardPanel.add(createScrollableTab(ownSectPanel), CARD_ASCENDED);
+        showSectCard(CARD_NORMAL);
+        return cardPanel;
     }
 
     private void reloadOwnSectState(IdleCultivationManager manager, boolean forceScrollTop) {
@@ -262,12 +261,14 @@ final class IdleCultivationSectTab {
             rebuildOwnSectState(manager, layoutSignature);
             updateAscendedStatusText(manager);
             scrollContentToTop();
+            debugSectLayout("reloadOwnSectState.rebuild");
             return;
         }
         preserveOuterScrollPositions(component, () -> {
             updateOwnSectDynamicState(manager);
             updateAscendedStatusText(manager);
         });
+        debugSectLayout("reloadOwnSectState.dynamic");
         if (forceScrollTop) {
             scrollContentToTop();
         }
@@ -280,8 +281,7 @@ final class IdleCultivationSectTab {
         ownSectPromoteButton = null;
         ownSectRecruitButton = null;
         ownSectRecruitmentActionsPanel = null;
-        ownSectRecruitmentProgressBar = null;
-        ownSectNoCandidateText = null;
+        ownSectRecruitmentStatusText = null;
         ownSectCandidateControlsPanel = null;
         ownSectCandidateComboBox = null;
         ownSectCompleteRecruitmentButton = null;
@@ -290,6 +290,10 @@ final class IdleCultivationSectTab {
         ownSectLayoutSignature = layoutSignature;
         GridBagConstraints gbc = createConstraints();
         int row = 0;
+        row = addFullWidthRow(ownSectPanel, gbc, row, createSectionLabel(FishToucherBundle.message("cultivation.sect.title")));
+        row = addFullWidthRow(ownSectPanel, gbc, row, ascendedOverviewText);
+        row = addFullWidthRow(ownSectPanel, gbc, row, ascendedBonusText);
+        row = addSeparatorRow(ownSectPanel, gbc, row);
         if (manager.canCreateOwnSect()) {
             row = addFullWidthRow(ownSectPanel, gbc, row, createGuideTextArea(FishToucherBundle.message("cultivation.ownSect.createHint")));
             JButton createButton = new JButton(FishToucherBundle.message("cultivation.ownSect.button.create"));
@@ -299,6 +303,7 @@ final class IdleCultivationSectTab {
             row = addActionRow(ownSectPanel, gbc, row, actions);
             addBottomGlue(ownSectPanel, gbc, row);
             refreshOwnSectPanel();
+            debugSectLayout("rebuildOwnSectState.create");
             return;
         }
 
@@ -326,12 +331,8 @@ final class IdleCultivationSectTab {
             SpecialtyOption option = (SpecialtyOption) specialtyComboBox.getSelectedItem();
             if (option != null) IdleCultivationManager.getInstance().startOwnSectRecruitment(option.specialty);
         });
-        ownSectRecruitmentProgressBar = new JProgressBar(0, 100);
-        ownSectRecruitmentProgressBar.setStringPainted(true);
-        ownSectRecruitmentProgressBar.setForeground(UIManager.getColor("Label.foreground"));
-        row = addFullWidthRow(ownSectPanel, gbc, row, ownSectRecruitmentProgressBar);
-        ownSectNoCandidateText = createHintTextArea(FishToucherBundle.message("cultivation.ownSect.noRecruitmentCandidates"));
-        row = addFullWidthRow(ownSectPanel, gbc, row, ownSectNoCandidateText);
+        ownSectRecruitmentStatusText = createHintTextArea(FishToucherBundle.message("cultivation.ownSect.noRecruitmentCandidates"));
+        row = addFullWidthRow(ownSectPanel, gbc, row, ownSectRecruitmentStatusText);
         ownSectCandidateControlsPanel = createOwnSectSubPanel();
         ownSectCandidateComboBox = new JComboBox<>();
         ownSectCandidateComboBox.addActionListener(e -> updateOwnSectCompleteRecruitmentButton());
@@ -410,6 +411,7 @@ final class IdleCultivationSectTab {
         updateOwnSectDynamicState(manager);
         addBottomGlue(ownSectPanel, gbc, row);
         refreshOwnSectPanel();
+        debugSectLayout("rebuildOwnSectState.created");
     }
 
     private void updateOwnSectDynamicState(IdleCultivationManager manager) {
@@ -429,11 +431,7 @@ final class IdleCultivationSectTab {
                 null,
                 getOwnSectRecruitmentStartBlockReason(manager, settings)
         );
-        setProgressTextIfChanged(
-                ownSectRecruitmentProgressBar,
-                manager.getOwnSectRecruitmentProgressPercent(),
-                manager.getOwnSectRecruitmentStatusText()
-        );
+        setWrappingText(ownSectRecruitmentStatusText, manager.getOwnSectRecruitmentStatusText());
         for (AscendedSectCatalog.BuildingDefinition building : manager.getOwnSectBuildingDefinitions()) {
             OwnSectBuildingComponents components = ownSectBuildingComponents.get(building.id());
             if (components == null) {
@@ -461,6 +459,7 @@ final class IdleCultivationSectTab {
         }
         updateOwnSectCandidateList(settings);
         updateOwnSectDiscipleList(settings);
+        debugSectLayout("updateOwnSectDynamicState");
     }
 
     private void updateAscendedStatusText(IdleCultivationManager manager) {
@@ -469,7 +468,7 @@ final class IdleCultivationSectTab {
     }
 
     private void updateOwnSectCandidateList(NovelReaderSettings settings) {
-        if (ownSectNoCandidateText == null || ownSectCandidateControlsPanel == null || ownSectCandidateComboBox == null) {
+        if (ownSectRecruitmentStatusText == null || ownSectCandidateControlsPanel == null || ownSectCandidateComboBox == null) {
             return;
         }
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
@@ -488,7 +487,7 @@ final class IdleCultivationSectTab {
             ownSectCandidateComboBox.setSelectedItem(selectedOption);
         }
         boolean hasCandidates = !candidates.isEmpty();
-        ownSectNoCandidateText.setVisible(!hasCandidates && !manager.hasActiveOwnSectRecruitment());
+        ownSectRecruitmentStatusText.setVisible(true);
         ownSectCandidateControlsPanel.setVisible(hasCandidates);
         updateOwnSectCompleteRecruitmentButton();
         refreshOwnSectSubPanel(ownSectCandidateControlsPanel);
@@ -513,8 +512,7 @@ final class IdleCultivationSectTab {
             return;
         }
         String signature = createDiscipleSignature(settings);
-        boolean missingDiscipleRows = !settings.getOwnSectDisciples().isEmpty()
-                && ownSectDiscipleRows.size() != settings.getOwnSectDisciples().size();
+        boolean missingDiscipleRows = hasMissingDiscipleRows(settings.getOwnSectDisciples());
         if (!signature.equals(ownSectDiscipleSignature) || missingDiscipleRows) {
             ownSectDiscipleSignature = signature;
             rebuildOwnSectDiscipleList(settings);
@@ -560,12 +558,8 @@ final class IdleCultivationSectTab {
             discipleActions.add(unassignButton);
             discipleActions.add(dismissButton);
             JTextArea discipleText = createHintTextArea(formatOwnSectDisciple(disciple));
-            row = addFullWidthRow(
-                    ownSectDiscipleListPanel,
-                    gbc,
-                    row,
-                    createInlineActionPanel(discipleText, discipleActions)
-            );
+            row = addFullWidthRow(ownSectDiscipleListPanel, gbc, row, discipleText);
+            row = addActionRow(ownSectDiscipleListPanel, gbc, row, discipleActions);
             ownSectDiscipleRows.put(disciple.id, new OwnSectDiscipleRowComponents(discipleText, unassignButton));
         }
         refreshOwnSectSubPanel(ownSectDiscipleListPanel);
@@ -650,8 +644,26 @@ final class IdleCultivationSectTab {
     }
 
     private JPanel createOwnSectSubPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        allowHorizontalShrink(panel);
+        // 最小宽度保持可读（>0），最小高度跟随内容：
+        // 容器比首选尺寸窄时 GridBagLayout 走 MINSIZE 分支、按最小尺寸布局，
+        // 高度为 0 的行会被整体 setBounds(0,0,0,0) 卸载（弟子列表曾因此整块消失）。
+        // 最小高度=首选高度后，窄宽度下两个分支渲染一致，弟子行始终可见。
+        return new JPanel(new GridBagLayout()) {
+            @Override
+            public Dimension getMinimumSize() {
+                return new Dimension(CULTIVATION_MIN_WIDTH, getPreferredSize().height);
+            }
+        };
+    }
+
+    private JPanel createNestedFormPanel() {
+        JPanel panel = new JPanel(new GridBagLayout()) {
+            @Override
+            public Dimension getMinimumSize() {
+                return new Dimension(CULTIVATION_MIN_WIDTH, getPreferredSize().height);
+            }
+        };
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         return panel;
     }
 
@@ -669,9 +681,35 @@ final class IdleCultivationSectTab {
     private String createDiscipleSignature(NovelReaderSettings settings) {
         StringJoiner joiner = new StringJoiner("|");
         for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
-            joiner.add(disciple.id);
+            joiner.add(nullToEmpty(disciple.id)
+                    + "," + nullToEmpty(disciple.name)
+                    + "," + nullToEmpty(disciple.specialty)
+                    + "," + disciple.aptitude
+                    + "," + nullToEmpty(disciple.assignedBuildingId));
         }
         return joiner.toString();
+    }
+
+    private boolean hasMissingDiscipleRows(List<NovelReaderSettings.OwnSectDiscipleState> disciples) {
+        if (disciples.isEmpty()) {
+            return false;
+        }
+        if (ownSectDiscipleListPanel.getComponentCount() == 0) {
+            return true;
+        }
+        if (ownSectDiscipleRows.size() != disciples.size()) {
+            return true;
+        }
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : disciples) {
+            if (!ownSectDiscipleRows.containsKey(disciple.id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void createOwnSect() {
@@ -690,8 +728,8 @@ final class IdleCultivationSectTab {
     private void refreshOwnSectPanel() {
         ownSectPanel.revalidate();
         ownSectPanel.repaint();
-        contentPanel.revalidate();
-        contentPanel.repaint();
+        cardPanel.revalidate();
+        cardPanel.repaint();
     }
 
     private void refreshOwnSectSubPanel(JPanel panel) {
@@ -700,16 +738,17 @@ final class IdleCultivationSectTab {
         // 子区块从空列表变成候选/弟子列表时，需要通知父容器重新计算高度，否则滚动页会停留在旧布局。
         ownSectPanel.revalidate();
         ownSectPanel.repaint();
-        contentPanel.revalidate();
-        contentPanel.repaint();
+        cardPanel.revalidate();
+        cardPanel.repaint();
     }
 
     private void scrollContentToTop() {
         SwingUtilities.invokeLater(() -> {
-            Container parent = contentPanel.getParent();
+            Container parent = activeContentPanel().getParent();
             while (parent != null) {
                 if (parent instanceof JViewport viewport) {
                     viewport.setViewPosition(new Point(0, 0));
+                    debugSectLayout("scrollContentToTop");
                     return;
                 }
                 parent = parent.getParent();
@@ -717,11 +756,119 @@ final class IdleCultivationSectTab {
         });
     }
 
+    private void showSectCard(String card) {
+        activeCard = card;
+        cardLayout.show(cardPanel, card);
+    }
+
+    private JPanel activeContentPanel() {
+        return CARD_ASCENDED.equals(activeCard) ? ownSectPanel : contentPanel;
+    }
+
+    private void debugSectLayout(String stage) {
+        if (!DEBUG_LAYOUT) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> debugSectLayoutNow(stage));
+    }
+
+    private void debugSectLayoutNow(String stage) {
+        if (!DEBUG_LAYOUT) {
+            return;
+        }
+        logLayout(stage);
+        logLayout("activeCard=" + activeCard);
+        debugComponent("cardPanel", cardPanel);
+        debugComponent("normalContentPanel", contentPanel);
+        debugComponent("activeContentPanel", activeContentPanel());
+        debugComponent("statusText", statusText);
+        debugComponent("unlockedPanel", unlockedPanel);
+        debugComponent("ownSectPanel", ownSectPanel);
+        debugComponent("ascendedOverviewText", ascendedOverviewText);
+        debugComponent("ascendedBonusText", ascendedBonusText);
+        debugComponent("ownSectRecruitmentActionsPanel", ownSectRecruitmentActionsPanel);
+        debugComponent("ownSectCandidateControlsPanel", ownSectCandidateControlsPanel);
+        debugComponent("ownSectDiscipleListPanel", ownSectDiscipleListPanel);
+        debugViewport(stage);
+    }
+
+    private void debugComponent(String name, Component component) {
+        if (component == null) {
+            logLayout(name + " null");
+            return;
+        }
+        Dimension size = component.getSize();
+        Dimension preferredSize = component.getPreferredSize();
+        Dimension minimumSize = component.getMinimumSize();
+        Rectangle bounds = component.getBounds();
+        int componentCount = component instanceof Container container ? container.getComponentCount() : -1;
+        String parentName = component.getParent() == null ? "null" : component.getParent().getClass().getSimpleName();
+        logLayout(name
+                + " visible=" + component.isVisible()
+                + " bounds=" + formatRectangle(bounds)
+                + " size=" + formatDimension(size)
+                + " preferredSize=" + formatDimension(preferredSize)
+                + " minimumSize=" + formatDimension(minimumSize)
+                + " componentCount=" + componentCount
+                + " parent=" + parentName);
+    }
+
+    private void debugViewport(String stage) {
+        JViewport viewport = findViewport();
+        if (viewport == null) {
+            logLayout(stage + " viewport=null");
+            return;
+        }
+        Component view = viewport.getView();
+        logLayout(stage
+                + " viewport extent=" + formatDimension(viewport.getExtentSize())
+                + " viewSize=" + (view == null ? "null" : formatDimension(view.getSize()))
+                + " viewPreferredSize=" + (view == null ? "null" : formatDimension(view.getPreferredSize()))
+                + " viewPosition=" + formatPoint(viewport.getViewPosition()));
+    }
+
+    private JViewport findViewport() {
+        Container parent = activeContentPanel().getParent();
+        while (parent != null) {
+            if (parent instanceof JViewport viewport) {
+                return viewport;
+            }
+            parent = parent.getParent();
+        }
+        return null;
+    }
+
+    private void logLayout(String message) {
+        String text = LAYOUT_LOG_PREFIX + message;
+        LOG.info(text);
+        System.out.println(text);
+    }
+
+    private String formatDimension(Dimension dimension) {
+        return dimension == null ? "null" : dimension.width + "x" + dimension.height;
+    }
+
+    private String formatRectangle(Rectangle rectangle) {
+        return rectangle == null
+                ? "null"
+                : rectangle.x + "," + rectangle.y + "," + rectangle.width + "x" + rectangle.height;
+    }
+
+    private String formatPoint(Point point) {
+        return point == null ? "null" : point.x + "," + point.y;
+    }
+
     private static String formatOwnSectDisciple(NovelReaderSettings.OwnSectDiscipleState disciple) {
-        String assigned = disciple.assignedBuildingId == null || disciple.assignedBuildingId.isEmpty()
-                ? FishToucherBundle.message("cultivation.ownSect.unassigned")
-                : disciple.assignedBuildingId;
+        String assigned = formatAssignedBuilding(disciple.assignedBuildingId);
         return FishToucherBundle.message("cultivation.ownSect.discipleText", disciple.name, formatSpecialty(disciple.specialty), disciple.aptitude, assigned);
+    }
+
+    private static String formatAssignedBuilding(String buildingId) {
+        if (buildingId == null || buildingId.isEmpty()) {
+            return FishToucherBundle.message("cultivation.ownSect.unassigned");
+        }
+        AscendedSectCatalog.BuildingDefinition building = AscendedSectCatalog.building(buildingId);
+        return building == null ? FishToucherBundle.message("cultivation.ownSect.unassigned") : building.name();
     }
 
     private static String formatSpecialty(String specialty) {
