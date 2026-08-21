@@ -166,4 +166,19 @@ class SectRulesTest {
         assertEquals(21, AscendedSectRules.gatheringQiBonusPercent(settings));
         assertEquals(2, AscendedSectRules.assignedDiscipleCount(settings, AscendedSectCatalog.GATHERING_ARRAY_ID));
     }
+
+    @Test
+    void 飞升宗门建筑最高等级应收敛到五级() {
+        assertEquals(2, AscendedSectCatalog.tier(0).buildingLevelLimit());
+        assertEquals(3, AscendedSectCatalog.tier(1).buildingLevelLimit());
+        assertEquals(4, AscendedSectCatalog.tier(2).buildingLevelLimit());
+        assertEquals(5, AscendedSectCatalog.tier(3).buildingLevelLimit());
+        assertEquals(5, AscendedSectCatalog.tier(4).buildingLevelLimit());
+        assertEquals(5, AscendedSectCatalog.tier(5).buildingLevelLimit());
+
+        assertEquals(0, AscendedSectRules.buildingSlotCount(0));
+        assertEquals(1, AscendedSectRules.buildingSlotCount(2));
+        assertEquals(2, AscendedSectRules.buildingSlotCount(4));
+        assertEquals(3, AscendedSectRules.buildingSlotCount(5));
+    }
 }

@@ -22,8 +22,8 @@ final class AscendedSectCatalog {
             new TierDefinition(1, "一方小宗", 40, 65, 75, 8, 3, 10_000L, 80L, 9),
             new TierDefinition(2, "灵域宗门", 50, 75, 85, 10, 4, 28_000L, 180L, 10),
             new TierDefinition(3, "名门大宗", 60, 82, 92, 12, 5, 70_000L, 420L, 11),
-            new TierDefinition(4, "灵界上宗", 70, 90, 98, 14, 7, 160_000L, 900L, 12),
-            new TierDefinition(5, "修仙圣地", 80, 96, 100, 16, 10, 360_000L, 1_800L, 14)
+            new TierDefinition(4, "灵界上宗", 70, 90, 98, 14, 5, 160_000L, 900L, 12),
+            new TierDefinition(5, "修仙圣地", 80, 96, 100, 16, 5, 360_000L, 1_800L, 14)
     );
 
     private static final List<BuildingDefinition> BUILDINGS = List.of(

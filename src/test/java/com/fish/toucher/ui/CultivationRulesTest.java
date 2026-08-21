@@ -13,10 +13,24 @@ class CultivationRulesTest {
         assertEquals(14, CultivationRules.clampRealm(99));
         assertEquals(8_000L, CultivationRules.requiredQi(0));
         assertEquals(380_000L, CultivationRules.requiredQi(8));
+        assertEquals(9_000_000L, CultivationRules.requiredQi(9));
+        assertEquals(30_000_000L, CultivationRules.requiredQi(13));
         assertEquals(0L, CultivationRules.requiredQi(14));
         assertTrue(CultivationRules.isHumanMaxRealm(8));
         assertFalse(CultivationRules.isCurrentPhaseMaxRealm(9, true));
         assertTrue(CultivationRules.isMaxRealm(14));
+    }
+
+    @Test
+    void 灵界总修为应按两个月目标重规划() {
+        long totalSpiritQi = 0L;
+        for (int realmIndex = CultivationRules.SPIRIT_START_REALM_INDEX;
+             realmIndex < CultivationRules.realmCount() - 1;
+             realmIndex++) {
+            totalSpiritQi += CultivationRules.requiredQi(realmIndex);
+        }
+
+        assertEquals(96_000_000L, totalSpiritQi);
     }
 
     @Test

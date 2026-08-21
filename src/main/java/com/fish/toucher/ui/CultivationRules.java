@@ -13,8 +13,8 @@ final class CultivationRules {
     private static final long[] REQUIRED_QI = {
             8_000L, 18_000L, 34_000L, 58_000L,
             90_000L, 130_000L, 180_000L, 245_000L,
-            380_000L, 560_000L, 820_000L, 1_160_000L,
-            1_620_000L, 2_200_000L
+            380_000L, 9_000_000L, 14_000_000L, 19_000_000L,
+            24_000_000L, 30_000_000L
     };
 
     private CultivationRules() {}

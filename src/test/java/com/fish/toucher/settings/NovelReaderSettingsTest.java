@@ -147,4 +147,24 @@ class NovelReaderSettingsTest {
         assertEquals(0, settings.getPendingAlchemyPillCount());
         assertTrue(settings.getPendingAlchemyPills().isEmpty());
     }
+
+    @Test
+    void 自建宗门建筑等级应限制到五级() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+        settings.createOwnSect("太虚宗");
+        settings.setOwnSectBuildingLevel("gathering_array", 10);
+
+        assertEquals(5, settings.getOwnSectBuildingLevel("gathering_array"));
+
+        NovelReaderSettings.State state = new NovelReaderSettings.State();
+        state.cultivationAscended = true;
+        state.ownSectCreated = true;
+        state.ownSectName = "太虚宗";
+        state.ownSectBuildingLevels = new HashMap<>(Map.of("gathering_array", 9, "unknown", 3));
+
+        settings.loadState(state);
+
+        assertEquals(5, settings.getOwnSectBuildingLevel("gathering_array"));
+        assertFalse(settings.getOwnSectBuildingLevels().containsKey("unknown"));
+    }
 }

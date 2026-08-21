@@ -49,7 +49,7 @@ final class AscendedSectRules {
     }
 
     static int buildingSlotCount(int level) {
-        if (level >= 7) {
+        if (level >= 5) {
             return 3;
         }
         if (level >= 3) {
@@ -93,18 +93,13 @@ final class AscendedSectRules {
 
     static int gatheringQiBonusPercent(NovelReaderSettings settings) {
         int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.GATHERING_ARRAY_ID);
-        int base = switch (Math.max(0, Math.min(10, level))) {
+        int base = switch (Math.max(0, Math.min(5, level))) {
             case 0 -> 0;
             case 1 -> 5;
             case 2 -> 10;
             case 3 -> 16;
             case 4 -> 23;
-            case 5 -> 31;
-            case 6 -> 39;
-            case 7 -> 48;
-            case 8 -> 57;
-            case 9 -> 66;
-            default -> 75;
+            default -> 31;
         };
         return aptitudeAmplifiedPercent(settings, AscendedSectCatalog.GATHERING_ARRAY_ID, base);
     }

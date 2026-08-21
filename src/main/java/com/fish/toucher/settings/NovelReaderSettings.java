@@ -26,6 +26,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     private static final int MAX_OWN_SECT_DISCIPLES = 16;
     private static final int MAX_OWN_SECT_CANDIDATES = 3;
     private static final int MAX_OWN_SECT_NAME_LENGTH = 16;
+    private static final int MAX_OWN_SECT_BUILDING_LEVEL = 5;
     private static final Set<String> HOT_SEARCH_SOURCES = Set.of(
             "baidu", "toutiao", "zhihu", "douyin", "kuaishou", "x", "google"
     );
@@ -582,7 +583,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.ownSectTierIndex = clamp(state.ownSectTierIndex, 0, 5);
         state.ownSectMaterials = Math.max(0L, state.ownSectMaterials);
         state.ownSectFortune = Math.max(0L, state.ownSectFortune);
-        state.ownSectBuildingLevels = normalizeIntegerMap(state.ownSectBuildingLevels, 0, 10, OWN_SECT_BUILDING_IDS);
+        state.ownSectBuildingLevels = normalizeIntegerMap(state.ownSectBuildingLevels, 0, MAX_OWN_SECT_BUILDING_LEVEL, OWN_SECT_BUILDING_IDS);
         state.ownSectDisciples = normalizeOwnSectDisciples(state.ownSectDisciples, MAX_OWN_SECT_DISCIPLES);
         state.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(state.ownSectRecruitmentCandidates, MAX_OWN_SECT_CANDIDATES);
         state.ownSectRecruitmentSpecialty = normalizeOwnSectSpecialty(state.ownSectRecruitmentSpecialty);
@@ -1372,7 +1373,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         if (level <= 0) {
             myState.ownSectBuildingLevels.remove(buildingId);
         } else {
-            myState.ownSectBuildingLevels.put(buildingId, clamp(level, 0, 10));
+            myState.ownSectBuildingLevels.put(buildingId, clamp(level, 0, MAX_OWN_SECT_BUILDING_LEVEL));
         }
     }
 

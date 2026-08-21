@@ -133,10 +133,15 @@ public final class IdleCultivationManager implements Disposable {
     private static final Map<String, ArtifactDefinition> ARTIFACT_BY_ID = indexArtifacts();
 
     private static final List<TravelLocationDefinition> TRAVEL_LOCATIONS = List.of(
-            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", 30, 0, 1_500, 45, 45, 8),
-            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", 60, 0, 4_200, 120, 70, 12),
-            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", 120, 1, 14_000, 420, 40, 16),
-            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", 240, 2, 32_000, 900, 65, 30)
+            new TravelLocationDefinition("bamboo_forest", "cultivation.travel.bamboo.name", "cultivation.travel.bamboo.desc", TravelPhase.HUMAN, 30, 0, 1_500, 45, 45, 8),
+            new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", TravelPhase.HUMAN, 60, 0, 4_200, 120, 70, 12),
+            new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", TravelPhase.HUMAN, 120, 1, 14_000, 420, 40, 16),
+            new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", TravelPhase.HUMAN, 240, 2, 32_000, 900, 65, 30),
+            new TravelLocationDefinition("spirit_mist_path", "cultivation.travel.spiritMist.name", "cultivation.travel.spiritMist.desc", TravelPhase.SPIRIT, 240, 9, 8_000, 900, 45, 8),
+            new TravelLocationDefinition("mystic_jade_valley", "cultivation.travel.mysticJade.name", "cultivation.travel.mysticJade.desc", TravelPhase.SPIRIT, 300, 10, 12_000, 1_300, 50, 10),
+            new TravelLocationDefinition("starfall_mine", "cultivation.travel.starfall.name", "cultivation.travel.starfall.desc", TravelPhase.SPIRIT, 360, 11, 18_000, 1_900, 55, 12),
+            new TravelLocationDefinition("celestial_river_ford", "cultivation.travel.celestialRiver.name", "cultivation.travel.celestialRiver.desc", TravelPhase.SPIRIT, 480, 12, 26_000, 2_700, 60, 14),
+            new TravelLocationDefinition("great_void_remnant", "cultivation.travel.greatVoid.name", "cultivation.travel.greatVoid.desc", TravelPhase.SPIRIT, 600, 13, 38_000, 4_000, 65, 18)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
 
@@ -2084,8 +2089,13 @@ public final class IdleCultivationManager implements Disposable {
         return PILL_BY_ID.get(id);
     }
 
-    public List<TravelLocationDefinition> getTravelLocationDefinitions() {
-        return TRAVEL_LOCATIONS;
+    public synchronized List<TravelLocationDefinition> getTravelLocationDefinitions() {
+        TravelPhase phase = NovelReaderSettings.getInstance().isCultivationAscended()
+                ? TravelPhase.SPIRIT
+                : TravelPhase.HUMAN;
+        return TRAVEL_LOCATIONS.stream()
+                .filter(location -> location.phase() == phase)
+                .toList();
     }
 
     public TravelLocationDefinition getTravelLocation(String id) {
@@ -2165,7 +2175,11 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized boolean isTravelUnlocked(TravelLocationDefinition location) {
-        return NovelReaderSettings.getInstance().getCultivationRealmIndex() >= location.minRealmIndex();
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        if ((settings.isCultivationAscended() ? TravelPhase.SPIRIT : TravelPhase.HUMAN) != location.phase()) {
+            return false;
+        }
+        return settings.getCultivationRealmIndex() >= location.minRealmIndex();
     }
 
     public List<AbodeFacilityDefinition> getAbodeFacilityDefinitions() {
@@ -2654,8 +2668,6 @@ public final class IdleCultivationManager implements Disposable {
 
     private int getOwnSectOfflineBonusHours(NovelReaderSettings settings) {
         int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.GATHERING_ARRAY_ID);
-        if (level >= 10) return 4;
-        if (level >= 7) return 3;
         if (level >= 5) return 2;
         if (level >= 3) return 1;
         return 0;
@@ -3580,6 +3592,11 @@ public final class IdleCultivationManager implements Disposable {
         SHIELD
     }
 
+    public enum TravelPhase {
+        HUMAN,
+        SPIRIT
+    }
+
     public record TechniqueDefinition(String id, String nameKey, String descriptionKey,
                                       int qiBonusPercent, int stoneBonusPercent, int breakthroughBonus,
                                       int attackBonusPercent, int defenseBonusPercent, int manaBonusPercent) {
@@ -3627,7 +3644,7 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public record TravelLocationDefinition(String id, String nameKey, String descriptionKey,
-                                           int durationMinutes, int minRealmIndex,
+                                           TravelPhase phase, int durationMinutes, int minRealmIndex,
                                            long baseQiReward, long baseStoneReward,
                                            int pillChance, int techniqueChance) {
         public String name() {
