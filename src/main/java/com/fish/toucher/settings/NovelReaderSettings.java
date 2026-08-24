@@ -158,7 +158,6 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public String ownSectName = "";
         public int ownSectTierIndex = 0;
         public long ownSectMaterials = 0L;
-        public long ownSectFortune = 0L;
         public Map<String, Integer> ownSectBuildingLevels = new HashMap<>();
         public List<OwnSectDiscipleState> ownSectDisciples = new ArrayList<>();
         public List<OwnSectDiscipleState> ownSectRecruitmentCandidates = new ArrayList<>();
@@ -582,7 +581,6 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         }
         state.ownSectTierIndex = clamp(state.ownSectTierIndex, 0, 5);
         state.ownSectMaterials = Math.max(0L, state.ownSectMaterials);
-        state.ownSectFortune = Math.max(0L, state.ownSectFortune);
         state.ownSectBuildingLevels = normalizeIntegerMap(state.ownSectBuildingLevels, 0, MAX_OWN_SECT_BUILDING_LEVEL, OWN_SECT_BUILDING_IDS);
         state.ownSectDisciples = normalizeOwnSectDisciples(state.ownSectDisciples, MAX_OWN_SECT_DISCIPLES);
         state.ownSectRecruitmentCandidates = normalizeOwnSectDisciples(state.ownSectRecruitmentCandidates, MAX_OWN_SECT_CANDIDATES);
@@ -597,7 +595,6 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             state.ownSectName = "";
             state.ownSectTierIndex = 0;
             state.ownSectMaterials = 0L;
-            state.ownSectFortune = 0L;
             state.ownSectBuildingLevels = new HashMap<>();
             state.ownSectDisciples = new ArrayList<>();
             state.ownSectRecruitmentCandidates = new ArrayList<>();
@@ -1335,25 +1332,6 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             return false;
         }
         myState.ownSectMaterials -= amount;
-        return true;
-    }
-
-    public long getOwnSectFortune() {
-        normalizeCultivationState(myState);
-        return Math.max(0L, myState.ownSectFortune);
-    }
-
-    public void addOwnSectFortune(long amount) {
-        if (amount > 0L) {
-            myState.ownSectFortune = Math.max(0L, myState.ownSectFortune) + amount;
-        }
-    }
-
-    public boolean spendOwnSectFortune(long amount) {
-        if (amount < 0L || getOwnSectFortune() < amount) {
-            return false;
-        }
-        myState.ownSectFortune -= amount;
         return true;
     }
 

@@ -193,7 +193,11 @@ final class IdleCultivationUiSupport {
     }
 
     static int addRealmDescriptionRows(JPanel panel, GridBagConstraints gbc, int row) {
-        for (int i = 0; i <= 8; i++) {
+        return addRealmDescriptionRows(panel, gbc, row, 0, 8);
+    }
+
+    static int addRealmDescriptionRows(JPanel panel, GridBagConstraints gbc, int row, int startIndex, int endIndex) {
+        for (int i = startIndex; i <= endIndex; i++) {
             String label = FishToucherBundle.message("cultivation.realm." + i) + ":";
             JLabel description = createGuideHtmlLabel(FishToucherBundle.message("cultivation.realm." + i + ".desc"));
             addLabelRow(panel, gbc, row++, label, description);

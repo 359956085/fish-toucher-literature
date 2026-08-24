@@ -22,7 +22,9 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final IdleCultivationChallengeTab challengeTab;
     private final IdleCultivationSectTab sectTab;
     private final IdleCultivationGuideTab guideTab;
+    private final JTabbedPane tabs;
     private final Runnable changeListener;
+    private Boolean lastAscendedTabState;
 
     public IdleCultivationPanel() {
         LOG.info("IdleCultivationPanel: initializing");
@@ -38,7 +40,7 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         sectTab = new IdleCultivationSectTab();
         guideTab = new IdleCultivationGuideTab();
 
-        JTabbedPane tabs = new JTabbedPane();
+        tabs = new JTabbedPane();
         tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         tabs.addTab(FishToucherBundle.message("cultivation.tab.training"), trainingTab.getComponent());
         tabs.addTab(FishToucherBundle.message("cultivation.tab.bag"), bagTab.getComponent());
@@ -87,6 +89,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
             NovelReaderSettings settings = NovelReaderSettings.getInstance();
+            syncAscendedTabs(settings.isCultivationAscended());
+            guideTab.updateGuideState(settings.isCultivationAscended());
             trainingTab.updateTrainingState(manager);
             bagTab.reloadBagOptions(manager, settings);
             travelTab.reloadTravelOptions(manager);
@@ -112,6 +116,39 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         bagTab.updateSelectionDescriptions();
         travelTab.updateSelectionDescriptions();
         challengeTab.updateSelectionDescriptions();
+    }
+
+    private void syncAscendedTabs(boolean ascended) {
+        if (lastAscendedTabState != null && lastAscendedTabState == ascended) {
+            return;
+        }
+        lastAscendedTabState = ascended;
+
+        int abodeIndex = tabs.indexOfComponent(abodeTab.getComponent());
+        if (ascended) {
+            if (abodeIndex >= 0) {
+                boolean selectedAbode = tabs.getSelectedIndex() == abodeIndex;
+                tabs.removeTabAt(abodeIndex);
+                if (selectedAbode) {
+                    int sectIndex = tabs.indexOfComponent(sectTab.getComponent());
+                    tabs.setSelectedIndex(sectIndex >= 0 ? sectIndex : 0);
+                }
+            }
+            return;
+        }
+
+        if (abodeIndex < 0) {
+            // 未飞升时恢复洞府页签，位置保持在游历与挑战之间。
+            int challengeIndex = tabs.indexOfComponent(challengeTab.getComponent());
+            int insertIndex = challengeIndex >= 0 ? challengeIndex : Math.min(3, tabs.getTabCount());
+            tabs.insertTab(
+                    FishToucherBundle.message("cultivation.tab.abode"),
+                    null,
+                    abodeTab.getComponent(),
+                    null,
+                    insertIndex
+            );
+        }
     }
 
     @Override

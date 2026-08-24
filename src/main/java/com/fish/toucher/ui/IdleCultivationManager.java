@@ -736,7 +736,7 @@ public final class IdleCultivationManager implements Disposable {
                 settings.getOwnSectDisciples().size(),
                 tier.discipleLimit(),
                 settings.getOwnSectMaterials(),
-                settings.getOwnSectFortune(),
+                settings.getCultivationSpiritStones(),
                 AscendedSectRules.totalBuildingLevel(settings)
         );
     }
@@ -1055,7 +1055,6 @@ public final class IdleCultivationManager implements Disposable {
         settings.setCultivationSpiritStones(settings.getCultivationSpiritStones() - nextTier.promotionStoneCost());
         settings.spendOwnSectMaterials(nextTier.promotionMaterialCost());
         settings.setOwnSectTierIndex(nextTier.index());
-        settings.addOwnSectFortune(30L + nextTier.index() * 20L);
         lastMessage = FishToucherBundle.message("cultivation.ownSect.promoted", nextTier.name());
         fireChange();
         return true;
@@ -2707,9 +2706,6 @@ public final class IdleCultivationManager implements Disposable {
             return;
         }
         settings.addOwnSectMaterials(Math.max(8L, stoneGain / 18L));
-        if (ThreadLocalRandom.current().nextInt(100) < 12) {
-            settings.addOwnSectFortune(1L);
-        }
     }
 
     private long getOfflineCapMillis(NovelReaderSettings settings) {

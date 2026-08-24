@@ -17,7 +17,7 @@ final class SectCatalog {
             new SectDefinition("qingyun_sword", "青云剑宗", "攻击 / 剑修", "攻击 +5%", BonusType.ATTACK, 5),
             new SectDefinition("danxia_valley", "丹霞谷", "丹药 / 发育", "丹药奖励 +10%", BonusType.PILL, 10),
             new SectDefinition("xuanwu_gate", "玄武门", "防御 / 渡劫", "防御 +6%", BonusType.DEFENSE, 6),
-            new SectDefinition("tianji_pavilion", "天机阁", "游历 / 气运", "游历耗时 -5%", BonusType.TRAVEL_DURATION, 5),
+            new SectDefinition("tianji_pavilion", "天机阁", "游历 / 推演", "游历耗时 -5%", BonusType.TRAVEL_DURATION, 5),
             new SectDefinition("taiqing_dao", "太清道宗", "修炼 / 突破", "修为收益 +5%", BonusType.QI, 5)
     );
 
