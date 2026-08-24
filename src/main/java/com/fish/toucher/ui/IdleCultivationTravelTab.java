@@ -135,11 +135,9 @@ final class IdleCultivationTravelTab {
         TravelOption option = (TravelOption) travelComboBox.getSelectedItem();
         if (option == null) return;
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
-        String suffix = option.unlocked
-                ? manager.getTravelDurationText(option.location)
-                : FishToucherBundle.message("cultivation.travel.locked", manager.getRealmName(option.location.minRealmIndex()));
         String blockReason = getTravelBlockReason(manager, option);
-        setWrappingText(travelDescriptionLabel, option.location.description() + "  " + suffix + appendBlockReason(blockReason));
+        String suffix = option.unlocked ? manager.getTravelDurationText(option.location) : blockReason;
+        setWrappingText(travelDescriptionLabel, option.location.description() + "  " + suffix);
         updateStartTravelButton(manager, option);
     }
 
@@ -165,10 +163,6 @@ final class IdleCultivationTravelTab {
             return FishToucherBundle.message("cultivation.sect.secretRealmBusy");
         }
         return "";
-    }
-
-    private String appendBlockReason(String blockReason) {
-        return blockReason.isEmpty() ? "" : "  " + blockReason;
     }
 
     record TravelOption(IdleCultivationManager.TravelLocationDefinition location, boolean unlocked) {

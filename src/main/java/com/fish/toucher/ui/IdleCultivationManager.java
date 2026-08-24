@@ -137,11 +137,11 @@ public final class IdleCultivationManager implements Disposable {
             new TravelLocationDefinition("abandoned_alchemy_room", "cultivation.travel.alchemy.name", "cultivation.travel.alchemy.desc", TravelPhase.HUMAN, 60, 0, 4_200, 120, 70, 12),
             new TravelLocationDefinition("spirit_mine", "cultivation.travel.mine.name", "cultivation.travel.mine.desc", TravelPhase.HUMAN, 120, 1, 14_000, 420, 40, 16),
             new TravelLocationDefinition("cloud_dream_secret", "cultivation.travel.secret.name", "cultivation.travel.secret.desc", TravelPhase.HUMAN, 240, 2, 32_000, 900, 65, 30),
-            new TravelLocationDefinition("spirit_mist_path", "cultivation.travel.spiritMist.name", "cultivation.travel.spiritMist.desc", TravelPhase.SPIRIT, 240, 9, 8_000, 900, 45, 8),
-            new TravelLocationDefinition("mystic_jade_valley", "cultivation.travel.mysticJade.name", "cultivation.travel.mysticJade.desc", TravelPhase.SPIRIT, 300, 10, 12_000, 1_300, 50, 10),
-            new TravelLocationDefinition("starfall_mine", "cultivation.travel.starfall.name", "cultivation.travel.starfall.desc", TravelPhase.SPIRIT, 360, 11, 18_000, 1_900, 55, 12),
-            new TravelLocationDefinition("celestial_river_ford", "cultivation.travel.celestialRiver.name", "cultivation.travel.celestialRiver.desc", TravelPhase.SPIRIT, 480, 12, 26_000, 2_700, 60, 14),
-            new TravelLocationDefinition("great_void_remnant", "cultivation.travel.greatVoid.name", "cultivation.travel.greatVoid.desc", TravelPhase.SPIRIT, 600, 13, 38_000, 4_000, 65, 18)
+            new TravelLocationDefinition("spirit_mist_path", "cultivation.travel.spiritMist.name", "cultivation.travel.spiritMist.desc", TravelPhase.SPIRIT, 180, 9, 8_000, 900, 45, 8),
+            new TravelLocationDefinition("mystic_jade_valley", "cultivation.travel.mysticJade.name", "cultivation.travel.mysticJade.desc", TravelPhase.SPIRIT, 240, 10, 12_000, 1_300, 50, 10),
+            new TravelLocationDefinition("starfall_mine", "cultivation.travel.starfall.name", "cultivation.travel.starfall.desc", TravelPhase.SPIRIT, 300, 11, 18_000, 1_900, 55, 12),
+            new TravelLocationDefinition("celestial_river_ford", "cultivation.travel.celestialRiver.name", "cultivation.travel.celestialRiver.desc", TravelPhase.SPIRIT, 420, 12, 26_000, 2_700, 60, 14),
+            new TravelLocationDefinition("great_void_remnant", "cultivation.travel.greatVoid.name", "cultivation.travel.greatVoid.desc", TravelPhase.SPIRIT, 540, 13, 38_000, 4_000, 65, 18)
     );
     private static final Map<String, TravelLocationDefinition> TRAVEL_BY_ID = indexTravelLocations();
 
@@ -409,7 +409,11 @@ public final class IdleCultivationManager implements Disposable {
         int realmIndex = settings.getCultivationRealmIndex();
         switch (pillId) {
             case QI_PILL_ID -> {
-                long gain = applyQiBonus(Math.max(300L, getRequiredQi(realmIndex) / 45L));
+                long baseGain = Math.max(300L, getRequiredQi(realmIndex) / 45L);
+                if (settings.isCultivationAscended() && realmIndex >= CultivationRules.SPIRIT_START_REALM_INDEX) {
+                    baseGain = Math.max(1L, baseGain / 4L);
+                }
+                long gain = applyQiBonus(baseGain);
                 long availableGain = getAvailableCultivationQiGain(settings, gain);
                 if (availableGain <= 0L) {
                     lastMessage = FishToucherBundle.message(isCurrentPhaseMaxRealm(settings)
@@ -748,12 +752,46 @@ public final class IdleCultivationManager implements Disposable {
         }
         return FishToucherBundle.message(
                 "cultivation.ownSect.bonus",
-                AscendedSectRules.gatheringQiBonusPercent(settings),
+                formatOwnSectPercentBonus(
+                        settings,
+                        AscendedSectCatalog.GATHERING_ARRAY_ID,
+                        AscendedSectRules.gatheringQiBaseBonusPercent(settings),
+                        AscendedSectRules.gatheringQiBonusPercent(settings)
+                ),
                 getOwnSectOfflineBonusHours(settings),
-                AscendedSectRules.alchemyBonusPercent(settings),
-                AscendedSectRules.refiningBonusPercent(settings),
-                AscendedSectRules.scriptureBonusPercent(settings)
+                formatOwnSectPercentBonus(
+                        settings,
+                        AscendedSectCatalog.ALCHEMY_HALL_ID,
+                        AscendedSectRules.alchemyBaseBonusPercent(settings),
+                        AscendedSectRules.alchemyBonusPercent(settings)
+                ),
+                formatOwnSectPercentBonus(
+                        settings,
+                        AscendedSectCatalog.REFINING_PAVILION_ID,
+                        AscendedSectRules.refiningBaseBonusPercent(settings),
+                        AscendedSectRules.refiningBonusPercent(settings)
+                ),
+                formatOwnSectPercentBonus(
+                        settings,
+                        AscendedSectCatalog.SCRIPTURE_LIBRARY_ID,
+                        AscendedSectRules.scriptureBaseBonusPercent(settings),
+                        AscendedSectRules.scriptureBonusPercent(settings)
+                )
         );
+    }
+
+    private String formatOwnSectPercentBonus(NovelReaderSettings settings,
+                                             String buildingId,
+                                             int basePercent,
+                                             int totalPercent) {
+        int discipleDelta = totalPercent - basePercent;
+        if (discipleDelta > 0) {
+            return FishToucherBundle.message("cultivation.ownSect.bonusWithDisciple", totalPercent, discipleDelta);
+        }
+        if (basePercent > 0 && AscendedSectRules.hasAssignedDisciple(settings, buildingId)) {
+            return FishToucherBundle.message("cultivation.ownSect.bonusWithTinyDisciple", totalPercent);
+        }
+        return FishToucherBundle.message("cultivation.ownSect.bonusPlain", totalPercent);
     }
 
     public synchronized boolean canUpgradeOwnSectBuilding(String buildingId) {
@@ -777,21 +815,41 @@ public final class IdleCultivationManager implements Disposable {
         return switch (buildingId) {
             case AscendedSectCatalog.GATHERING_ARRAY_ID -> FishToucherBundle.message(
                     "cultivation.ownSect.effect.gathering",
-                    AscendedSectRules.gatheringQiBonusPercent(settings),
+                    formatOwnSectPercentBonus(
+                            settings,
+                            AscendedSectCatalog.GATHERING_ARRAY_ID,
+                            AscendedSectRules.gatheringQiBaseBonusPercent(settings),
+                            AscendedSectRules.gatheringQiBonusPercent(settings)
+                    ),
                     getOwnSectOfflineBonusHours(settings)
             );
             case AscendedSectCatalog.ALCHEMY_HALL_ID -> FishToucherBundle.message(
                     "cultivation.ownSect.effect.alchemy",
                     getClaimableOwnSectAlchemyPillCount(),
-                    AscendedSectRules.alchemyBonusPercent(settings)
+                    formatOwnSectPercentBonus(
+                            settings,
+                            AscendedSectCatalog.ALCHEMY_HALL_ID,
+                            AscendedSectRules.alchemyBaseBonusPercent(settings),
+                            AscendedSectRules.alchemyBonusPercent(settings)
+                    )
             );
             case AscendedSectCatalog.REFINING_PAVILION_ID -> FishToucherBundle.message(
                     "cultivation.ownSect.effect.refining",
-                    AscendedSectRules.refiningBonusPercent(settings)
+                    formatOwnSectPercentBonus(
+                            settings,
+                            AscendedSectCatalog.REFINING_PAVILION_ID,
+                            AscendedSectRules.refiningBaseBonusPercent(settings),
+                            AscendedSectRules.refiningBonusPercent(settings)
+                    )
             );
             case AscendedSectCatalog.SCRIPTURE_LIBRARY_ID -> FishToucherBundle.message(
                     "cultivation.ownSect.effect.scripture",
-                    AscendedSectRules.scriptureBonusPercent(settings)
+                    formatOwnSectPercentBonus(
+                            settings,
+                            AscendedSectCatalog.SCRIPTURE_LIBRARY_ID,
+                            AscendedSectRules.scriptureBaseBonusPercent(settings),
+                            AscendedSectRules.scriptureBonusPercent(settings)
+                    )
             );
             default -> "";
         };
@@ -1011,13 +1069,23 @@ public final class IdleCultivationManager implements Disposable {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         NovelReaderSettings.OwnSectDiscipleState disciple = findOwnSectDisciple(settings, discipleId);
         AscendedSectCatalog.BuildingDefinition building = AscendedSectCatalog.building(buildingId);
-        if (!AscendedSectRules.canAssignDisciple(settings, disciple, building)) {
+        if (!AscendedSectRules.canAssignOrReplaceDisciple(settings, disciple, building)) {
             lastMessage = FishToucherBundle.message("cultivation.ownSect.assignUnavailable");
             fireChange();
             return false;
         }
+        NovelReaderSettings.OwnSectDiscipleState replaced = findFirstAssignedOwnSectDisciple(settings, buildingId);
+        boolean replacing = replaced != null
+                && !replaced.id.equals(discipleId)
+                && AscendedSectRules.assignedDiscipleCount(settings, buildingId)
+                >= AscendedSectRules.buildingSlotCount(settings.getOwnSectBuildingLevel(buildingId));
+        if (replacing) {
+            settings.unassignOwnSectDisciple(replaced.id);
+        }
         settings.assignOwnSectDisciple(discipleId, buildingId);
-        lastMessage = FishToucherBundle.message("cultivation.ownSect.assigned", disciple.name, building.name());
+        lastMessage = replacing
+                ? FishToucherBundle.message("cultivation.ownSect.assignedReplaced", disciple.name, replaced.name, building.name())
+                : FishToucherBundle.message("cultivation.ownSect.assigned", disciple.name, building.name());
         fireChange();
         return true;
     }
@@ -2665,6 +2733,15 @@ public final class IdleCultivationManager implements Disposable {
         return null;
     }
 
+    private NovelReaderSettings.OwnSectDiscipleState findFirstAssignedOwnSectDisciple(NovelReaderSettings settings, String buildingId) {
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
+            if (buildingId.equals(disciple.assignedBuildingId)) {
+                return disciple;
+            }
+        }
+        return null;
+    }
+
     private int getOwnSectOfflineBonusHours(NovelReaderSettings settings) {
         int level = settings.getOwnSectBuildingLevel(AscendedSectCatalog.GATHERING_ARRAY_ID);
         if (level >= 5) return 2;
@@ -3197,13 +3274,14 @@ public final class IdleCultivationManager implements Disposable {
 
     private int getBreakthroughChance(int realmIndex, int failures) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        int baseChance = CultivationRules.baseBreakthroughChance(realmIndex);
+        int additiveChanceBasisPoints = CultivationRules.baseBreakthroughChanceBasisPoints(realmIndex)
+                + Math.max(0, failures) * CultivationRules.breakthroughFailureBonusBasisPoints(realmIndex);
         int techniqueBonus = getEquippedTechnique().breakthroughBonus();
         int pillBonus = settings.isBreakthroughPillActive() ? 18 : 0;
         int abodeBonus = isAbodeUnlocked() ? getInsightRoomBreakthroughBonusPercent(getAbodeFacilityLevel(INSIGHT_ROOM_ID)) : 0;
-        int additiveChance = baseChance + failures * 16 + techniqueBonus + pillBonus + abodeBonus;
-        return CultivationRules.finalBreakthroughChance(
-                additiveChance,
+        additiveChanceBasisPoints += (techniqueBonus + pillBonus + abodeBonus) * 100;
+        return CultivationRules.finalBreakthroughChanceBasisPoints(
+                additiveChanceBasisPoints,
                 getEffectiveRebirthCount(settings),
                 REBIRTH_BREAKTHROUGH_BONUS_PERCENT
         );

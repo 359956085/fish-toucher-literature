@@ -42,6 +42,7 @@ final class IdleCultivationGuideTab {
             row = addRealmDescriptionRows(contentPanel, gbc, row, 9, 14);
             row = addGuideSection(contentPanel, gbc, row, "spirit.travel");
             row = addGuideSection(contentPanel, gbc, row, "spirit.ownSect");
+            row = addGuideSection(contentPanel, gbc, row, "spirit.buildings");
             row = addGuideSection(contentPanel, gbc, row, "spirit.promotion");
             row = addGuideSection(contentPanel, gbc, row, "spirit.resources");
         } else {

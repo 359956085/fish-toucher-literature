@@ -16,6 +16,12 @@ final class CultivationRules {
             380_000L, 9_000_000L, 14_000_000L, 19_000_000L,
             24_000_000L, 30_000_000L
     };
+    private static final int PERCENT_BASIS_POINTS = 100;
+    private static final int[] SPIRIT_BASE_BREAKTHROUGH_CHANCE_BASIS_POINTS = {
+            3_150, 2_900, 2_650, 2_400, 2_150
+    };
+    private static final int HUMAN_BREAKTHROUGH_FAILURE_BONUS_BASIS_POINTS = 1_600;
+    private static final int SPIRIT_BREAKTHROUGH_FAILURE_BONUS_BASIS_POINTS = 500;
 
     private CultivationRules() {}
 
@@ -47,7 +53,23 @@ final class CultivationRules {
     }
 
     static int baseBreakthroughChance(int realmIndex) {
+        if (isSpiritBreakthroughRealm(realmIndex)) {
+            return (baseBreakthroughChanceBasisPoints(realmIndex) + PERCENT_BASIS_POINTS / 2) / PERCENT_BASIS_POINTS;
+        }
         return Math.max(42, 72 - Math.max(0, realmIndex) * 4);
+    }
+
+    static int baseBreakthroughChanceBasisPoints(int realmIndex) {
+        if (isSpiritBreakthroughRealm(realmIndex)) {
+            return SPIRIT_BASE_BREAKTHROUGH_CHANCE_BASIS_POINTS[realmIndex - SPIRIT_START_REALM_INDEX];
+        }
+        return baseBreakthroughChance(realmIndex) * PERCENT_BASIS_POINTS;
+    }
+
+    static int breakthroughFailureBonusBasisPoints(int realmIndex) {
+        return isSpiritBreakthroughRealm(realmIndex)
+                ? SPIRIT_BREAKTHROUGH_FAILURE_BONUS_BASIS_POINTS
+                : HUMAN_BREAKTHROUGH_FAILURE_BONUS_BASIS_POINTS;
     }
 
     static int finalBreakthroughChance(
@@ -55,9 +77,25 @@ final class CultivationRules {
             int rebirthCount,
             int rebirthBonusPercent
     ) {
-        long chance = additiveChance
+        return finalBreakthroughChanceBasisPoints(
+                additiveChance * PERCENT_BASIS_POINTS,
+                rebirthCount,
+                rebirthBonusPercent
+        );
+    }
+
+    static int finalBreakthroughChanceBasisPoints(
+            int additiveChanceBasisPoints,
+            int rebirthCount,
+            int rebirthBonusPercent
+    ) {
+        long chanceBasisPoints = additiveChanceBasisPoints
                 * (100L + Math.max(0, rebirthCount) * rebirthBonusPercent)
                 / 100L;
-        return (int) Math.min(96L, Math.max(0L, chance));
+        return (int) Math.min(96L, Math.max(0L, chanceBasisPoints / PERCENT_BASIS_POINTS));
+    }
+
+    private static boolean isSpiritBreakthroughRealm(int realmIndex) {
+        return realmIndex >= SPIRIT_START_REALM_INDEX && realmIndex < realmCount() - 1;
     }
 }
