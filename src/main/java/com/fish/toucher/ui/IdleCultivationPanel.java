@@ -125,26 +125,44 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         lastAscendedTabState = ascended;
 
         int abodeIndex = tabs.indexOfComponent(abodeTab.getComponent());
+        int challengeIndex = tabs.indexOfComponent(challengeTab.getComponent());
         if (ascended) {
+            boolean selectedRemovedTab = (abodeIndex >= 0 && tabs.getSelectedIndex() == abodeIndex)
+                    || (challengeIndex >= 0 && tabs.getSelectedIndex() == challengeIndex);
+            if (challengeIndex >= 0) {
+                tabs.removeTabAt(challengeIndex);
+            }
+            abodeIndex = tabs.indexOfComponent(abodeTab.getComponent());
             if (abodeIndex >= 0) {
-                boolean selectedAbode = tabs.getSelectedIndex() == abodeIndex;
                 tabs.removeTabAt(abodeIndex);
-                if (selectedAbode) {
-                    int sectIndex = tabs.indexOfComponent(sectTab.getComponent());
-                    tabs.setSelectedIndex(sectIndex >= 0 ? sectIndex : 0);
-                }
+            }
+            if (selectedRemovedTab) {
+                int sectIndex = tabs.indexOfComponent(sectTab.getComponent());
+                tabs.setSelectedIndex(sectIndex >= 0 ? sectIndex : 0);
             }
             return;
         }
 
         if (abodeIndex < 0) {
             // 未飞升时恢复洞府页签，位置保持在游历与挑战之间。
-            int challengeIndex = tabs.indexOfComponent(challengeTab.getComponent());
+            challengeIndex = tabs.indexOfComponent(challengeTab.getComponent());
             int insertIndex = challengeIndex >= 0 ? challengeIndex : Math.min(3, tabs.getTabCount());
             tabs.insertTab(
                     FishToucherBundle.message("cultivation.tab.abode"),
                     null,
                     abodeTab.getComponent(),
+                    null,
+                    insertIndex
+            );
+        }
+        if (tabs.indexOfComponent(challengeTab.getComponent()) < 0) {
+            // 未飞升时恢复挑战页签，位置保持在洞府与宗门之间。
+            int sectIndex = tabs.indexOfComponent(sectTab.getComponent());
+            int insertIndex = sectIndex >= 0 ? sectIndex : Math.min(4, tabs.getTabCount());
+            tabs.insertTab(
+                    FishToucherBundle.message("cultivation.tab.challenge"),
+                    null,
+                    challengeTab.getComponent(),
                     null,
                     insertIndex
             );

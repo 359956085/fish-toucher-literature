@@ -55,6 +55,7 @@ final class IdleCultivationSectTab {
     private final JButton startTrialButton = new JButton(FishToucherBundle.message("cultivation.sect.button.startTrial"));
     private final Map<String, OwnSectBuildingComponents> ownSectBuildingComponents = new LinkedHashMap<>();
     private final Map<String, OwnSectDiscipleRowComponents> ownSectDiscipleRows = new LinkedHashMap<>();
+    private final Map<String, String> ownSectAssignableDiscipleSignatures = new LinkedHashMap<>();
     private String ownSectLayoutSignature = "";
     private String ownSectDiscipleSignature;
     private boolean ascendedVisible;
@@ -302,6 +303,7 @@ final class IdleCultivationSectTab {
         logRefreshPath("rebuildOwnSectState.afterRemove count=" + ownSectPanel.getComponentCount());
         ownSectBuildingComponents.clear();
         ownSectDiscipleRows.clear();
+        ownSectAssignableDiscipleSignatures.clear();
         ownSectPromoteButton = null;
         ownSectRecruitButton = null;
         ownSectRecruitmentActionsPanel = null;
@@ -563,6 +565,7 @@ final class IdleCultivationSectTab {
             rebuildOwnSectDiscipleList(settings);
             return;
         }
+        logRefreshPath("updateOwnSectDiscipleList.dynamic disciples=" + settings.getOwnSectDisciples().size());
         for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
             OwnSectDiscipleRowComponents components = ownSectDiscipleRows.get(disciple.id);
             if (components == null) {
@@ -624,22 +627,46 @@ final class IdleCultivationSectTab {
                                                        AscendedSectCatalog.BuildingDefinition building) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         String selectedId = selectedDiscipleId(comboBox);
-        comboBox.removeAllItems();
-        DiscipleOption selectedOption = null;
+        java.util.List<DiscipleOption> options = new ArrayList<>();
+        StringJoiner signatureJoiner = new StringJoiner("|");
         for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
             if (AscendedSectRules.canAssignOrReplaceDisciple(settings, disciple, building)) {
                 DiscipleOption option = new DiscipleOption(disciple);
-                comboBox.addItem(option);
-                if (disciple.id.equals(selectedId)) {
-                    selectedOption = option;
-                }
+                options.add(option);
+                signatureJoiner.add(nullToEmpty(disciple.id)
+                        + "," + nullToEmpty(disciple.name)
+                        + "," + nullToEmpty(disciple.specialty)
+                        + "," + disciple.aptitude
+                        + "," + nullToEmpty(disciple.assignedBuildingId));
             }
         }
-        boolean hasAssignableDisciple = comboBox.getItemCount() > 0;
-        if (!hasAssignableDisciple) {
-            comboBox.addItem(DiscipleOption.empty());
-        } else if (selectedOption != null) {
-            comboBox.setSelectedItem(selectedOption);
+        boolean hasAssignableDisciple = !options.isEmpty();
+        String signature = hasAssignableDisciple ? signatureJoiner.toString() : "empty";
+        String oldSignature = ownSectAssignableDiscipleSignatures.get(building.id());
+        if (!signature.equals(oldSignature)) {
+            ownSectAssignableDiscipleSignatures.put(building.id(), signature);
+            comboBox.removeAllItems();
+            DiscipleOption selectedOption = null;
+            if (!hasAssignableDisciple) {
+                comboBox.addItem(DiscipleOption.empty());
+            } else {
+                for (DiscipleOption option : options) {
+                    comboBox.addItem(option);
+                    if (option.disciple != null && option.disciple.id.equals(selectedId)) {
+                        selectedOption = option;
+                    }
+                }
+                if (selectedOption != null) {
+                    comboBox.setSelectedItem(selectedOption);
+                }
+            }
+            logRefreshPath("refreshOwnSectAssignableDiscipleCombo.rebuild building=" + building.id()
+                    + " itemCount=" + comboBox.getItemCount()
+                    + " selectedId=" + selectedDiscipleId(comboBox));
+        } else {
+            logRefreshPath("refreshOwnSectAssignableDiscipleCombo.skip building=" + building.id()
+                    + " itemCount=" + comboBox.getItemCount()
+                    + " selectedId=" + selectedDiscipleId(comboBox));
         }
         comboBox.setEnabled(hasAssignableDisciple);
         setButtonEnabledWithReason(
@@ -789,8 +816,7 @@ final class IdleCultivationSectTab {
             joiner.add(nullToEmpty(disciple.id)
                     + "," + nullToEmpty(disciple.name)
                     + "," + nullToEmpty(disciple.specialty)
-                    + "," + disciple.aptitude
-                    + "," + nullToEmpty(disciple.assignedBuildingId));
+                    + "," + disciple.aptitude);
         }
         return joiner.toString();
     }

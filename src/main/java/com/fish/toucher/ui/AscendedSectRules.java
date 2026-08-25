@@ -105,7 +105,7 @@ final class AscendedSectRules {
                 aptitudeSum += Math.max(1, Math.min(100, disciple.aptitude));
             }
         }
-        double multiplier = 1.0 + 0.2 * aptitudeSum / 100.0;
+        double multiplier = 1.0 + aptitudeSum / 300.0;
         return (int) Math.round(basePercent * multiplier);
     }
 

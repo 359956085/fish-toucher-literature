@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.6.3</version>
+    <version>3.7.0</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.7.0</b>
+    <ul>
+        <li>New: Added sect gameplay and ascended Spirit Realm progression for Idle Cultivation. Human-world sects include sect joining, tasks, inheritances, trials, secret realms, and sect events. After nine rebirths, cultivators can ascend to the Spirit Realm, with Spirit Realm travel, self-built sect, sect buildings, disciples, and Spirit Realm guide content.<br/>
+            新增：放置修仙加入宗门玩法与飞升后的灵界阶段。人界宗门包含加入宗门、宗门任务、传承、试炼、秘境与宗门事件；九转转生后可飞升灵界，包含灵界游历、自建宗门、宗门建筑、弟子与灵界说明。</li>
+    </ul>
     <b>3.6.3</b>
     <ul>
         <li>Improved: Better display stability for Idle Cultivation UI at narrow widths and after refreshes.<br/>

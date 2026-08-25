@@ -873,11 +873,16 @@ public final class IdleCultivationManager implements Disposable {
 
     public synchronized String getOwnSectBuildingAssignedText(String buildingId) {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        List<String> names = new ArrayList<>();
+        List<NovelReaderSettings.OwnSectDiscipleState> assignedDisciples = new ArrayList<>();
         for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
             if (buildingId.equals(disciple.assignedBuildingId)) {
-                names.add(disciple.name + " " + disciple.aptitude);
+                assignedDisciples.add(disciple);
             }
+        }
+        assignedDisciples.sort((left, right) -> Integer.compare(right.aptitude, left.aptitude));
+        List<String> names = new ArrayList<>();
+        for (NovelReaderSettings.OwnSectDiscipleState disciple : assignedDisciples) {
+            names.add(disciple.name + " " + disciple.aptitude);
         }
         int slots = AscendedSectRules.buildingSlotCount(settings.getOwnSectBuildingLevel(buildingId));
         return FishToucherBundle.message(
@@ -1074,7 +1079,7 @@ public final class IdleCultivationManager implements Disposable {
             fireChange();
             return false;
         }
-        NovelReaderSettings.OwnSectDiscipleState replaced = findFirstAssignedOwnSectDisciple(settings, buildingId);
+        NovelReaderSettings.OwnSectDiscipleState replaced = findLowestAptitudeAssignedOwnSectDisciple(settings, buildingId);
         boolean replacing = replaced != null
                 && !replaced.id.equals(discipleId)
                 && AscendedSectRules.assignedDiscipleCount(settings, buildingId)
@@ -2733,13 +2738,15 @@ public final class IdleCultivationManager implements Disposable {
         return null;
     }
 
-    private NovelReaderSettings.OwnSectDiscipleState findFirstAssignedOwnSectDisciple(NovelReaderSettings settings, String buildingId) {
+    private NovelReaderSettings.OwnSectDiscipleState findLowestAptitudeAssignedOwnSectDisciple(NovelReaderSettings settings, String buildingId) {
+        NovelReaderSettings.OwnSectDiscipleState target = null;
         for (NovelReaderSettings.OwnSectDiscipleState disciple : settings.getOwnSectDisciples()) {
-            if (buildingId.equals(disciple.assignedBuildingId)) {
-                return disciple;
+            if (buildingId.equals(disciple.assignedBuildingId)
+                    && (target == null || disciple.aptitude <= target.aptitude)) {
+                target = disciple;
             }
         }
-        return null;
+        return target;
     }
 
     private int getOwnSectOfflineBonusHours(NovelReaderSettings settings) {
