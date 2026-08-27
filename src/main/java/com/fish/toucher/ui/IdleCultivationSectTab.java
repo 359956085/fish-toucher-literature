@@ -40,6 +40,7 @@ final class IdleCultivationSectTab {
     private final JTextArea secretRealmDescText = createHintTextArea();
     private final JTextArea inheritanceDescText = createHintTextArea();
     private final JTextArea trialDescText = createHintTextArea();
+    private final JTextArea trialResultText = createHintTextArea();
     private final List<JLabel> ownSectHeaderLabels = new ArrayList<>();
     private final JPanel ownSectHeaderPanel = createOwnSectHeaderPanel();
     private final JPanel eventActions = createActionPanel();
@@ -201,6 +202,7 @@ final class IdleCultivationSectTab {
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, createSectionLabel(FishToucherBundle.message("cultivation.sect.section.trial")));
         addLabelRow(unlockedPanel, unlockedGbc, unlockedRow++, FishToucherBundle.message("cultivation.sect.label.trial"), trialComboBox);
         unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, trialDescText);
+        unlockedRow = addFullWidthRow(unlockedPanel, unlockedGbc, unlockedRow, trialResultText);
         JPanel trialActions = createActionPanel();
         startTrialButton.addActionListener(e -> {
             TrialOption option = (TrialOption) trialComboBox.getSelectedItem();
@@ -1422,6 +1424,7 @@ final class IdleCultivationSectTab {
         setWrappingText(inheritanceDescText, inheritance == null ? "" : formatInheritance(inheritance.inheritance));
         TrialOption trial = (TrialOption) trialComboBox.getSelectedItem();
         setWrappingText(trialDescText, trial == null ? "" : formatTrial(trial.trial));
+        updateTrialResultText(trial);
     }
 
     private String formatInheritance(SectCatalog.SectInheritanceDefinition inheritance) {
@@ -1439,6 +1442,24 @@ final class IdleCultivationSectTab {
                 + "，攻击 " + trial.attack()
                 + "，防御 " + trial.defense()
                 + defeated;
+    }
+
+    private void updateTrialResultText(TrialOption trial) {
+        if (trial == null || !NovelReaderSettings.getInstance().isSectTrialDefeated(trial.trial.id())) {
+            setWrappingText(trialResultText, "");
+            trialResultText.setVisible(false);
+            return;
+        }
+        SectCatalog.SectTrialDefinition definition = trial.trial;
+        long contribution = 120L * definition.floor();
+        long prestige = 40L * definition.floor();
+        setWrappingText(trialResultText, FishToucherBundle.message(
+                "cultivation.sect.trialResult",
+                definition.stoneReward(),
+                contribution,
+                prestige
+        ));
+        trialResultText.setVisible(true);
     }
 
     private String formatSecretRealm(IdleCultivationManager manager, SecretRealmOption option,

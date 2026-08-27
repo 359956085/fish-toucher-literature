@@ -50,6 +50,7 @@ final class IdleCultivationGuideTab {
             row = addGuideSection(contentPanel, gbc, row, "gains");
             row = addGuideSection(contentPanel, gbc, row, "realms");
             row = addRealmDescriptionRows(contentPanel, gbc, row, 0, 8);
+            row = addGuideSection(contentPanel, gbc, row, "sectPromotion");
             row = addGuideSection(contentPanel, gbc, row, "travel");
             row = addGuideSection(contentPanel, gbc, row, "abode");
             row = addGuideSection(contentPanel, gbc, row, "bag");
