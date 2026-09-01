@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.7.0</version>
+    <version>3.7.1</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.7.1</b>
+    <ul>
+        <li>Fixed: Sect inheritance display names now match the actual techniques, spells, artifacts, or pills obtained after redemption. Joined human-world sects remain visible after rebirth, sect event results are shown in the event area, and the human-world guide now includes sect promotion requirements.<br/>
+            修复：宗门传承显示名称与兑换后实际获得的功法、法术、法宝或丹药保持一致；转世后已加入的人界宗门仍保持可见；宗门事件结果会显示在事件区域；人界说明补充宗门晋升条件。</li>
+    </ul>
     <b>3.7.0</b>
     <ul>
         <li>New: Added sect gameplay and ascended Spirit Realm progression for Idle Cultivation. Human-world sects include sect joining, tasks, inheritances, trials, secret realms, and sect events. After nine rebirths, cultivators can ascend to the Spirit Realm, with Spirit Realm travel, self-built sect, sect buildings, disciples, and Spirit Realm guide content.<br/>

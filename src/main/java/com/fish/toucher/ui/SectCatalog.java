@@ -40,24 +40,24 @@ final class SectCatalog {
 
     private static final List<SectInheritanceDefinition> INHERITANCES = List.of(
             new SectInheritanceDefinition("qingyun_basic", "青云吐纳法", "青云剑宗", "青云基础功法，偏向攻击。", InheritanceType.TECHNIQUE, "qingyun_sword_method", 200L, 0, ""),
-            new SectInheritanceDefinition("qingyun_spell", "流云剑术", "青云剑宗", "剑修入门法术。", InheritanceType.SPELL, "fire_sword", 600L, 1, ""),
-            new SectInheritanceDefinition("qingyun_core", "万剑归宗", "青云剑宗", "镇宗剑诀，需要最终试炼认可。", InheritanceType.ARTIFACT, "green_sword", 6_000L, 4, "qingyun_sword:5"),
+            new SectInheritanceDefinition("qingyun_spell", "赤炎剑诀", "青云剑宗", "剑修入门法术。", InheritanceType.SPELL, "fire_sword", 600L, 1, ""),
+            new SectInheritanceDefinition("qingyun_core", "青锋剑", "青云剑宗", "镇宗剑器，需要最终试炼认可。", InheritanceType.ARTIFACT, "green_sword", 6_000L, 4, "qingyun_sword:5"),
 
             new SectInheritanceDefinition("danxia_basic", "百草诀", "丹霞谷", "丹药与资源成长传承。", InheritanceType.TECHNIQUE, "danxia_herb_method", 200L, 0, ""),
-            new SectInheritanceDefinition("danxia_spell", "丹火术", "丹霞谷", "丹霞谷火法。", InheritanceType.SPELL, "greenwood_heal", 600L, 1, ""),
+            new SectInheritanceDefinition("danxia_spell", "青木回春", "丹霞谷", "丹霞谷疗伤法术。", InheritanceType.SPELL, "greenwood_heal", 600L, 1, ""),
             new SectInheritanceDefinition("danxia_core", "太上丹经", "丹霞谷", "丹道镇宗传承。", InheritanceType.PILL, "breakthrough_pill", 6_000L, 4, "danxia_valley:5"),
 
             new SectInheritanceDefinition("xuanwu_basic", "玄武吐息", "玄武门", "防御与护体传承。", InheritanceType.TECHNIQUE, "xuanwu_guard_method", 200L, 0, ""),
-            new SectInheritanceDefinition("xuanwu_spell", "岩甲术", "玄武门", "护盾法术。", InheritanceType.SPELL, "golden_light", 600L, 1, ""),
-            new SectInheritanceDefinition("xuanwu_core", "玄武真甲", "玄武门", "镇宗护体法宝。", InheritanceType.ARTIFACT, "turtle_shield", 6_000L, 4, "xuanwu_gate:5"),
+            new SectInheritanceDefinition("xuanwu_spell", "金光护体", "玄武门", "护盾法术。", InheritanceType.SPELL, "golden_light", 600L, 1, ""),
+            new SectInheritanceDefinition("xuanwu_core", "玄龟盾", "玄武门", "镇宗护体法宝。", InheritanceType.ARTIFACT, "turtle_shield", 6_000L, 4, "xuanwu_gate:5"),
 
             new SectInheritanceDefinition("tianji_basic", "观星术", "天机阁", "游历收益传承。", InheritanceType.TECHNIQUE, "tianji_star_method", 200L, 0, ""),
-            new SectInheritanceDefinition("tianji_spell", "遁甲术", "天机阁", "控场法术。", InheritanceType.SPELL, "frost_bind", 600L, 1, ""),
-            new SectInheritanceDefinition("tianji_core", "天衍神诀", "天机阁", "镇宗机缘法宝。", InheritanceType.ARTIFACT, "wind_thunder_boots", 6_000L, 4, "tianji_pavilion:5"),
+            new SectInheritanceDefinition("tianji_spell", "寒霜封脉", "天机阁", "控场法术。", InheritanceType.SPELL, "frost_bind", 600L, 1, ""),
+            new SectInheritanceDefinition("tianji_core", "风雷靴", "天机阁", "镇宗机缘法宝。", InheritanceType.ARTIFACT, "wind_thunder_boots", 6_000L, 4, "tianji_pavilion:5"),
 
             new SectInheritanceDefinition("taiqing_basic", "清心诀", "太清道宗", "稳健修炼传承。", InheritanceType.TECHNIQUE, "taiqing_clear_method", 200L, 0, ""),
-            new SectInheritanceDefinition("taiqing_spell", "太清御气", "太清道宗", "雷法传承。", InheritanceType.SPELL, "palm_thunder", 600L, 1, ""),
-            new SectInheritanceDefinition("taiqing_core", "一气化三清", "太清道宗", "镇宗综合法宝。", InheritanceType.ARTIFACT, "taixu_cauldron", 6_000L, 4, "taiqing_dao:5")
+            new SectInheritanceDefinition("taiqing_spell", "掌心雷", "太清道宗", "雷法传承。", InheritanceType.SPELL, "palm_thunder", 600L, 1, ""),
+            new SectInheritanceDefinition("taiqing_core", "太虚鼎", "太清道宗", "镇宗综合法宝。", InheritanceType.ARTIFACT, "taixu_cauldron", 6_000L, 4, "taiqing_dao:5")
     );
 
     private static final List<SectTrialDefinition> TRIALS = List.of(
