@@ -104,11 +104,12 @@ final class IdleCultivationSectTab {
             } else {
                 logRefreshPath("reloadSectState.normal activeCardBefore=" + activeCard
                         + " thread=" + currentThreadName());
+                boolean sectVisible = manager.isSectVisible();
                 ascendedVisible = false;
                 showSectCard(CARD_NORMAL);
                 statusText.setVisible(true);
                 ownSectLayoutSignature = "";
-                unlockedPanel.setVisible(manager.isSectUnlocked());
+                unlockedPanel.setVisible(sectVisible);
                 reloadSects(manager);
                 reloadTasks(manager);
                 reloadSecretRealms(manager);
@@ -117,7 +118,7 @@ final class IdleCultivationSectTab {
                 updateButtons(manager);
                 updateEventState(manager);
                 updateSecretRealmState(manager);
-                setWrappingText(statusText, manager.isSectUnlocked()
+                setWrappingText(statusText, sectVisible
                         ? manager.getCurrentSectTitle() + "\n" + manager.getSectProgressText()
                         : FishToucherBundle.message("cultivation.sect.locked", manager.getRealmName(SectCatalog.UNLOCK_REALM_INDEX)));
                 setProgressTextIfChanged(taskProgressBar, manager.getSectTaskProgressPercent(), manager.getSectTaskRemainingText());
@@ -1361,7 +1362,10 @@ final class IdleCultivationSectTab {
         }
         IdleCultivationManager.SectEventInstance event = manager.getCurrentSectEvent();
         if (event == null) {
-            setWrappingText(eventDescText, FishToucherBundle.message("cultivation.sect.eventNone"));
+            String lastResult = manager.getLastSectEventResultText();
+            setWrappingText(eventDescText, lastResult.isEmpty()
+                    ? FishToucherBundle.message("cultivation.sect.eventNone")
+                    : lastResult);
             eventActions.revalidate();
             eventActions.repaint();
             return;

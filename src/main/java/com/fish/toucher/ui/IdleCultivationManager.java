@@ -174,6 +174,7 @@ public final class IdleCultivationManager implements Disposable {
     private ScheduledFuture<?> battleTask;
     private boolean running;
     private String lastMessage;
+    private String lastSectEventResult;
     private BattleState battleState;
     private Random sectEventRandom;
     private Random sectSecretRealmRandom;
@@ -1170,6 +1171,7 @@ public final class IdleCultivationManager implements Disposable {
         settings.clearSectSecretRealmProgress();
         settings.clearAbodeState();
         settings.setCultivationSectId("");
+        lastSectEventResult = "";
         lastMessage = FishToucherBundle.message("cultivation.ascension.success", settings.getAscensionRebirthCount());
         fireChange();
         return true;
@@ -1348,6 +1350,12 @@ public final class IdleCultivationManager implements Disposable {
         return !settings.isCultivationAscended() && SectRules.isSectUnlocked(settings.getCultivationRealmIndex());
     }
 
+    public synchronized boolean isSectVisible() {
+        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        return !settings.isCultivationAscended()
+                && (SectRules.isSectUnlocked(settings.getCultivationRealmIndex()) || getCurrentSect() != null);
+    }
+
     public synchronized SectCatalog.SectDefinition getCurrentSect() {
         return SectCatalog.sect(NovelReaderSettings.getInstance().getCultivationSectId());
     }
@@ -1406,6 +1414,10 @@ public final class IdleCultivationManager implements Disposable {
         return events.isEmpty() ? null : events.get(0);
     }
 
+    public synchronized String getLastSectEventResultText() {
+        return lastSectEventResult != null ? lastSectEventResult : "";
+    }
+
     public synchronized boolean canResolveSectEvent(String instanceId, String optionId) {
         SectEventInstance event = findCurrentSectEvent(instanceId);
         if (event == null || findEventOption(event.event, optionId) == null) {
@@ -1440,6 +1452,7 @@ public final class IdleCultivationManager implements Disposable {
         lastMessage = rewardText.isEmpty()
                 ? FishToucherBundle.message("cultivation.sect.eventResolvedNone", event.event.title(), option.label())
                 : FishToucherBundle.message("cultivation.sect.eventResolved", event.event.title(), option.label(), rewardText);
+        lastSectEventResult = lastMessage;
         fireChange();
         return true;
     }
@@ -1462,6 +1475,7 @@ public final class IdleCultivationManager implements Disposable {
         settings.clearSectSecretRealmProgress();
         settings.setCultivationSectId(sect.id());
         settings.setCurrentSectRankIndex(settings.getSectRankIndex(sect.id()));
+        lastSectEventResult = "";
         lastMessage = FishToucherBundle.message("cultivation.sect.joined", sect.name());
         fireChange();
         return true;
@@ -1480,6 +1494,7 @@ public final class IdleCultivationManager implements Disposable {
         settings.clearSectSecretRealmProgress();
         settings.clearCurrentSectContribution();
         settings.setCultivationSectId("");
+        lastSectEventResult = "";
         lastMessage = FishToucherBundle.message("cultivation.sect.left", sect.name());
         fireChange();
         return true;
