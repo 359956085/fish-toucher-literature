@@ -152,6 +152,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         public long sectSecretRealmStartedMillis = 0L;
         public long sectSecretRealmCooldownUntilMillis = 0L;
         public List<String> sectSecretRealmResolvedNodeIds = new ArrayList<>();
+        public String sectSecretRealmLootSectId = "";
+        public long sectSecretRealmLootQi = 0L;
+        public long sectSecretRealmLootStones = 0L;
+        public long sectSecretRealmLootContribution = 0L;
+        public long sectSecretRealmLootPrestige = 0L;
+        public Map<String, Integer> sectSecretRealmLootPills = new HashMap<>();
+        public List<String> sectSecretRealmLootSpellIds = new ArrayList<>();
+        public List<String> sectSecretRealmLootArtifactIds = new ArrayList<>();
 
         // --- Ascended own sect gameplay ---
         public boolean ownSectCreated = false;
@@ -179,6 +187,42 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
             this.eventId = eventId != null ? eventId : "";
             this.sectId = sectId != null ? sectId : "";
             this.createdMillis = Math.max(0L, createdMillis);
+        }
+    }
+
+    public record SectSecretRealmLoot(
+            String sectId,
+            long qi,
+            long stones,
+            long contribution,
+            long prestige,
+            Map<String, Integer> pills,
+            List<String> spellIds,
+            List<String> artifactIds
+    ) {
+        public SectSecretRealmLoot {
+            sectId = sectId != null ? sectId : "";
+            qi = Math.max(0L, qi);
+            stones = Math.max(0L, stones);
+            contribution = Math.max(0L, contribution);
+            prestige = Math.max(0L, prestige);
+            pills = pills == null ? Map.of() : Map.copyOf(pills);
+            spellIds = spellIds == null ? List.of() : List.copyOf(spellIds);
+            artifactIds = artifactIds == null ? List.of() : List.copyOf(artifactIds);
+        }
+
+        public boolean hasRound() {
+            return !sectId.isEmpty();
+        }
+
+        public boolean isEmpty() {
+            return qi <= 0L
+                    && stones <= 0L
+                    && contribution <= 0L
+                    && prestige <= 0L
+                    && pills.isEmpty()
+                    && spellIds.isEmpty()
+                    && artifactIds.isEmpty();
         }
     }
 
@@ -562,6 +606,22 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         state.sectSecretRealmStartedMillis = Math.max(0L, state.sectSecretRealmStartedMillis);
         state.sectSecretRealmCooldownUntilMillis = Math.max(0L, state.sectSecretRealmCooldownUntilMillis);
         state.sectSecretRealmResolvedNodeIds = normalizeStringList(state.sectSecretRealmResolvedNodeIds);
+        state.sectSecretRealmLootSectId = normalizeUiSelectionId(state.sectSecretRealmLootSectId);
+        state.sectSecretRealmLootQi = Math.max(0L, state.sectSecretRealmLootQi);
+        state.sectSecretRealmLootStones = Math.max(0L, state.sectSecretRealmLootStones);
+        state.sectSecretRealmLootContribution = Math.max(0L, state.sectSecretRealmLootContribution);
+        state.sectSecretRealmLootPrestige = Math.max(0L, state.sectSecretRealmLootPrestige);
+        state.sectSecretRealmLootPills = normalizeIntegerMap(
+                state.sectSecretRealmLootPills,
+                1,
+                Integer.MAX_VALUE,
+                CULTIVATION_PILL_IDS
+        );
+        state.sectSecretRealmLootSpellIds = normalizeStringList(state.sectSecretRealmLootSpellIds);
+        state.sectSecretRealmLootArtifactIds = normalizeStringList(state.sectSecretRealmLootArtifactIds);
+        if (state.sectSecretRealmLootSectId.isEmpty()) {
+            clearSectSecretRealmLoot(state);
+        }
         if (state.activeSectSecretRealmId.isEmpty()) {
             state.sectSecretRealmNodeIndex = 0;
             state.sectSecretRealmStartedMillis = 0L;
@@ -1283,6 +1343,72 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         myState.sectSecretRealmNodeIndex = 0;
         myState.sectSecretRealmStartedMillis = 0L;
         myState.sectSecretRealmResolvedNodeIds = new ArrayList<>();
+    }
+
+    public SectSecretRealmLoot getSectSecretRealmLoot() {
+        normalizeCultivationState(myState);
+        return new SectSecretRealmLoot(
+                myState.sectSecretRealmLootSectId,
+                myState.sectSecretRealmLootQi,
+                myState.sectSecretRealmLootStones,
+                myState.sectSecretRealmLootContribution,
+                myState.sectSecretRealmLootPrestige,
+                myState.sectSecretRealmLootPills,
+                myState.sectSecretRealmLootSpellIds,
+                myState.sectSecretRealmLootArtifactIds
+        );
+    }
+
+    public void startSectSecretRealmLoot(String sectId) {
+        clearSectSecretRealmLoot();
+        myState.sectSecretRealmLootSectId = normalizeUiSelectionId(sectId);
+    }
+
+    public void addSectSecretRealmLoot(long qi, long stones, long contribution, long prestige) {
+        normalizeCultivationState(myState);
+        if (myState.sectSecretRealmLootSectId.isEmpty()) return;
+        myState.sectSecretRealmLootQi += Math.max(0L, qi);
+        myState.sectSecretRealmLootStones += Math.max(0L, stones);
+        myState.sectSecretRealmLootContribution += Math.max(0L, contribution);
+        myState.sectSecretRealmLootPrestige += Math.max(0L, prestige);
+    }
+
+    public void addSectSecretRealmLootPill(String pillId, int count) {
+        normalizeCultivationState(myState);
+        if (myState.sectSecretRealmLootSectId.isEmpty()
+                || !CULTIVATION_PILL_IDS.contains(pillId)
+                || count <= 0) return;
+        myState.sectSecretRealmLootPills.merge(pillId, count, Integer::sum);
+    }
+
+    public void addSectSecretRealmLootSpell(String spellId) {
+        normalizeCultivationState(myState);
+        addUniqueSectSecretRealmLootId(myState.sectSecretRealmLootSpellIds, spellId);
+    }
+
+    public void addSectSecretRealmLootArtifact(String artifactId) {
+        normalizeCultivationState(myState);
+        addUniqueSectSecretRealmLootId(myState.sectSecretRealmLootArtifactIds, artifactId);
+    }
+
+    public void clearSectSecretRealmLoot() {
+        clearSectSecretRealmLoot(myState);
+    }
+
+    private void addUniqueSectSecretRealmLootId(List<String> target, String id) {
+        if (myState.sectSecretRealmLootSectId.isEmpty() || id == null || id.isEmpty() || target.contains(id)) return;
+        target.add(id);
+    }
+
+    private static void clearSectSecretRealmLoot(State state) {
+        state.sectSecretRealmLootSectId = "";
+        state.sectSecretRealmLootQi = 0L;
+        state.sectSecretRealmLootStones = 0L;
+        state.sectSecretRealmLootContribution = 0L;
+        state.sectSecretRealmLootPrestige = 0L;
+        state.sectSecretRealmLootPills = new HashMap<>();
+        state.sectSecretRealmLootSpellIds = new ArrayList<>();
+        state.sectSecretRealmLootArtifactIds = new ArrayList<>();
     }
 
     public boolean isOwnSectCreated() {

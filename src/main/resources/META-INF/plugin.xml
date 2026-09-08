@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
     <id>com.fishtoucher.literature</id>
     <name>Fish Toucher</name>
-    <version>3.7.1</version>
+    <version>3.7.2</version>
     <vendor email="359956085@163.com" url="https://github.com/359956085">FishToucher</vendor>
 
     <description><![CDATA[
@@ -25,6 +25,15 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <b>3.7.2</b>
+    <ul>
+        <li>Improved: Removed the sect task progress bar. Sect secret realms now show the current run's accumulated loot in real time and retain the latest run's loot after completion.<br/>
+            优化：移除宗门任务进度条；宗门秘境实时展示本轮累计收获，并在结束后保留最近一轮收获。</li>
+        <li>Fixed: Switching the sect preview now preserves the current scroll position. After joining a sect, the sect selector is locked until the cultivator leaves.<br/>
+            修复：切换待加入宗门时保持当前滚动位置；加入宗门后锁定宗门选择框，退出后恢复选择。</li>
+        <li>Compatibility: Replaced the deprecated <code>DynamicBundle(String)</code> constructor to remove the compatibility warning in newer IntelliJ IDEA versions.<br/>
+            兼容：替换废弃的 <code>DynamicBundle(String)</code> 构造器，消除新版 IntelliJ IDEA 的兼容性警告。</li>
+    </ul>
     <b>3.7.1</b>
     <ul>
         <li>Fixed: Sect inheritance display names now match the actual techniques, spells, artifacts, or pills obtained after redemption. Joined human-world sects remain visible after rebirth, sect event results are shown in the event area, and the human-world guide now includes sect promotion requirements.<br/>

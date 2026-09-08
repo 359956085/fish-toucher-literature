@@ -12,10 +12,10 @@ import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
-public final class FishToucherBundle extends DynamicBundle {
+public final class FishToucherBundle {
 
     private static final String BUNDLE = "messages.FishToucherBundle";
-    private static final FishToucherBundle INSTANCE = new FishToucherBundle();
+    private static final DynamicBundle INSTANCE = new DynamicBundle(FishToucherBundle.class, BUNDLE);
     private static final ResourceBundle.Control MANUAL_LANGUAGE_CONTROL = new ResourceBundle.Control() {
         @Override
         public List<Locale> getCandidateLocales(String baseName, Locale locale) {
@@ -29,7 +29,6 @@ public final class FishToucherBundle extends DynamicBundle {
     };
 
     private FishToucherBundle() {
-        super(BUNDLE);
     }
 
     @Nls

@@ -149,6 +149,78 @@ class NovelReaderSettingsTest {
     }
 
     @Test
+    void 宗门秘境收获应清洗非法存档数据() {
+        NovelReaderSettings.State state = new NovelReaderSettings.State();
+        state.sectSecretRealmLootSectId = " qingyun_sword ";
+        state.sectSecretRealmLootQi = -1L;
+        state.sectSecretRealmLootStones = 120L;
+        state.sectSecretRealmLootContribution = -2L;
+        state.sectSecretRealmLootPrestige = 30L;
+        state.sectSecretRealmLootPills = new HashMap<>();
+        state.sectSecretRealmLootPills.put("spirit_pill", 2);
+        state.sectSecretRealmLootPills.put("unknown_pill", 3);
+        state.sectSecretRealmLootPills.put("meridian_pill", -1);
+        state.sectSecretRealmLootSpellIds = new ArrayList<>(List.of("fire_sword", "fire_sword", ""));
+        state.sectSecretRealmLootArtifactIds = null;
+
+        NovelReaderSettings settings = new NovelReaderSettings();
+        settings.loadState(state);
+
+        NovelReaderSettings.SectSecretRealmLoot loot = settings.getSectSecretRealmLoot();
+        assertEquals("qingyun_sword", loot.sectId());
+        assertEquals(0L, loot.qi());
+        assertEquals(120L, loot.stones());
+        assertEquals(0L, loot.contribution());
+        assertEquals(30L, loot.prestige());
+        assertEquals(Map.of("spirit_pill", 2), loot.pills());
+        assertEquals(List.of("fire_sword"), loot.spellIds());
+        assertTrue(loot.artifactIds().isEmpty());
+
+        NovelReaderSettings.State oldState = new NovelReaderSettings.State();
+        oldState.sectSecretRealmLootStones = 999L;
+        settings.loadState(oldState);
+        assertFalse(settings.getSectSecretRealmLoot().hasRound());
+        assertTrue(settings.getSectSecretRealmLoot().isEmpty());
+    }
+
+    @Test
+    void 宗门秘境收获应累计并在新一轮开始时重置() {
+        NovelReaderSettings settings = new NovelReaderSettings();
+        settings.startSectSecretRealmLoot("qingyun_sword");
+        settings.addSectSecretRealmLoot(100L, 20L, 3L, 4L);
+        settings.addSectSecretRealmLoot(50L, 10L, 2L, 1L);
+        settings.addSectSecretRealmLootPill("spirit_pill", 1);
+        settings.addSectSecretRealmLootPill("spirit_pill", 2);
+        settings.addSectSecretRealmLootSpell("fire_sword");
+        settings.addSectSecretRealmLootSpell("fire_sword");
+        settings.addSectSecretRealmLootArtifact("green_sword");
+
+        NovelReaderSettings.SectSecretRealmLoot loot = settings.getSectSecretRealmLoot();
+        assertTrue(loot.hasRound());
+        assertFalse(loot.isEmpty());
+        assertEquals(150L, loot.qi());
+        assertEquals(30L, loot.stones());
+        assertEquals(5L, loot.contribution());
+        assertEquals(5L, loot.prestige());
+        assertEquals(Map.of("spirit_pill", 3), loot.pills());
+        assertEquals(List.of("fire_sword"), loot.spellIds());
+        assertEquals(List.of("green_sword"), loot.artifactIds());
+        assertThrows(UnsupportedOperationException.class, () -> loot.pills().put("qi_pill", 1));
+        assertThrows(UnsupportedOperationException.class, () -> loot.spellIds().add("palm_thunder"));
+
+        settings.clearSectSecretRealmProgress();
+        assertEquals(loot, settings.getSectSecretRealmLoot());
+
+        settings.startSectSecretRealmLoot("danxia_valley");
+        NovelReaderSettings.SectSecretRealmLoot nextLoot = settings.getSectSecretRealmLoot();
+        assertEquals("danxia_valley", nextLoot.sectId());
+        assertTrue(nextLoot.isEmpty());
+
+        settings.clearSectSecretRealmLoot();
+        assertFalse(settings.getSectSecretRealmLoot().hasRound());
+    }
+
+    @Test
     void 自建宗门建筑等级应限制到五级() {
         NovelReaderSettings settings = new NovelReaderSettings();
         settings.createOwnSect("太虚宗");
