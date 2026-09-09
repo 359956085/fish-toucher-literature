@@ -121,24 +121,28 @@ class SectRulesTest {
     @Test
     void 宗门任务耗时应复用境界和天机阁减免() {
         IdleCultivationManager manager = new IdleCultivationManager();
-        NovelReaderSettings settings = NovelReaderSettings.getInstance();
+        NovelReaderSettings settings = new NovelReaderSettings();
         SectCatalog.SectTaskDefinition task = SectCatalog.task("sort_library");
 
         settings.setCultivationRealmIndex(0);
         settings.setCultivationSectId("qingyun_sword");
         assertEquals(30L, manager.getSectTaskDurationMinutes(task, settings));
 
-        settings.setCultivationRealmIndex(8);
-        assertEquals(15L, manager.getSectTaskDurationMinutes(task, settings));
+        settings.setCultivationRealmIndex(CultivationRules.HUMAN_MAX_REALM_INDEX);
+        assertEquals(21L, manager.getSectTaskDurationMinutes(task, settings));
 
         settings.setCultivationRealmIndex(4);
         settings.setCultivationSectId("qingyun_sword");
-        assertEquals(23L, manager.getSectTaskDurationMinutes(task, settings));
+        assertEquals(26L, manager.getSectTaskDurationMinutes(task, settings));
 
         settings.setCultivationSectId("tianji_pavilion");
-        assertEquals(21L, manager.getSectTaskDurationMinutes(task, settings));
+        assertEquals(24L, manager.getSectTaskDurationMinutes(task, settings));
 
-        settings.setCultivationRealmIndex(8);
+        settings.setCultivationRealmIndex(CultivationRules.HUMAN_MAX_REALM_INDEX);
+        assertEquals(20L, manager.getSectTaskDurationMinutes(task, settings));
+
+        settings.setCultivationAscended(true);
+        settings.setCultivationRealmIndex(CultivationRules.realmCount() - 1);
         assertEquals(15L, manager.getSectTaskDurationMinutes(task, settings));
     }
 
@@ -163,7 +167,8 @@ class SectRulesTest {
                 AscendedSectCatalog.GATHERING_ARRAY_ID
         ));
 
-        assertEquals(21, AscendedSectRules.gatheringQiBonusPercent(settings));
+        // 三级基础加成为 16%，两名弟子合计 150 资质，放大至 24%。
+        assertEquals(24, AscendedSectRules.gatheringQiBonusPercent(settings));
         assertEquals(2, AscendedSectRules.assignedDiscipleCount(settings, AscendedSectCatalog.GATHERING_ARRAY_ID));
     }
 

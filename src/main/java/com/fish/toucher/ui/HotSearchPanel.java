@@ -28,6 +28,7 @@ public class HotSearchPanel extends JPanel implements Disposable {
     private final JList<HotSearchManager.HotSearchItem> list;
     private final JLabel statusLabel;
     private final Runnable changeListener;
+    private boolean disposed;
     private int currentIndex = -1;
 
     public HotSearchPanel(Project project) {
@@ -153,6 +154,7 @@ public class HotSearchPanel extends JPanel implements Disposable {
 
     @Override
     public void dispose() {
+        disposed = true;
         HotSearchManager.getInstance().removeChangeListener(changeListener);
     }
 
@@ -162,6 +164,7 @@ public class HotSearchPanel extends JPanel implements Disposable {
     }
 
     private void refreshContent() {
+        if (disposed) return;
         HotSearchManager manager = HotSearchManager.getInstance();
 
         if (!manager.hasContent()) {

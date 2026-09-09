@@ -29,6 +29,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
     private final JSlider progressSlider;
     private final RecentFileSelector recentFileSelector;
     private final Runnable changeListener;
+    private boolean disposed;
     private boolean syncingSlider;
 
     public NovelReaderPanel(Project project) {
@@ -151,6 +152,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
     }
 
     private void refreshContent() {
+        if (disposed) return;
         LOG.debug("refreshContent: updating panel content");
         NovelReaderManager manager = NovelReaderManager.getInstance();
         recentFileSelector.refresh();
@@ -201,6 +203,7 @@ public class NovelReaderPanel extends JPanel implements Disposable {
             LOG.info("openFile: user selected file: " + files[0].getPath());
             String filePath = files[0].getPath();
             NovelReaderManager.getInstance().loadFileAsync(project, filePath, result -> {
+                if (disposed || project.isDisposed()) return;
                 if (!result.isSuccess()
                         && result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
                     JOptionPane.showMessageDialog(
@@ -229,6 +232,8 @@ public class NovelReaderPanel extends JPanel implements Disposable {
 
     @Override
     public void dispose() {
+        disposed = true;
+        recentFileSelector.dispose();
         NovelReaderManager.getInstance().removeChangeListener(changeListener);
     }
 }

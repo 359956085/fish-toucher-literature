@@ -40,16 +40,12 @@ final class IdleCultivationTravelTab {
     }
 
     void reloadTravelOptions(IdleCultivationManager manager) {
-        String selectedId = NovelReaderSettings.getInstance().getSelectedTravelLocationId();
-        travelComboBox.removeAllItems();
-        List<IdleCultivationManager.TravelLocationDefinition> locations = manager.getTravelLocationDefinitions();
-        for (IdleCultivationManager.TravelLocationDefinition location : locations) {
-            TravelOption option = new TravelOption(location, manager.isTravelUnlocked(location));
-            travelComboBox.addItem(option);
-            if (location.id().equals(selectedId)) {
-                travelComboBox.setSelectedItem(option);
-            }
+        java.util.List<TravelOption> options = new java.util.ArrayList<>();
+        for (var location : manager.getTravelLocationDefinitions()) {
+            options.add(new TravelOption(location, manager.isTravelUnlocked(location)));
         }
+        StableComboOptions.update(travelComboBox, options, option -> option.location.id(),
+                NovelReaderSettings.getInstance().getSelectedTravelLocationId());
     }
 
     void updateActiveTravel(IdleCultivationManager manager) {

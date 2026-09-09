@@ -6,9 +6,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.function.BooleanSupplier;
@@ -34,12 +31,16 @@ final class IndexedNovelDocument implements AutoCloseable {
     );
 
     private final Path cachePath;
+    private final NovelCacheSession cacheSession;
+    private boolean closed;
+    private int readers;
     private final int lineCount;
     private final int[] checkpointLines;
     private final long[] checkpointOffsets;
 
-    private IndexedNovelDocument(Path cachePath, int lineCount, SparseIndex index) {
-        this.cachePath = cachePath;
+    private IndexedNovelDocument(NovelCacheSession cacheSession, int lineCount, SparseIndex index) {
+        this.cacheSession = cacheSession;
+        this.cachePath = cacheSession.cachePath();
         this.lineCount = lineCount;
         this.checkpointLines = index.lines();
         this.checkpointOffsets = index.offsets();
@@ -58,8 +59,8 @@ final class IndexedNovelDocument implements AutoCloseable {
             throw new LoadException(NovelReaderManager.LoadStatus.TOO_LARGE, "文件超过 500 MiB");
         }
 
-        Files.createDirectories(CACHE_DIR);
-        Path cache = Files.createTempFile(CACHE_DIR, "novel-", ".utf8");
+        NovelCacheSession cacheSession = NovelCacheSession.create(CACHE_DIR, NovelCacheSession.CLEANER);
+        Path cache = cacheSession.cachePath();
         boolean completed = false;
         try {
             CharsetInfo charsetInfo = detectCharset(source);
@@ -120,10 +121,10 @@ final class IndexedNovelDocument implements AutoCloseable {
                 throw new LoadException(NovelReaderManager.LoadStatus.EMPTY, "文件没有有效内容");
             }
             completed = true;
-            return new IndexedNovelDocument(cache, lineCount, index);
+            return new IndexedNovelDocument(cacheSession, lineCount, index);
         } finally {
             if (!completed) {
-                Files.deleteIfExists(cache);
+                cacheSession.close();
             }
         }
     }
@@ -133,10 +134,38 @@ final class IndexedNovelDocument implements AutoCloseable {
     }
 
     LineWindow readWindow(int requestedLine) throws IOException {
+        return readWithLease(() -> readWindowContents(requestedLine, 0));
+    }
+
+    LineWindow readPageWindow(int firstLine, int pageLines) throws IOException {
+        int requiredLines = Math.max(1, Math.min(50, pageLines));
+        return readWithLease(() -> readWindowContents(firstLine, requiredLines));
+    }
+
+    interface ReadOperation<T> {
+        T read() throws IOException;
+    }
+
+    <T> T readWithLease(ReadOperation<T> operation) throws IOException {
+        synchronized (this) {
+            if (closed) throw new IOException("小说文档已关闭");
+            readers++;
+        }
+        try {
+            return operation.read();
+        } finally {
+            synchronized (this) {
+                readers--;
+                if (closed && readers == 0) cacheSession.close();
+            }
+        }
+    }
+
+    private LineWindow readWindowContents(int requestedLine, int requiredLines) throws IOException {
         int target = Math.max(0, Math.min(requestedLine, lineCount - 1));
         int checkpoint = findCheckpoint(target);
         int lineNumber = checkpointLines[checkpoint];
-        int startLine = Math.max(lineNumber, target - 128);
+        int startLine = requiredLines > 0 ? target : Math.max(lineNumber, target - 128);
         List<String> lines = new ArrayList<>();
         int bytesRead = 0;
 
@@ -153,7 +182,9 @@ final class IndexedNovelDocument implements AutoCloseable {
                         && lineNumber < lineCount
                         && (line = reader.readLine()) != null) {
                     int lineBytes = line.getBytes(StandardCharsets.UTF_8).length;
-                    if (!lines.isEmpty() && bytesRead + lineBytes > MAX_WINDOW_BYTES) {
+                    // 当前页必须完整；极长行页最多 50 行，其余预读仍受 16 MiB 限制。
+                    if (lines.size() >= Math.max(1, requiredLines)
+                            && bytesRead + lineBytes > MAX_WINDOW_BYTES) {
                         break;
                     }
                     lines.add(line);
@@ -180,42 +211,15 @@ final class IndexedNovelDocument implements AutoCloseable {
     }
 
     @Override
-    public void close() {
-        try {
-            Files.deleteIfExists(cachePath);
-        } catch (IOException ignored) {
-            // 删除失败时由下次启动继续清理。
-        }
+    public synchronized void close() {
+        if (closed) return;
+        closed = true;
+        if (readers == 0) cacheSession.close();
     }
 
     static void cleanupStaleCaches() {
-        if (!Files.isDirectory(CACHE_DIR)) {
-            return;
-        }
-        FileTime threshold = FileTime.from(Instant.now().minus(1, ChronoUnit.DAYS));
-        try (var paths = Files.list(CACHE_DIR)) {
-            paths.filter(path -> path.getFileName().toString().startsWith("novel-"))
-                    .filter(path -> isOlderThan(path, threshold))
-                    .forEach(IndexedNovelDocument::deleteQuietly);
-        } catch (IOException ignored) {
-            // 缓存清理失败不阻止插件启动。
-        }
-    }
-
-    private static boolean isOlderThan(Path path, FileTime threshold) {
-        try {
-            return Files.getLastModifiedTime(path).compareTo(threshold) < 0;
-        } catch (IOException ignored) {
-            return false;
-        }
-    }
-
-    private static void deleteQuietly(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // 单个文件失败时继续处理其他文件。
-        }
+        NovelCacheSession.CLEANER.execute(() ->
+                NovelCacheSession.cleanup(CACHE_DIR, java.time.Clock.systemUTC()));
     }
 
     private static CharsetInfo detectCharset(Path source) throws IOException {

@@ -25,6 +25,9 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     private final JTabbedPane tabs;
     private final Runnable changeListener;
     private Boolean lastAscendedTabState;
+    private final VisibleTabRefresher<Component> refresher;
+    private boolean syncingTabs;
+    private boolean disposed;
 
     public IdleCultivationPanel() {
         LOG.info("IdleCultivationPanel: initializing");
@@ -51,6 +54,19 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         tabs.addTab(FishToucherBundle.message("cultivation.tab.guide"), guideTab.getComponent());
         add(tabs, BorderLayout.CENTER);
 
+        refresher = new VisibleTabRefresher<>(this::isShowing, tabs::getSelectedComponent);
+        for (int index = 0; index < tabs.getTabCount(); index++) {
+            JComponent tab = (JComponent) tabs.getComponentAt(index);
+            refresher.register(tab, () -> preserveOuterScrollPositions(tab, () -> refreshTab(tab)));
+        }
+        tabs.addChangeListener(event -> {
+            if (!syncingTabs && !disposed) refresher.refreshSelected();
+        });
+        addHierarchyListener(event -> {
+            if ((event.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0 && !disposed) {
+                refresher.refreshSelected();
+            }
+        });
         changeListener = this::refreshContent;
         IdleCultivationManager manager = IdleCultivationManager.getInstance();
         manager.addChangeListener(changeListener);
@@ -81,28 +97,40 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
     }
 
     private void refreshContent() {
-        preserveOuterScrollPositions(this, this::refreshContentWithoutScrollJump);
+        if (disposed) return;
+        syncingTabs = true;
+        try {
+            syncAscendedTabs(NovelReaderSettings.getInstance().isCultivationAscended());
+        } finally {
+            syncingTabs = false;
+        }
+        refresher.invalidate();
+        refresher.refreshSelected();
     }
 
-    private void refreshContentWithoutScrollJump() {
+    private void refreshTab(JComponent tab) {
+        if (disposed) return;
         setTabsRefreshing(true);
         try {
             IdleCultivationManager manager = IdleCultivationManager.getInstance();
             NovelReaderSettings settings = NovelReaderSettings.getInstance();
-            syncAscendedTabs(settings.isCultivationAscended());
-            guideTab.updateGuideState(settings.isCultivationAscended());
-            trainingTab.updateTrainingState(manager);
-            bagTab.reloadBagOptions(manager, settings);
-            travelTab.reloadTravelOptions(manager);
-            travelTab.updateActiveTravel(manager);
-            abodeTab.reloadAbodeFacilities(manager);
-            challengeTab.reloadCultivatorOptions(manager);
-            challengeTab.updateBattleState(manager);
-            sectTab.reloadSectState(manager);
+            if (tab == trainingTab.getComponent()) trainingTab.updateTrainingState(manager);
+            else if (tab == bagTab.getComponent()) bagTab.reloadBagOptions(manager, settings);
+            else if (tab == travelTab.getComponent()) {
+                travelTab.reloadTravelOptions(manager);
+                travelTab.updateActiveTravel(manager);
+            } else if (tab == abodeTab.getComponent()) abodeTab.reloadAbodeFacilities(manager);
+            else if (tab == challengeTab.getComponent()) {
+                challengeTab.reloadCultivatorOptions(manager);
+                challengeTab.updateBattleState(manager);
+            } else if (tab == sectTab.getComponent()) sectTab.reloadSectState(manager);
+            else if (tab == guideTab.getComponent()) guideTab.updateGuideState(settings.isCultivationAscended());
         } finally {
             setTabsRefreshing(false);
         }
-        updateSelectionDescriptions();
+        if (tab == bagTab.getComponent()) bagTab.updateSelectionDescriptions();
+        else if (tab == travelTab.getComponent()) travelTab.updateSelectionDescriptions();
+        else if (tab == challengeTab.getComponent()) challengeTab.updateSelectionDescriptions();
     }
 
     private void setTabsRefreshing(boolean refreshing) {
@@ -110,12 +138,6 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
         travelTab.setRefreshing(refreshing);
         challengeTab.setRefreshing(refreshing);
         sectTab.setRefreshing(refreshing);
-    }
-
-    private void updateSelectionDescriptions() {
-        bagTab.updateSelectionDescriptions();
-        travelTab.updateSelectionDescriptions();
-        challengeTab.updateSelectionDescriptions();
     }
 
     private void syncAscendedTabs(boolean ascended) {
@@ -171,6 +193,8 @@ public class IdleCultivationPanel extends JPanel implements Disposable {
 
     @Override
     public void dispose() {
+        disposed = true;
+        refresher.close();
         IdleCultivationManager.getInstance().removeChangeListener(changeListener);
     }
 }

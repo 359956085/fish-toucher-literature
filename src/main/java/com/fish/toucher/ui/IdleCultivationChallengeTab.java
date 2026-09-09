@@ -54,19 +54,12 @@ final class IdleCultivationChallengeTab {
     }
 
     void reloadCultivatorOptions(IdleCultivationManager manager) {
-        String selectedId = NovelReaderSettings.getInstance().getSelectedCultivatorId();
-        cultivatorComboBox.removeAllItems();
-        for (IdleCultivationManager.CultivatorDefinition cultivator : manager.getCultivatorDefinitions()) {
-            CultivatorOption option = new CultivatorOption(
-                    cultivator,
-                    manager.isCultivatorUnlocked(cultivator),
-                    manager.isCultivatorDefeated(cultivator)
-            );
-            cultivatorComboBox.addItem(option);
-            if (cultivator.id().equals(selectedId)) {
-                cultivatorComboBox.setSelectedItem(option);
-            }
+        java.util.List<CultivatorOption> options = new java.util.ArrayList<>();
+        for (var cultivator : manager.getCultivatorDefinitions()) {
+            options.add(new CultivatorOption(cultivator, manager.isCultivatorUnlocked(cultivator), manager.isCultivatorDefeated(cultivator)));
         }
+        StableComboOptions.update(cultivatorComboBox, options, option -> option.cultivator.id(),
+                NovelReaderSettings.getInstance().getSelectedCultivatorId());
     }
 
     void updateBattleState(IdleCultivationManager manager) {

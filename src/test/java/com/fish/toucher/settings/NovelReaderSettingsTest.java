@@ -223,6 +223,7 @@ class NovelReaderSettingsTest {
     @Test
     void 自建宗门建筑等级应限制到五级() {
         NovelReaderSettings settings = new NovelReaderSettings();
+        settings.setCultivationAscended(true);
         settings.createOwnSect("太虚宗");
         settings.setOwnSectBuildingLevel("gathering_array", 10);
 

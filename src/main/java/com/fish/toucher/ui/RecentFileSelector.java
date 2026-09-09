@@ -13,12 +13,13 @@ import java.awt.*;
 import java.io.File;
 import java.util.List;
 
-public class RecentFileSelector extends JPanel {
+public class RecentFileSelector extends JPanel implements com.intellij.openapi.Disposable {
 
     private final @Nullable Project project;
     private final Runnable onChange;
     private final JButton dropdownButton;
     private final JPopupMenu popupMenu;
+    private boolean disposed;
 
     public RecentFileSelector(@Nullable Project project, Runnable onChange) {
         super(new FlowLayout(FlowLayout.LEFT, 2, 0));
@@ -59,6 +60,7 @@ public class RecentFileSelector extends JPanel {
     }
 
     public void refresh() {
+        if (disposed) return;
         List<String> paths = NovelReaderSettings.getInstance().getRecentFilePaths();
         if (paths.isEmpty()) {
             RecentFileItem placeholder = RecentFileItem.placeholderItem();
@@ -159,6 +161,7 @@ public class RecentFileSelector extends JPanel {
 
     private void loadFile(String path) {
         NovelReaderManager.getInstance().loadFileAsync(project, path, result -> {
+            if (disposed || (project != null && project.isDisposed())) return;
             if (!result.isSuccess()
                     && result.status() != NovelReaderManager.LoadStatus.CANCELLED) {
                 Messages.showErrorDialog(
@@ -171,6 +174,13 @@ public class RecentFileSelector extends JPanel {
             onChange.run();
             refresh();
         });
+    }
+
+    @Override
+    public void dispose() {
+        disposed = true;
+        popupMenu.setVisible(false);
+        popupMenu.removeAll();
     }
 
     private record RecentFileItem(String path, String label, boolean placeholder) {

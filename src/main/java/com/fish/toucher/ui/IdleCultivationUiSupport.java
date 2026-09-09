@@ -269,7 +269,9 @@ final class IdleCultivationUiSupport {
             action.run();
         } finally {
             if (!positions.isEmpty()) {
-                SwingUtilities.invokeLater(() -> restoreOuterScrollPositions(positions));
+                SwingUtilities.invokeLater(() -> {
+                    if (root.isShowing()) restoreOuterScrollPositions(positions);
+                });
             }
         }
     }

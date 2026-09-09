@@ -15,13 +15,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service(Service.Level.APP)
 public final class IdleCultivationManager implements Disposable {
@@ -167,12 +165,16 @@ public final class IdleCultivationManager implements Disposable {
     );
     private static final Map<String, AbodeFacilityDefinition> ABODE_BY_ID = indexAbodeFacilities();
 
-    private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
-    private final AtomicBoolean notificationPending = new AtomicBoolean();
+    private final ChangeNotifier changes = new ChangeNotifier(
+            task -> ApplicationManager.getApplication().invokeLater(task),
+            exception -> LOG.warn("界面变更监听器执行失败", exception));
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
     private ScheduledFuture<?> battleTask;
     private boolean running;
+    private boolean disposed;
+    private final TaskEpoch tickEpoch = new TaskEpoch(this);
+    private final TaskEpoch battleEpoch = new TaskEpoch(this);
     private String lastMessage;
     private String lastSectEventResult;
     private BattleState battleState;
@@ -194,32 +196,26 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public void addChangeListener(Runnable listener) {
-        listeners.addIfAbsent(listener);
+        changes.add(listener);
     }
 
     public void removeChangeListener(Runnable listener) {
-        listeners.remove(listener);
+        changes.remove(listener);
     }
 
     private void fireChange() {
-        if (!notificationPending.compareAndSet(false, true)) {
-            return;
-        }
-        ApplicationManager.getApplication().invokeLater(() -> {
-            notificationPending.set(false);
-            for (Runnable listener : listeners) {
-                listener.run();
-            }
-        });
+        changes.fire();
     }
 
     public synchronized void start() {
+        if (disposed) return;
         ensureCultivationDefaults();
         if (running) {
             settleProgress(false);
             return;
         }
         running = true;
+        tickEpoch.invalidate();
         LOG.info("start: starting idle cultivation manager");
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread thread = new Thread(r, "IdleCultivationManager-pool");
@@ -227,16 +223,18 @@ public final class IdleCultivationManager implements Disposable {
             return thread;
         });
         settleProgress(true);
-        tickTask = scheduler.scheduleAtFixedRate(() -> {
+        tickTask = scheduler.scheduleAtFixedRate(tickEpoch.guard(() -> {
             try {
                 settleProgress(false);
             } catch (Exception e) {
                 LOG.warn("tick: failed to settle cultivation progress: " + e.getMessage());
             }
-        }, TICK_SECONDS, TICK_SECONDS, TimeUnit.SECONDS);
+        }), TICK_SECONDS, TICK_SECONDS, TimeUnit.SECONDS);
     }
 
     public synchronized void stop() {
+        tickEpoch.invalidate();
+        battleEpoch.invalidate();
         if (!running) {
             return;
         }
@@ -246,6 +244,7 @@ public final class IdleCultivationManager implements Disposable {
         if (tickTask != null) {
             tickTask.cancel(false);
         }
+        battleEpoch.invalidate();
         if (battleTask != null) {
             battleTask.cancel(false);
         }
@@ -335,6 +334,7 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     public synchronized void settleProgress(boolean showOfflineMessage) {
+        if (disposed) return;
         ensureCultivationDefaults();
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         long now = System.currentTimeMillis();
@@ -1812,17 +1812,18 @@ public final class IdleCultivationManager implements Disposable {
         battleState = new BattleState(enemy, calculateCombatStats(), getEquippedSpellDefinitions(), trial.id());
         addBattleLog(battleState, FishToucherBundle.message("cultivation.battle.log.started", enemy.name()));
         lastMessage = FishToucherBundle.message("cultivation.sect.trialStarted", enemy.name());
+        battleEpoch.invalidate();
         if (battleTask != null) {
             battleTask.cancel(false);
         }
         if (scheduler != null) {
-            battleTask = scheduler.scheduleAtFixedRate(() -> {
+            battleTask = scheduler.scheduleAtFixedRate(battleEpoch.guard(() -> {
                 try {
                     advanceBattle();
                 } catch (Exception e) {
                     LOG.warn("battle: failed to advance sect trial: " + e.getMessage());
                 }
-            }, BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
+            }), BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
         }
         fireChange();
         return true;
@@ -1928,17 +1929,18 @@ public final class IdleCultivationManager implements Disposable {
         battleState = new BattleState(cultivator, calculateCombatStats(), getEquippedSpellDefinitions());
         addBattleLog(battleState, FishToucherBundle.message("cultivation.battle.log.started", cultivator.name()));
         lastMessage = FishToucherBundle.message("cultivation.status.challengeStarted", cultivator.name());
+        battleEpoch.invalidate();
         if (battleTask != null) {
             battleTask.cancel(false);
         }
         if (scheduler != null) {
-            battleTask = scheduler.scheduleAtFixedRate(() -> {
+            battleTask = scheduler.scheduleAtFixedRate(battleEpoch.guard(() -> {
                 try {
                     advanceBattle();
                 } catch (Exception e) {
                     LOG.warn("battle: failed to advance challenge: " + e.getMessage());
                 }
-            }, BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
+            }), BATTLE_TICK_SECONDS, BATTLE_TICK_SECONDS, TimeUnit.SECONDS);
         }
         fireChange();
         return true;
@@ -2494,6 +2496,7 @@ public final class IdleCultivationManager implements Disposable {
     private void advanceBattle() {
         BattleState state;
         synchronized (this) {
+            if (disposed || !running) return;
             state = battleState;
             if (state == null || state.finished) {
                 cancelBattleTask();
@@ -2708,6 +2711,7 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     private void cancelBattleTask() {
+        battleEpoch.invalidate();
         if (battleTask != null) {
             battleTask.cancel(false);
             battleTask = null;
@@ -3873,9 +3877,22 @@ public final class IdleCultivationManager implements Disposable {
     }
 
     @Override
-    public void dispose() {
-        stop();
-        listeners.clear();
+    public synchronized void dispose() {
+        if (disposed) return;
+        try {
+            stop();
+        } finally {
+            disposed = true;
+            tickEpoch.close();
+            battleEpoch.close();
+            if (scheduler != null) scheduler.shutdownNow();
+            scheduler = null;
+            tickTask = null;
+            battleTask = null;
+            battleState = null;
+            running = false;
+            changes.close();
+        }
     }
 
     public record TravelReward(long qi, long stones, String pillId, int pillCount,

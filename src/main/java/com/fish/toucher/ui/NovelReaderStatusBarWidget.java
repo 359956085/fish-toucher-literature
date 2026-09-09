@@ -23,6 +23,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
     private static final Logger LOG = Logger.getInstance(NovelReaderStatusBarWidget.class);
     private final Project project;
     private StatusBar statusBar;
+    private boolean disposed;
     private final Runnable changeListener;
 
     private final Runnable hotSearchChangeListener;
@@ -58,6 +59,7 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
     @Override
     public void install(@NotNull StatusBar statusBar) {
+        if (disposed) return;
         LOG.info("install: status bar widget installed");
         this.statusBar = statusBar;
         // Force an initial update so the widget shows current state immediately
@@ -66,6 +68,8 @@ public class NovelReaderStatusBarWidget implements StatusBarWidget, StatusBarWid
 
     @Override
     public void dispose() {
+        disposed = true;
+        statusBar = null;
         LOG.info("dispose: status bar widget disposed");
         NovelReaderManager.getInstance().removeChangeListener(changeListener);
         HotSearchManager.getInstance().removeChangeListener(hotSearchChangeListener);

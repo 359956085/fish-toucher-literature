@@ -157,64 +157,49 @@ final class IdleCultivationBagTab {
     }
 
     private void reloadTechniqueOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
-        String selectedId = settings.getEquippedTechniqueId();
-        techniqueComboBox.removeAllItems();
-        for (IdleCultivationManager.TechniqueDefinition technique : manager.getTechniqueDefinitions()) {
-            boolean unlocked = settings.isTechniqueUnlocked(technique.id());
-            TechniqueOption option = new TechniqueOption(technique, unlocked);
-            techniqueComboBox.addItem(option);
-            if (technique.id().equals(selectedId)) {
-                techniqueComboBox.setSelectedItem(option);
-            }
+        List<TechniqueOption> options = new ArrayList<>();
+        for (var technique : manager.getTechniqueDefinitions()) {
+            options.add(new TechniqueOption(technique, settings.isTechniqueUnlocked(technique.id())));
         }
+        StableComboOptions.update(techniqueComboBox, options, option -> option.technique.id(),
+                settings.getEquippedTechniqueId());
     }
 
     private void reloadPillOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
-        String selectedId = settings.getSelectedCultivationPillId();
-        pillComboBox.removeAllItems();
-        for (IdleCultivationManager.PillDefinition pill : manager.getPillDefinitions()) {
-            PillOption option = new PillOption(pill, settings.getPillCount(pill.id()));
-            pillComboBox.addItem(option);
-            if (pill.id().equals(selectedId)) {
-                pillComboBox.setSelectedItem(option);
-            }
+        List<PillOption> options = new ArrayList<>();
+        for (var pill : manager.getPillDefinitions()) {
+            options.add(new PillOption(pill, settings.getPillCount(pill.id())));
         }
+        StableComboOptions.update(pillComboBox, options, option -> option.pill.id(),
+                settings.getSelectedCultivationPillId());
     }
 
     private void reloadSpellOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
-        List<String> equippedSpellIds = settings.getEquippedSpellIds();
-        for (int i = 0; i < spellSlotComboBoxes.size(); i++) {
-            JComboBox<SpellOption> comboBox = spellSlotComboBoxes.get(i);
-            String selectedId = i < equippedSpellIds.size() ? equippedSpellIds.get(i) : "";
-            comboBox.removeAllItems();
-            comboBox.addItem(SpellOption.none());
-            for (IdleCultivationManager.SpellDefinition spell : manager.getSpellDefinitions()) {
-                boolean unlocked = settings.isSpellUnlocked(spell.id());
-                SpellOption option = new SpellOption(spell, false, unlocked);
-                comboBox.addItem(option);
-                if (spell.id().equals(selectedId)) {
-                    comboBox.setSelectedItem(option);
-                }
-            }
+        List<String> equipped = settings.getEquippedSpellIds();
+        List<SpellOption> options = new ArrayList<>();
+        options.add(SpellOption.none());
+        for (var spell : manager.getSpellDefinitions()) {
+            options.add(new SpellOption(spell, false, settings.isSpellUnlocked(spell.id())));
+        }
+        for (int index = 0; index < spellSlotComboBoxes.size(); index++) {
+            StableComboOptions.update(spellSlotComboBoxes.get(index), options,
+                    option -> option.empty ? "" : option.spell.id(),
+                    index < equipped.size() ? equipped.get(index) : "");
         }
     }
 
     private void reloadArtifactOptions(IdleCultivationManager manager, NovelReaderSettings settings) {
-        List<String> equippedArtifactIds = settings.getEquippedArtifactIds();
-        for (int i = 0; i < artifactSlotComboBoxes.size(); i++) {
-            JComboBox<ArtifactOption> comboBox = artifactSlotComboBoxes.get(i);
-            String selectedId = i < equippedArtifactIds.size() ? equippedArtifactIds.get(i) : "";
-            comboBox.removeAllItems();
-            comboBox.addItem(ArtifactOption.none());
-            for (IdleCultivationManager.ArtifactDefinition artifact : manager.getArtifactDefinitions()) {
-                boolean unlocked = settings.isArtifactUnlocked(artifact.id());
-                boolean equipped = equippedArtifactIds.contains(artifact.id());
-                ArtifactOption option = new ArtifactOption(artifact, false, unlocked, equipped);
-                comboBox.addItem(option);
-                if (artifact.id().equals(selectedId)) {
-                    comboBox.setSelectedItem(option);
-                }
-            }
+        List<String> equipped = settings.getEquippedArtifactIds();
+        List<ArtifactOption> options = new ArrayList<>();
+        options.add(ArtifactOption.none());
+        for (var artifact : manager.getArtifactDefinitions()) {
+            options.add(new ArtifactOption(artifact, false, settings.isArtifactUnlocked(artifact.id()),
+                    equipped.contains(artifact.id())));
+        }
+        for (int index = 0; index < artifactSlotComboBoxes.size(); index++) {
+            StableComboOptions.update(artifactSlotComboBoxes.get(index), options,
+                    option -> option.empty ? "" : option.artifact.id(),
+                    index < equipped.size() ? equipped.get(index) : "");
         }
     }
 
@@ -246,6 +231,7 @@ final class IdleCultivationBagTab {
     }
 
     private void updateTechniqueDescription() {
+        if (refreshing) return;
         TechniqueOption option = (TechniqueOption) techniqueComboBox.getSelectedItem();
         if (option == null) return;
         IdleCultivationManager.TechniqueDefinition technique = option.technique;

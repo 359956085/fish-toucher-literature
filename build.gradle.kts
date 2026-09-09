@@ -73,6 +73,8 @@ tasks {
         testClassesDirs = sourceSets["test"].output.classesDirs
         classpath = sourceSets["test"].runtimeClasspath
         maxHeapSize = "512m"
+        // 只发现大文件测试，避免独立任务加载其他测试依赖的 IDE 服务类型。
+        include("**/LargeNovelFileTest.class")
         useJUnitPlatform {
             includeTags("large-file")
         }

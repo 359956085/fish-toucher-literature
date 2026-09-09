@@ -7,7 +7,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.InputStream;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,7 +18,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -47,10 +45,12 @@ public final class HotSearchManager implements Disposable {
     };
 
     private final List<HotSearchItem> items = new ArrayList<>();
-    private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
-    private final AtomicBoolean notificationPending = new AtomicBoolean();
+    private final ChangeNotifier changes;
+    private final java.util.function.Supplier<NovelReaderSettings> settingsSupplier;
+    private final java.util.function.Supplier<ScheduledExecutorService> schedulerFactory;
     private final AtomicLong requestVersion = new AtomicLong();
-    private final HttpClient httpClient;
+    private final TaskEpoch timerEpoch = new TaskEpoch(this);
+    private final HotSearchTransport httpClient;
 
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> refreshTask;
@@ -63,13 +63,37 @@ public final class HotSearchManager implements Disposable {
     private volatile boolean disposed;
 
     public HotSearchManager() {
+        this(createHttpClient(), NovelReaderSettings::getInstance,
+                () -> Executors.newScheduledThreadPool(2, runnable -> {
+                    Thread thread = new Thread(runnable, "HotSearchManager-pool");
+                    thread.setDaemon(true);
+                    return thread;
+                }), task -> ApplicationManager.getApplication().invokeLater(task));
+    }
+
+    HotSearchManager(HotSearchTransport httpClient,
+                     java.util.function.Supplier<NovelReaderSettings> settingsSupplier,
+                     java.util.function.Supplier<ScheduledExecutorService> schedulerFactory,
+                     Executor dispatcher) {
+        this.httpClient = httpClient;
+        this.settingsSupplier = settingsSupplier;
+        this.schedulerFactory = schedulerFactory;
+        changes = new ChangeNotifier(dispatcher, exception -> LOG.warn("界面变更监听器执行失败", exception));
+    }
+
+    private static HotSearchHttpClient createHttpClient() {
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10));
         ProxySelector proxySelector = ProxySelector.getDefault();
         if (proxySelector != null) {
             builder.proxy(proxySelector);
         }
-        httpClient = builder.build();
+        return new HotSearchHttpClient(builder.build(),
+                Executors.newSingleThreadScheduledExecutor(runnable -> {
+                    Thread thread = new Thread(runnable, "HotSearch-timeout");
+                    thread.setDaemon(true);
+                    return thread;
+                }), Duration.ofSeconds(15), MAX_RESPONSE_BYTES);
     }
 
     public static HotSearchManager getInstance() {
@@ -77,41 +101,29 @@ public final class HotSearchManager implements Disposable {
     }
 
     public void addChangeListener(Runnable listener) {
-        listeners.addIfAbsent(listener);
+        changes.add(listener);
     }
 
     public void removeChangeListener(Runnable listener) {
-        listeners.remove(listener);
+        changes.remove(listener);
     }
 
     private void fireChange() {
-        if (!notificationPending.compareAndSet(false, true)) {
-            return;
-        }
-        ApplicationManager.getApplication().invokeLater(() -> {
-            notificationPending.set(false);
-            if (disposed) return;
-            for (Runnable listener : listeners) {
-                listener.run();
-            }
-        });
+        changes.fire();
     }
 
     public synchronized void start() {
         if (running || disposed) return;
         running = true;
-        scheduler = Executors.newScheduledThreadPool(2, runnable -> {
-            Thread thread = new Thread(runnable, "HotSearchManager-pool");
-            thread.setDaemon(true);
-            return thread;
-        });
+        timerEpoch.invalidate();
+        scheduler = schedulerFactory.get();
         long refreshMinutes = Math.max(
                 1,
-                getSetting(() -> NovelReaderSettings.getInstance().getRefreshIntervalMinutes(),
+                getSetting(() -> settingsSupplier.get().getRefreshIntervalMinutes(),
                         DEFAULT_REFRESH_MINUTES)
         );
         refreshTask = scheduler.scheduleAtFixedRate(
-                this::submitFetch,
+                timerEpoch.guard(this::submitFetch),
                 0,
                 refreshMinutes,
                 TimeUnit.MINUTES
@@ -119,6 +131,7 @@ public final class HotSearchManager implements Disposable {
     }
 
     public synchronized void stop() {
+        timerEpoch.invalidate();
         if (!running && scheduler == null) return;
         running = false;
         requestVersion.incrementAndGet();
@@ -140,6 +153,7 @@ public final class HotSearchManager implements Disposable {
 
     public void switchSource() {
         synchronized (this) {
+            if (disposed) return;
             items.clear();
             currentIndex = 0;
             lastRefreshTime = "";
@@ -162,69 +176,65 @@ public final class HotSearchManager implements Disposable {
     }
 
     private synchronized void submitFetch() {
-        if (!running || scheduler == null || scheduler.isShutdown()) {
-            return;
-        }
+        if (!running || disposed || scheduler == null || scheduler.isShutdown()) return;
         long version = requestVersion.incrementAndGet();
-        String source = NovelReaderSettings.getInstance().getHotSearchSource();
+        NovelReaderSettings settings = settingsSupplier.get();
+        FetchContext context = new FetchContext(settings.getHotSearchSource(),
+                safeXRegion(settings.getXTrendsRegion()), safeGoogleGeo(settings.getGoogleTrendsGeo()));
         cancel(activeFetch);
-        activeFetch = scheduler.submit(() -> fetch(version, source));
+        try {
+            CompletableFuture<HttpResponse<byte[]>> request = httpClient.send(buildRequest(context));
+            activeFetch = request;
+            request.whenComplete((response, error) -> {
+                synchronized (HotSearchManager.this) {
+                    if (version != requestVersion.get() || !running || disposed) return;
+                    if (error != null) {
+                        LOG.warn("热搜请求失败: " + context.source(), error);
+                        return;
+                    }
+                    // 网络回调只投递解析任务，不占用界面线程。
+                    scheduler.execute(() -> applyResponse(version, context, response));
+                }
+            });
+        } catch (RuntimeException exception) {
+            LOG.warn("启动热搜请求失败: " + context.source(), exception);
+        }
     }
 
-    private void fetch(long version, String source) {
+    private void applyResponse(long version, FetchContext context, HttpResponse<byte[]> response) {
+        synchronized (this) {
+            if (disposed || !running || version != requestVersion.get()) return;
+        }
         try {
-            HttpResponse<InputStream> response = httpClient.send(
-                    buildRequest(source),
-                    HttpResponse.BodyHandlers.ofInputStream()
-            );
-            if (response.statusCode() != 200) {
-                closeQuietly(response.body());
-                LOG.warn("热搜请求返回 HTTP " + response.statusCode() + ": " + source);
-                return;
-            }
-
-            String body;
-            try (InputStream input = response.body()) {
-                byte[] bytes = input.readNBytes(MAX_RESPONSE_BYTES + 1);
-                if (bytes.length > MAX_RESPONSE_BYTES) {
-                    LOG.warn("热搜响应超过 5 MiB: " + source);
-                    return;
-                }
-                body = new String(bytes, StandardCharsets.UTF_8);
-            }
-
-            List<HotSearchItem> parsed = HotSearchParser.parse(source, body);
-            if (version != requestVersion.get()
-                    || !running
-                    || !source.equals(NovelReaderSettings.getInstance().getHotSearchSource())) {
-                return;
-            }
-
+            List<HotSearchItem> parsed = HotSearchParser.parse(context.source(),
+                    new String(response.body(), StandardCharsets.UTF_8));
             synchronized (this) {
-                if (version != requestVersion.get() || !running) return;
-                if (!parsed.isEmpty()) {
-                    items.clear();
-                    items.addAll(parsed);
-                    currentIndex = Math.min(currentIndex, items.size() - 1);
-                    currentSource = source;
-                }
-                lastRefreshTime = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-            }
-            if (!parsed.isEmpty()) {
+                if (disposed || !running || version != requestVersion.get()
+                        || !context.matches(settingsSupplier.get())) return;
+                if (parsed.isEmpty()) return;
+                items.clear();
+                items.addAll(parsed);
+                currentIndex = Math.min(currentIndex, items.size() - 1);
+                currentSource = context.source();
+                lastRefreshTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
                 startCarouselIfNeeded();
                 fireChange();
             }
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-        } catch (Exception exception) {
-            if (version == requestVersion.get() && running) {
-                LOG.warn("热搜请求失败: " + source, exception);
-            }
+        } catch (RuntimeException exception) {
+            LOG.warn("解析热搜响应失败: " + context.source(), exception);
         }
     }
 
-    private HttpRequest buildRequest(String source) {
+    private record FetchContext(String source, String xRegion, String googleGeo) {
+        boolean matches(NovelReaderSettings settings) {
+            return source.equals(settings.getHotSearchSource())
+                    && (!"x".equals(source) || xRegion.equals(safeXRegion(settings.getXTrendsRegion())))
+                    && (!"google".equals(source) || googleGeo.equals(safeGoogleGeo(settings.getGoogleTrendsGeo())));
+        }
+    }
+
+    private HttpRequest buildRequest(FetchContext context) {
+        String source = context.source();
         if ("kuaishou".equals(source)) {
             return HttpRequest.newBuilder(URI.create("https://www.kuaishou.com/graphql"))
                     .header("User-Agent", USER_AGENT)
@@ -248,14 +258,13 @@ public final class HotSearchManager implements Disposable {
                             "https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"))
                     .header("Referer", "https://www.douyin.com/");
             case "x" -> {
-                String region = safeXRegion(NovelReaderSettings.getInstance().getXTrendsRegion());
+                String region = context.xRegion();
                 request.uri(URI.create(region.isEmpty()
                         ? "https://trends24.in/"
                         : "https://trends24.in/" + region + "/"));
             }
             case "google" -> {
-                String geo = safeGoogleGeo(
-                        NovelReaderSettings.getInstance().getGoogleTrendsGeo());
+                String geo = context.googleGeo();
                 request.uri(URI.create(
                         "https://trends.google.com/trending/rss?geo=" + geo));
             }
@@ -277,12 +286,12 @@ public final class HotSearchManager implements Disposable {
         if (carouselTask != null || scheduler == null || !running) return;
         long seconds = Math.max(
                 3,
-                getSetting(() -> NovelReaderSettings.getInstance()
+                getSetting(() -> settingsSupplier.get()
                                 .getCarouselIntervalSeconds(),
                         DEFAULT_CAROUSEL_SECONDS)
         );
         carouselTask = scheduler.scheduleAtFixedRate(
-                this::rotateCarousel,
+                timerEpoch.guard(this::rotateCarousel),
                 seconds,
                 seconds,
                 TimeUnit.SECONDS
@@ -352,10 +361,12 @@ public final class HotSearchManager implements Disposable {
     }
 
     @Override
-    public void dispose() {
+    public synchronized void dispose() {
         disposed = true;
+        timerEpoch.close();
         stop();
-        listeners.clear();
+        httpClient.close();
+        changes.close();
         synchronized (this) {
             items.clear();
         }
@@ -367,13 +378,7 @@ public final class HotSearchManager implements Disposable {
         }
     }
 
-    private static void closeQuietly(InputStream input) {
-        try {
-            input.close();
-        } catch (Exception ignored) {
-            // 响应关闭失败不覆盖原始 HTTP 状态。
-        }
-    }
+
 
     private static long getSetting(Callable<Integer> getter, long fallback) {
         try {

@@ -1080,14 +1080,12 @@ final class IdleCultivationSectTab {
         String selectedId = currentSectId.isEmpty()
                 ? NovelReaderSettings.getInstance().getSelectedSectPreviewId()
                 : currentSectId;
-        sectComboBox.removeAllItems();
+        java.util.List<SectOption> options = new java.util.ArrayList<>();
         for (SectCatalog.SectDefinition sect : manager.getSectDefinitions()) {
             SectOption option = new SectOption(sect);
-            sectComboBox.addItem(option);
-            if (sect.id().equals(selectedId)) {
-                sectComboBox.setSelectedItem(option);
-            }
+            options.add(option);
         }
+        StableComboOptions.update(sectComboBox, options, option -> option.sect.id(), selectedId);
     }
 
     private void reloadTasks(IdleCultivationManager manager) {
@@ -1095,62 +1093,56 @@ final class IdleCultivationSectTab {
         String selectedId = activeTask != null
                 ? activeTask.id()
                 : NovelReaderSettings.getInstance().getSelectedSectTaskId();
-        taskComboBox.removeAllItems();
+        java.util.List<TaskOption> options = new java.util.ArrayList<>();
         for (SectCatalog.SectTaskDefinition task : manager.getSectTaskDefinitions()) {
             TaskOption option = new TaskOption(task);
-            taskComboBox.addItem(option);
-            if (task.id().equals(selectedId)) {
-                taskComboBox.setSelectedItem(option);
-            }
+            options.add(option);
         }
+        StableComboOptions.update(taskComboBox, options, option -> option.task.id(), selectedId);
     }
 
     private void reloadSecretRealms(IdleCultivationManager manager) {
         String selectedId = NovelReaderSettings.getInstance().getSelectedSectSecretRealmId();
-        secretRealmComboBox.removeAllItems();
+        java.util.List<SecretRealmOption> options = new java.util.ArrayList<>();
         for (SectCatalog.SectSecretRealmDefinition secretRealm : manager.getCurrentSectSecretRealmDefinitions()) {
             SecretRealmOption option = new SecretRealmOption(secretRealm);
-            secretRealmComboBox.addItem(option);
-            if (secretRealm.id().equals(selectedId)) {
-                secretRealmComboBox.setSelectedItem(option);
-            }
+            options.add(option);
         }
+        StableComboOptions.update(secretRealmComboBox, options, option -> option.secretRealm.id(), selectedId);
     }
 
     private void reloadInheritances(IdleCultivationManager manager) {
         String selectedId = NovelReaderSettings.getInstance().getSelectedSectInheritanceId();
-        inheritanceComboBox.removeAllItems();
+        java.util.List<InheritanceOption> options = new java.util.ArrayList<>();
         SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
         if (displaySect == null) {
+            StableComboOptions.update(inheritanceComboBox, options, option -> option.inheritance.id(), selectedId);
             return;
         }
         for (SectCatalog.SectInheritanceDefinition inheritance : manager.getSectInheritanceDefinitions()) {
             if (displaySect.name().equals(inheritance.sectName())) {
                 InheritanceOption option = new InheritanceOption(inheritance);
-                inheritanceComboBox.addItem(option);
-                if (inheritance.id().equals(selectedId)) {
-                    inheritanceComboBox.setSelectedItem(option);
-                }
+                options.add(option);
             }
         }
+        StableComboOptions.update(inheritanceComboBox, options, option -> option.inheritance.id(), selectedId);
     }
 
     private void reloadTrials(IdleCultivationManager manager) {
         SectCatalog.SectDefinition displaySect = getDisplaySect(manager);
         String selectedId = NovelReaderSettings.getInstance().getSelectedSectTrialId();
-        trialComboBox.removeAllItems();
+        java.util.List<TrialOption> options = new java.util.ArrayList<>();
         if (displaySect == null) {
+            StableComboOptions.update(trialComboBox, options, option -> option.trial.id(), selectedId);
             return;
         }
         for (SectCatalog.SectTrialDefinition trial : manager.getSectTrialDefinitions()) {
             if (displaySect.id().equals(trial.sectId())) {
                 TrialOption option = new TrialOption(trial);
-                trialComboBox.addItem(option);
-                if (trial.id().equals(selectedId)) {
-                    trialComboBox.setSelectedItem(option);
-                }
+                options.add(option);
             }
         }
+        StableComboOptions.update(trialComboBox, options, option -> option.trial.id(), selectedId);
     }
 
     private SectCatalog.SectDefinition getDisplaySect(IdleCultivationManager manager) {

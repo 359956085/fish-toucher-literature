@@ -28,6 +28,7 @@ import java.awt.*;
 public class NovelReaderConfigurable implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(NovelReaderConfigurable.class);
+    private long uiGeneration;
 
     // Mode selector
     private JComboBox<String> modeComboBox;
@@ -355,7 +356,9 @@ public class NovelReaderConfigurable implements Configurable {
                     .withDescription(FishToucherBundle.message("settings.dialog.selectFileDesc"));
             VirtualFile[] files = FileChooser.chooseFiles(descriptor, null, null);
             if (files.length > 0) {
+                long generation = uiGeneration;
                 NovelReaderManager.getInstance().loadFileAsync(null, files[0].getPath(), result -> {
+                    if (generation != uiGeneration) return;
                     if (result.isSuccess()) {
                         Messages.showInfoMessage(
                                 FishToucherBundle.message(
@@ -622,4 +625,11 @@ public class NovelReaderConfigurable implements Configurable {
             recentFileSelector.refresh();
         }
     }
+    @Override
+    public void disposeUIResources() {
+        uiGeneration++;
+        if (recentFileSelector != null) recentFileSelector.dispose();
+        recentFileSelector = null;
+    }
+
 }
